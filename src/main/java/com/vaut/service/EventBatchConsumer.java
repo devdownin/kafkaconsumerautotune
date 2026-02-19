@@ -55,12 +55,18 @@ public class EventBatchConsumer {
         List<DltEvent> dltEventsToPersist = new ArrayList<>();
         
         for (ConsumerRecord<String, String> record : records) {
-            processingService.recordSizeMetric(record);
+            try {
+                processingService.recordSizeMetric(record);
 
-            processingService.processRecord(record).ifPresentOrElse(
-                eventsToPersist::add,
-                () -> dltEventsToPersist.add(dltService.routeToDlt(record, "Processing failed (Check logs)"))
-            );
+                processingService.processRecord(record).ifPresentOrElse(
+                    eventsToPersist::add,
+                    () -> dltEventsToPersist.add(dltService.routeToDlt(record, "Processing failed (Check logs)"))
+                );
+            } catch (Exception e) {
+                log.error("Unexpected error processing record at partition {} offset {}: {}",
+                        record.partition(), record.offset(), e.getMessage());
+                dltEventsToPersist.add(dltService.routeToDlt(record, "Unexpected error: " + e.getMessage()));
+            }
         }
         
         persistBatches(eventsToPersist, dltEventsToPersist);
