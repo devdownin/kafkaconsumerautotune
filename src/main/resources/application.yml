@@ -90,8 +90,37 @@ kafka:
   topic:
     name: asf.peage.backoffice.sortie.recouvrable
     dlt: asf.peage.backoffice.sortie.recouvrable.dlt
+  tuning:
+    # Durée cible de traitement d'un batch en millisecondes.
+    # Le moteur d'auto-tune ajustera le max.poll.records pour essayer de stabiliser le traitement à cette valeur.
+    target-batch-duration-ms: 1200.0
+
+    # Coefficients du contrôleur PID (Proportional, Integral, Derivative)
+    # kP : Réaction proportionnelle à l'erreur actuelle (vitesse de réaction initiale)
+    kp: 150.0
+    # kI : Réaction proportionnelle à l'accumulation des erreurs passées (élimination de l'erreur statique)
+    ki: 20.0
+    # kD : Réaction proportionnelle à la tendance de l'erreur (amortissement des oscillations)
+    kd: 50.0
+
+    # Intervalle minimum entre deux redémarrages du consommateur (en ms).
+    # Évite les "rebalance storms" en limitant la fréquence des changements de configuration réels.
+    min-restart-interval-ms: 300000
+
+    # Seuil de changement minimal (0.1 = 10%).
+    # Une modification de paramètre n'est appliquée que si elle dépasse ce seuil par rapport à la valeur actuelle.
+    change-threshold: 0.1
+
+    # Limites de sécurité pour le paramètre max.poll.records
+    min-max-poll-records: 20
+    max-max-poll-records: 1000
+
+    # Paramètres de planification de la tâche de tuning (en ms)
+    initial-delay: 30000
+    fixed-rate: 60000
 
 management:
+  # Exposition des endpoints Actuator pour le monitoring (Prometheus, Health, etc.)
   endpoints:
     web:
       exposure:
