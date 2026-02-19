@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html class="dark" lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head('Page')}">
+    <title>Page</title>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="flex h-screen overflow-hidden">
+    <!-- Sidebar Navigation -->
+    <div th:replace="~{fragments/sidebar :: sidebar}"></div>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <!-- Top Navbar -->
+        <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
+            <div class="flex items-center gap-4">
+                <h2 class="text-lg font-bold" th:text="${stats.dbStatus.split(':')[0] + ' Status'}">Database Status</h2>
+                <span th:class="${'flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ' + (stats.dbStatus.contains('Connected') ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500')}">
+                    <span th:class="${'size-1.5 rounded-full animate-pulse ' + (stats.dbStatus.contains('Connected') ? 'bg-emerald-500' : 'bg-rose-500')}"></span>
+                    <span th:text="${stats.dbStatus.contains('Connected') ? 'Online' : 'Offline'}">Online</span>
+                </span>
+            </div>
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-2">
+                    <button id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500">
+                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden">dark_mode</span>
+                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden">light_mode</span>
+                    </button>
+                    <button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()">
+                        <span class="material-symbols-outlined">refresh</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto p-8 space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Connection Info -->
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                    <h4 class="text-base font-bold mb-4">Connection Details</h4>
+                    <dl class="space-y-3">
+                        <div class="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                            <dt class="text-sm text-slate-500">Database Type</dt>
+                            <dd class="text-sm font-medium" th:text="${stats.dbStatus.split(':')[0]}">Oracle</dd>
+                        </div>
+                        <div class="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                            <dt class="text-sm text-slate-500">Schema</dt>
+                            <dd class="text-sm font-medium" th:text="${stats.dbSchema}">TESTUSER</dd>
+                        </div>
+                        <div class="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                            <dt class="text-sm text-slate-500">Driver</dt>
+                            <dd class="text-sm font-medium" th:text="${stats.dbDriver}">oracle.jdbc.OracleDriver</dd>
+                        </div>
+                        <div class="flex justify-between">
+                            <dt class="text-sm text-slate-500">Status</dt>
+                            <dd th:class="${'text-sm font-bold ' + (stats.dbStatus.contains('Connected') ? 'text-emerald-500' : 'text-rose-500')}" th:text="${stats.dbStatus.contains('Connected') ? 'Connected' : 'Disconnected'}">Connected</dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <!-- Pool Stats -->
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                    <h4 class="text-base font-bold mb-4">Hikari Connection Pool</h4>
+                    <dl class="space-y-3">
+                        <div class="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                            <dt class="text-sm text-slate-500">Active Connections</dt>
+                            <dd class="text-sm font-medium" th:text="${stats.dbActiveConnections}">3</dd>
+                        </div>
+                        <div class="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                            <dt class="text-sm text-slate-500">Idle Connections</dt>
+                            <dd class="text-sm font-medium" th:text="${stats.dbIdleConnections}">12</dd>
+                        </div>
+                        <div class="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                            <dt class="text-sm text-slate-500">Total Connections</dt>
+                            <dd class="text-sm font-medium" th:text="${stats.dbTotalConnections}">15</dd>
+                        </div>
+                        <div class="flex justify-between">
+                            <dt class="text-sm text-slate-500">Max Pool Size</dt>
+                            <dd class="text-sm font-medium" th:text="${stats.dbMaxPoolSize}">15</dd>
+                        </div>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Table Stats -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                <div class="p-6 border-b border-slate-200 dark:border-slate-800">
+                    <h4 class="text-base font-bold">Schema Entities</h4>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50 dark:bg-slate-800/50">
+                        <tr>
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Table Name</th>
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-right">Row Count</th>
+                        </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                        <tr>
+                            <td class="px-6 py-4 text-sm font-medium">KEVENTS</td>
+                            <td class="px-6 py-4 text-right text-sm font-mono" th:text="${stats.successCount}">1,200,000</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 text-sm font-medium">DLT_EVENTS</td>
+                            <td class="px-6 py-4 text-right text-sm font-mono" th:text="${stats.dltCount}">142</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Status Bar -->
+        <div th:replace="~{fragments/sidebar :: footer-status}"></div>
+    </main>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        initThemeToggle();
+    });
+
+    function initThemeToggle() {
+        var themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+        var themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+
+        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            themeToggleLightIcon.classList.remove('hidden');
+        } else {
+            themeToggleDarkIcon.classList.remove('hidden');
+        }
+
+        var themeToggleBtn = document.getElementById('theme-toggle');
+
+        themeToggleBtn.addEventListener('click', function() {
+            themeToggleDarkIcon.classList.toggle('hidden');
+            themeToggleLightIcon.classList.toggle('hidden');
+
+            if (localStorage.getItem('color-theme')) {
+                if (localStorage.getItem('color-theme') === 'light') {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('color-theme', 'dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('color-theme', 'light');
+                }
+            } else {
+                if (document.documentElement.classList.contains('dark')) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('color-theme', 'light');
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('color-theme', 'dark');
+                }
+            }
+        });
+    }
+</script>
+</body>
+</html>

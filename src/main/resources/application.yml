@@ -1,0 +1,185 @@
+logging:
+  level:
+    root: INFO
+    com.vaut: ERROR
+    org.springframework.kafka: INFO
+    org.hibernate.SQL: ERROR
+    org.apache.kafka: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: ERROR
+    org.springframework.boot.context.config: ERROR
+
+spring:
+  application:
+    name: kafka-consumer-batch-service
+  profiles:
+    active: dev
+
+  # Spring Boot Admin Configuration
+  boot:
+    admin:
+      context-path: /admin
+      client:
+        url: ${SPRING_BOOT_ADMIN_URL:http://localhost:8080/admin}
+        instance:
+          service-base-url: ${SPRING_BOOT_SERVICE_URL:http://localhost:8080}
+
+  # Configuration Kafka Commune
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafkadev:9092}
+    consumer:
+      group-id: ASF.PEAGE.BACKOFFICE.PARTAGE.RECOUVRABLE
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      max-poll-records: 100
+      fetch-min-bytes: 10240
+      fetch-max-wait-ms: 500
+      session-timeout-ms: 30000
+      max-poll-interval-ms: 300000
+      isolation-level: read_committed
+
+    producer:
+      # transaction-id-prefix: tx-
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+  datasource:
+    url: jdbc:oracle:thin:@//${DB_HOST:localhost}:1521/${DB_SERVICE_NAME:XEPDB1}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    driver-class-name: oracle.jdbc.OracleDriver
+    hikari:
+      maximum-pool-size: 15
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+     
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.OracleDialect
+        jdbc:
+          batch_size: 50
+          fetch_size: 50
+        order_inserts: true
+        order_updates: true
+        batch_versioned_data: true
+        generate_statistics: false
+        format_sql: false
+
+# Configuration de l'application (UI & Business)
+app:
+  edition: PARTAGE Edition
+  event:
+    id-json-path: "$.idPassage"
+  message-viewer:
+    blocks:
+      - title: "Système"
+        jsonPath: "passageSortie.systeme"
+      - title: "ETAT DE TRANSACTION"
+        jsonPath: "passageSortie.etat"
+      - title: "LOCALISATION"
+        jsonPath: "passageSortie.localisation.gare"
+
+# Configuration spécifique à l'application
+kafka:
+  topic:
+    name: asf.peage.backoffice.sortie.recouvrable
+    dlt: asf.peage.backoffice.sortie.recouvrable.dlt
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+---
+# PROFIL: DEV (Plaintext + Embedded DB)
+spring:
+  config:
+    activate:
+      on-profile: dev
+    
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=Oracle
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+    
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafkadev:9092}
+    ssl:
+      enabled: false
+
+---
+# PROFIL: REC (SSL)
+spring:
+  config:
+    activate:
+      on-profile: rec
+            
+  kafka:
+    bootstrap-servers: ${KAFKA_REC_BOOTSTRAP_SERVERS:kafkadev:9092}
+    ssl:
+      enabled: true
+      trust-store-location: ${KAFKA_SSL_TRUSTSTORE_LOCATION:classpath:client.truststore.jks}
+      trust-store-password: ${KAFKA_SSL_TRUSTSTORE_PASSWORD}
+      key-store-location: ${KAFKA_SSL_KEYSTORE_LOCATION:classpath:client.keystore.jks}
+      key-store-password: ${KAFKA_SSL_KEYSTORE_PASSWORD}
+      key-password: ${KAFKA_SSL_KEY_PASSWORD}
+
+---
+# PROFIL: LOCAL-H2 (Local Kafka + H2 DB)
+spring:
+  config:
+    activate:
+      on-profile: local-h2
+
+  datasource:
+    url: jdbc:h2:mem:localdb;DB_CLOSE_DELAY=-1;MODE=Oracle
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    ssl:
+      enabled: false
+
+---
+# PROFIL: TEST
+spring:
+  config:
+    activate:
+      on-profile: test

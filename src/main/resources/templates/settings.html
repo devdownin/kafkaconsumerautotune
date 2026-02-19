@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html class="dark" lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head('Page')}">
+    <title>Page</title>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="flex h-screen overflow-hidden">
+    <!-- Sidebar Navigation -->
+    <div th:replace="~{fragments/sidebar :: sidebar}"></div>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <!-- Top Navbar -->
+        <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
+            <div class="flex items-center gap-4">
+                <h2 class="text-lg font-bold">Settings</h2>
+            </div>
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-2">
+                    <button id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500">
+                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden">dark_mode</span>
+                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden">light_mode</span>
+                    </button>
+                    <button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()">
+                        <span class="material-symbols-outlined">refresh</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto p-8 space-y-6">
+            <div th:if="${param.success}" class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 px-4 py-3 rounded-lg text-sm font-medium flex items-center gap-3 animate-pulse">
+                <span class="material-symbols-outlined">check_circle</span>
+                Configuration updated successfully.
+            </div>
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                <h4 class="text-base font-bold mb-4">Application Configuration</h4>
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Kafka Bootstrap Servers</label>
+                        <input type="text" readonly th:value="${stats.kafkaClusterName}" class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono"/>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Connection Type</label>
+                        <div class="flex items-center gap-3">
+                            <input type="text" readonly th:value="${stats.kafkaSecurityProtocol == 'SSL' ? 'SSL (Secure)' : 'PLAIN (Unsecured)'}" class="flex-1 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono"/>
+                            <span th:class="${'px-3 py-1.5 rounded-lg text-[10px] font-bold ' + (stats.kafkaSecurityProtocol == 'SSL' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-slate-500/10 text-slate-500 border border-slate-500/20')}" th:text="${stats.kafkaSecurityProtocol == 'SSL' ? 'SSL' : 'PLAIN'}">PLAIN</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Main Topic</label>
+                        <input type="text" readonly th:value="${stats.topicName}" class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono"/>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">DLT Topic</label>
+                        <input type="text" readonly th:value="${stats.topicName + '.dlt'}" class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono"/>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Consumer Group</label>
+                        <input type="text" readonly th:value="${stats.consumerGroup}" class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono"/>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Event ID Extraction Path (JsonPath)</label>
+                        <input type="text" readonly th:value="${stats.idJsonPath}" class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono text-primary font-bold"/>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="text-base font-bold">Kafka Consumer Adaptive Tuning</h4>
+                    <span class="px-2 py-1 rounded bg-blue-500/10 text-blue-500 text-[10px] font-bold border border-blue-500/20 uppercase">PID Active</span>
+                </div>
+                <p class="text-xs text-slate-500 mb-6">Real-time PID Controller optimization based on message frequency and processing speed</p>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Max Poll Records</label>
+                        <div class="text-2xl font-bold text-primary" th:text="${stats.maxPollRecords}">100</div>
+                        <div class="text-[10px] text-slate-500 mt-1">Batch size limit</div>
+                    </div>
+                    <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Fetch Max Wait</label>
+                        <div class="text-2xl font-bold text-primary" th:text="${stats.fetchMaxWaitMs + 'ms'}">500ms</div>
+                        <div class="text-[10px] text-slate-500 mt-1">Linger time</div>
+                    </div>
+                    <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Concurrency</label>
+                        <div class="text-2xl font-bold text-primary" th:text="${stats.concurrency}">6</div>
+                        <div class="text-[10px] text-slate-500 mt-1">Active threads</div>
+                    </div>
+                    <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Fetch Min Bytes</label>
+                        <div class="text-2xl font-bold text-primary" th:text="${stats.fetchMinBytes}">10240</div>
+                        <div class="text-[10px] text-slate-500 mt-1">Minimum batch data</div>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center gap-2 text-[11px] text-emerald-500 bg-emerald-500/5 p-3 rounded-lg border border-emerald-500/10">
+                    <span class="material-symbols-outlined text-sm">info</span>
+                    <span>Self-tuning is active. Parameters are adjusted every 60 seconds to maintain optimal throughput.</span>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                <h4 class="text-base font-bold mb-4">Logging Configuration</h4>
+                <p class="text-xs text-slate-500 mb-4">Manage real-time log levels for key system packages</p>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50 dark:bg-slate-800/50">
+                        <tr>
+                            <th class="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase">Logger Name</th>
+                            <th class="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase">Effective Level</th>
+                            <th class="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase text-right">Action</th>
+                        </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                        <tr th:each="log : ${logConfigs}">
+                            <td class="px-6 py-4 text-sm font-mono text-slate-700 dark:text-slate-300" th:text="${log.loggerName}">com.vaut</td>
+                            <td class="px-6 py-4">
+                                <span th:class="${'px-2 py-1 rounded text-[10px] font-bold ' + (log.effectiveLevel == 'DEBUG' ? 'bg-blue-100 text-blue-600' : (log.effectiveLevel == 'ERROR' ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-600'))}" th:text="${log.effectiveLevel}">INFO</span>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <form th:action="@{/settings/logs}" method="POST" class="inline-flex items-center gap-2">
+                                    <input type="hidden" name="loggerName" th:value="${log.loggerName}"/>
+                                    <select name="level" class="text-[10px] bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded py-1 px-2 focus:ring-1 focus:ring-primary">
+                                        <option value="TRACE" th:selected="${log.effectiveLevel == 'TRACE'}">TRACE</option>
+                                        <option value="DEBUG" th:selected="${log.effectiveLevel == 'DEBUG'}">DEBUG</option>
+                                        <option value="INFO" th:selected="${log.effectiveLevel == 'INFO'}">INFO</option>
+                                        <option value="WARN" th:selected="${log.effectiveLevel == 'WARN'}">WARN</option>
+                                        <option value="ERROR" th:selected="${log.effectiveLevel == 'ERROR'}">ERROR</option>
+                                        <option value="OFF" th:selected="${log.effectiveLevel == 'OFF'}">OFF</option>
+                                    </select>
+                                    <button type="submit" class="bg-primary hover:bg-primary/90 text-white text-[10px] font-bold py-1 px-3 rounded transition-colors">Apply</button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                <h4 class="text-base font-bold mb-4">System Information</h4>
+                <dl class="space-y-3">
+                    <div class="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                        <dt class="text-sm text-slate-500">Java Version</dt>
+                        <dd class="text-sm font-medium" th:text="${stats.javaVersion}">21</dd>
+                    </div>
+                    <div class="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                        <dt class="text-sm text-slate-500">Spring Boot Version</dt>
+                        <dd class="text-sm font-medium" th:text="${stats.springBootVersion}">3.5.9</dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt class="text-sm text-slate-500">App Version</dt>
+                        <dd class="text-sm font-medium" th:text="${stats.appVersion}">1.0.0-SNAPSHOT</dd>
+                    </div>
+                </dl>
+            </div>
+        </div>
+
+        <!-- Footer Status Bar -->
+        <div th:replace="~{fragments/sidebar :: footer-status}"></div>
+    </main>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        initThemeToggle();
+
+        // Auto-hide success message
+        const successMsg = document.querySelector('.bg-emerald-500\\/10');
+        if (successMsg) {
+            setTimeout(() => {
+                successMsg.style.transition = 'opacity 0.5s ease';
+                successMsg.style.opacity = '0';
+                setTimeout(() => successMsg.remove(), 500);
+            }, 3000);
+        }
+    });
+
+    function initThemeToggle() {
+        var themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+        var themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+
+        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            themeToggleLightIcon.classList.remove('hidden');
+        } else {
+            themeToggleDarkIcon.classList.remove('hidden');
+        }
+
+        var themeToggleBtn = document.getElementById('theme-toggle');
+
+        themeToggleBtn.addEventListener('click', function() {
+            themeToggleDarkIcon.classList.toggle('hidden');
+            themeToggleLightIcon.classList.toggle('hidden');
+
+            if (localStorage.getItem('color-theme')) {
+                if (localStorage.getItem('color-theme') === 'light') {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('color-theme', 'dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('color-theme', 'light');
+                }
+            } else {
+                if (document.documentElement.classList.contains('dark')) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('color-theme', 'light');
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('color-theme', 'dark');
+                }
+            }
+        });
+    }
+</script>
+</body>
+</html>

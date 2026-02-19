@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html class="dark" lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head('Dashboard')}">
+    <title>Dashboard</title>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<!-- Toast Container -->
+<div id="toast-container" class="fixed bottom-8 right-8 z-[100] flex flex-col gap-3"></div>
+
+<div class="flex h-screen overflow-hidden">
+    <!-- Sidebar Navigation -->
+    <div th:replace="~{fragments/sidebar :: sidebar}"></div>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <!-- Top Navbar -->
+        <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
+            <div class="flex items-center gap-4">
+                <h2 class="text-lg font-bold">Pipeline Overview</h2>
+                <span class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase tracking-wider" data-tooltip="Active data pipeline">
+                    <span class="size-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Live
+                </span>
+            </div>
+            <div class="flex items-center gap-6">
+                <div class="relative hidden lg:block group">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+                    <input id="dashboard-search" oninput="toggleSearchClear(); filterDashboardTable()" class="bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm pl-10 pr-10 py-1.5 w-64 focus:ring-1 focus:ring-primary placeholder:text-slate-500" placeholder="Search by event ID or topic..." type="text"/>
+                    <button id="search-clear" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                        <span class="material-symbols-outlined text-sm">cancel</span>
+                    </button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 relative">
+                        <span class="material-symbols-outlined">notifications</span>
+                        <span class="absolute top-2 right-2 size-2 bg-rose-500 rounded-full border-2 border-white dark:border-background-dark"></span>
+                    </button>
+                    <button id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500">
+                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden">dark_mode</span>
+                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden">light_mode</span>
+                    </button>
+                    <button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()" data-tooltip="Refresh page">
+                        <span class="material-symbols-outlined">refresh</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+        <!-- Dashboard Content -->
+        <div class="flex-1 overflow-y-auto p-8 space-y-6">
+            <!-- Stats Row -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
+                            <span class="material-symbols-outlined">move_to_inbox</span>
+                        </div>
+                        <span class="text-emerald-500 text-xs font-bold">Total</span>
+                    </div>
+                    <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Total Processed</p>
+                    <h3 class="text-2xl font-bold mt-1" id="total-processed-count" th:text="${#numbers.formatInteger(stats.totalProcessed, 0, 'WHITESPACE')}">0</h3>
+                    <div class="mt-4 w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
+                        <div class="bg-blue-500 h-full w-full"></div>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg">
+                            <span class="material-symbols-outlined">check_circle</span>
+                        </div>
+                        <span class="text-emerald-500 text-xs font-bold">Overall</span>
+                    </div>
+                    <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Success Rate</p>
+                    <h3 class="text-2xl font-bold mt-1" id="success-rate" th:text="${stats.successRate + '%'}">99.98%</h3>
+                    <div class="mt-4 w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
+                        <div class="bg-emerald-500 h-full" id="success-rate-bar" th:style="'width: ' + ${stats.successRate} + '%'"></div>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-2 bg-rose-500/10 text-rose-500 rounded-lg">
+                            <span class="material-symbols-outlined">warning</span>
+                        </div>
+                        <span class="text-rose-500 text-xs font-bold" id="active-errors-tag">Active</span>
+                    </div>
+                    <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">DLT Messages</p>
+                    <h3 class="text-2xl font-bold mt-1" id="dlt-count" th:text="${stats.dltCount}">142</h3>
+                    <div class="mt-4 w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
+                        <div class="bg-rose-500 h-full w-[15%]"></div>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-amber-500/30 dark:border-amber-500/20 p-6 rounded-xl shadow-sm ring-1 ring-amber-500/10">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
+                            <span class="material-symbols-outlined">hourglass_top</span>
+                        </div>
+                        <span class="text-amber-500 text-xs font-bold" id="lag-status-tag">PID Tuned</span>
+                    </div>
+                    <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Consumer Lag</p>
+                    <h3 class="text-2xl font-bold mt-1"><span id="consumer-lag" th:text="${#numbers.formatInteger(stats.consumerLag, 0, 'WHITESPACE')}">8,421</span></h3>
+                    <div class="mt-4 flex flex-col gap-1 text-[10px] font-bold text-slate-400 uppercase">
+                        <div class="flex justify-between">
+                            <span>Max Poll: <span id="max-poll-val" class="text-primary" th:text="${stats.maxPollRecords}">100</span></span>
+                            <span>Threads: <span id="concurrency-val" class="text-primary" th:text="${stats.concurrency}">6</span></span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Fetch Wait: <span id="fetch-wait-val" class="text-primary" th:text="${stats.fetchMaxWaitMs + 'ms'}">500ms</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Charts Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Consumption Throughput -->
+                <div class="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <h4 class="text-base font-bold">Consumption Throughput</h4>
+                            <p class="text-xs text-slate-500">Real-time messages processed per second (Msg/s)</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                             <span class="text-[10px] font-bold text-slate-400 uppercase">Duration:</span>
+                             <select id="throughput-duration" onchange="updateThroughputDuration(this.value)" class="bg-slate-50 dark:bg-slate-800 border-none rounded text-xs py-1 px-3 focus:ring-1 focus:ring-primary cursor-pointer">
+                                <option value="15m">Last 15 minutes</option>
+                                <option value="24h">Last 24 hours</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="h-[300px] w-full" id="throughput-chart"></div>
+                </div>
+                <!-- Status Distribution -->
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex flex-col">
+                    <div class="mb-6">
+                        <h4 class="text-base font-bold">Message Status</h4>
+                        <p class="text-xs text-slate-500">Success vs Error Distribution</p>
+                    </div>
+                    <div class="flex-1 flex flex-col items-center justify-center gap-4">
+                        <div id="status-donut-chart" class="w-full"></div>
+                        <div class="w-full space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="size-2 rounded-full bg-primary"></div>
+                                    <span class="text-sm text-slate-500">Success</span>
+                                </div>
+                                <span class="text-sm font-bold" id="donut-success-count" th:text="${#numbers.formatInteger(stats.successCount, 0, 'WHITESPACE')}">1.2M</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="size-2 rounded-full bg-rose-500"></div>
+                                    <span class="text-sm text-slate-500">DLT / Errors</span>
+                                </div>
+                                <span class="text-sm font-bold" id="donut-error-count" th:text="${#numbers.formatInteger(stats.errorCount, 0, 'WHITESPACE')}">142</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="size-2 rounded-full bg-amber-500"></div>
+                                    <span class="text-sm text-slate-500">Retries</span>
+                                </div>
+                                <span class="text-sm font-bold" id="donut-retry-count" th:text="${#numbers.formatInteger(stats.retryCount, 0, 'WHITESPACE')}">2.4k</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Bottom Section: Latest Activity -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                    <div>
+                        <h4 class="text-base font-bold">Recent Pipeline Activity</h4>
+                        <p class="text-xs text-slate-500">Latest generalized events processed into Oracle DB</p>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50 dark:bg-slate-800/50">
+                        <tr>
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Topic</th>
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Event ID</th>
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Offset</th>
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Partition</th>
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Oracle ID</th>
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-right">Timestamp</th>
+                        </tr>
+                        </thead>
+                        <tbody id="events-table-body" class="divide-y divide-slate-100 dark:divide-slate-800">
+                        <tr id="empty-state" th:if="${#lists.isEmpty(recentEvents)}">
+                            <td colspan="6" class="px-6 py-12 text-center text-slate-500">
+                                <div class="flex flex-col items-center gap-2">
+                                    <span class="material-symbols-outlined text-4xl opacity-20">inventory_2</span>
+                                    <p class="text-sm font-medium">No events processed yet</p>
+                                    <p class="text-[10px] opacity-60">Real-time events will appear here as they are consumed</p>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr th:each="event : ${recentEvents}">
+                            <td class="px-6 py-4 text-sm font-medium" th:text="${event.kafkaTopic}">topic.name</td>
+                            <td class="px-6 py-4 text-sm font-bold text-primary" th:text="${event.eventId}">EVT-123</td>
+                            <td class="px-6 py-4 text-sm font-mono text-slate-500" th:text="${event.kafkaOffset != null ? event.kafkaOffset : '-'}">-</td>
+                            <td class="px-6 py-4 text-sm font-medium" th:text="${event.kafkaPartition != null ? event.kafkaPartition : '-'}">-</td>
+                            <td class="px-6 py-4 text-sm font-mono text-slate-500" th:text="${event.id}">1</td>
+                            <td class="px-6 py-4 text-sm text-slate-500 text-right" th:text="${#temporals.format(event.createdAt, 'yyyy-MM-dd HH:mm:ss')}">2023-10-24 14:12:05</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <!-- Footer Status Bar -->
+        <div th:replace="~{fragments/sidebar :: footer-status}"></div>
+    </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script th:inline="javascript">
+    var initialStats = /*[[${stats}]]*/ {};
+    var currentStats = initialStats;
+
+    // WebSocket Setup
+    var socket = new SockJS('/ws');
+    var stompClient = Stomp.over(socket);
+    stompClient.debug = null;
+
+    stompClient.connect({}, function (frame) {
+        updateWsStatus(true);
+        stompClient.subscribe('/topic/events', function (eventMessage) {
+            var events = JSON.parse(eventMessage.body);
+            updateDashboard(events);
+        });
+        stompClient.subscribe('/topic/stats', function (statsMessage) {
+            var stats = JSON.parse(statsMessage.body);
+            updateStats(stats);
+        });
+    }, function(error) {
+        updateWsStatus(false);
+    });
+
+    function updateWsStatus(connected) {
+        const dot = document.getElementById('ws-status-dot');
+        const text = document.getElementById('ws-status-text');
+        if (!dot || !text) return;
+        if (connected) {
+            dot.classList.remove('bg-slate-400', 'bg-rose-500');
+            dot.classList.add('bg-emerald-500');
+            dot.classList.remove('animate-pulse');
+            text.innerText = 'WS: Connected';
+        } else {
+            dot.classList.remove('bg-slate-400', 'bg-emerald-500');
+            dot.classList.add('bg-rose-500');
+            dot.classList.add('animate-pulse');
+            text.innerText = 'WS: Disconnected';
+        }
+    }
+
+    var throughputChart, donutChart;
+    var currentDuration = '15m';
+
+    function initCharts() {
+        const initialData = currentDuration === '24h' ? initialStats.throughput24h : initialStats.throughput;
+
+        var throughputOptions = {
+            series: [{
+                name: 'Msg/s',
+                data: initialData || []
+            }],
+            chart: {
+                height: 300,
+                type: 'area',
+                toolbar: { show: false },
+                animations: { enabled: true, easing: 'linear', dynamicAnimation: { speed: 1000 } }
+            },
+            dataLabels: { enabled: false },
+            stroke: { curve: 'smooth', width: 3, colors: ['#135bec'] },
+            fill: {
+                type: 'gradient',
+                gradient: { shadeIntensity: 1, opacityFrom: 0.45, opacityTo: 0.05 }
+            },
+            grid: { borderColor: '#1e293b', strokeDashArray: 4 },
+            xaxis: { labels: { show: false } },
+            yaxis: {
+                labels: {
+                    style: { colors: '#94a3b8' },
+                    formatter: function(val) { return val.toFixed(1); }
+                }
+            },
+            tooltip: { theme: 'dark' }
+        };
+
+        throughputChart = new ApexCharts(document.querySelector("#throughput-chart"), throughputOptions);
+        throughputChart.render();
+
+        var donutOptions = {
+            series: [initialStats.successCount || 0, initialStats.errorCount || 0, initialStats.retryCount || 0],
+            chart: { type: 'donut', height: 250 },
+            labels: ['Success', 'DLT / Errors', 'Retries'],
+            colors: ['#135bec', '#f43f5e', '#f59e0b'],
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '75%',
+                        labels: {
+                            show: true,
+                            name: { show: true, color: '#94a3b8' },
+                            value: { show: true, color: '#f8fafc' },
+                            total: { show: true, label: 'Success Rate', formatter: function() { return (initialStats.successRate || 0).toFixed(2) + '%' } }
+                        }
+                    }
+                }
+            },
+            dataLabels: { enabled: false },
+            legend: { show: false },
+            stroke: { show: false },
+            tooltip: { theme: 'dark' }
+        };
+
+        donutChart = new ApexCharts(document.querySelector("#status-donut-chart"), donutOptions);
+        donutChart.render();
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initCharts();
+        initThemeToggle();
+    });
+
+    function updateThroughputDuration(duration) {
+        currentDuration = duration;
+        if (throughputChart) {
+            const data = duration === '24h' ? initialStats.throughput24h : initialStats.throughput;
+            throughputChart.updateSeries([{ data: data }]);
+        }
+    }
+
+    function initThemeToggle() {
+        var themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+        var themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            themeToggleLightIcon.classList.remove('hidden');
+            document.documentElement.classList.add('dark');
+        } else {
+            themeToggleDarkIcon.classList.remove('hidden');
+            document.documentElement.classList.remove('dark');
+        }
+        document.getElementById('theme-toggle').addEventListener('click', function() {
+            themeToggleDarkIcon.classList.toggle('hidden');
+            themeToggleLightIcon.classList.toggle('hidden');
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('color-theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('color-theme', 'dark');
+            }
+        });
+    }
+
+    function updateStats(stats) {
+        initialStats = stats;
+        document.getElementById('total-processed-count').innerText = stats.totalProcessed.toLocaleString('en-US');
+        document.getElementById('success-rate').innerText = stats.successRate.toFixed(2) + '%';
+        document.getElementById('success-rate-bar').style.width = stats.successRate + '%';
+        document.getElementById('dlt-count').innerText = stats.dltCount;
+        document.getElementById('consumer-lag').innerText = stats.consumerLag.toLocaleString('en-US');
+        if (throughputChart) {
+            const data = currentDuration === '24h' ? stats.throughput24h : stats.throughput;
+            throughputChart.updateSeries([{ data: data }]);
+        }
+        if (donutChart) {
+            donutChart.updateSeries([stats.successCount, stats.errorCount, stats.retryCount]);
+        }
+        document.getElementById('donut-success-count').innerText = stats.successCount.toLocaleString('en-US');
+        document.getElementById('donut-error-count').innerText = stats.errorCount.toLocaleString('en-US');
+        document.getElementById('donut-retry-count').innerText = stats.retryCount.toLocaleString('en-US');
+    }
+
+    function updateDashboard(events) {
+        var tableBody = document.getElementById('events-table-body');
+        var emptyState = document.getElementById('empty-state');
+        if (emptyState && events.length > 0) emptyState.style.display = 'none';
+
+        events.forEach(function(event) {
+            var row = document.createElement('tr');
+            row.className = 'divide-y divide-slate-100 dark:divide-slate-800 animate-pulse';
+            var date = new Date(event.createdAt);
+            var formattedDate = date.toISOString().replace('T', ' ').substring(0, 19);
+
+            row.innerHTML = `
+                <td class="px-6 py-4 text-sm font-medium">${event.kafkaTopic || '-'}</td>
+                <td class="px-6 py-4 text-sm font-bold text-primary">${event.eventId}</td>
+                <td class="px-6 py-4 text-sm font-mono text-slate-500">${event.kafkaOffset != null ? event.kafkaOffset : '-'}</td>
+                <td class="px-6 py-4 text-sm font-medium">${event.kafkaPartition != null ? event.kafkaPartition : '-'}</td>
+                <td class="px-6 py-4 text-sm font-mono text-slate-500">${event.id}</td>
+                <td class="px-6 py-4 text-sm text-slate-500 text-right">${formattedDate}</td>
+            `;
+            if (tableBody.firstChild) tableBody.insertBefore(row, tableBody.firstChild);
+            else tableBody.appendChild(row);
+            setTimeout(function() { row.classList.remove('animate-pulse'); }, 2000);
+            if (tableBody.children.length > 15) tableBody.removeChild(tableBody.lastChild);
+        });
+    }
+
+    function clearSearch() {
+        document.getElementById('dashboard-search').value = '';
+        toggleSearchClear();
+        filterDashboardTable();
+    }
+    function toggleSearchClear() {
+        const query = document.getElementById('dashboard-search').value;
+        const btn = document.getElementById('search-clear');
+        if (query.length > 0) btn.classList.remove('hidden');
+        else btn.classList.add('hidden');
+    }
+    function filterDashboardTable() {
+        const query = document.getElementById('dashboard-search').value.toLowerCase();
+        const rows = document.querySelectorAll('#events-table-body tr:not(#empty-state)');
+        rows.forEach(row => {
+            row.style.display = row.innerText.toLowerCase().includes(query) ? '' : 'none';
+        });
+    }
+</script>
+</body>
+</html>

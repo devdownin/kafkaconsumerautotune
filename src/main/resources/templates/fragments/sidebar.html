@@ -1,0 +1,98 @@
+<!-- Sidebar Navigation Fragment -->
+<aside th:fragment="sidebar" class="w-64 border-r border-slate-200 dark:border-slate-800 flex flex-col bg-white dark:bg-background-dark shrink-0">
+    <div class="p-6 border-b border-slate-200 dark:border-slate-800">
+        <div class="flex items-center gap-3">
+            <div class="bg-primary rounded-lg p-1.5 text-white">
+                <span class="material-symbols-outlined">hub</span>
+            </div>
+            <div>
+                <h1 class="text-sm font-bold leading-none" th:text="${stats.appName}">KafkaMonitor</h1>
+                <p class="text-[10px] text-slate-500 uppercase tracking-widest mt-1 font-semibold" th:text="${stats.appEdition}">Enterprise Edition</p>
+            </div>
+        </div>
+    </div>
+    <nav class="flex-1 p-4 flex flex-col gap-2">
+        <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'dashboard' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/}">
+            <span class="material-symbols-outlined">dashboard</span>
+            <span th:class="${'text-sm ' + (activePage == 'dashboard' ? 'font-semibold' : 'font-medium')}">Dashboard</span>
+        </a>
+        <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'message-viewer' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/message-viewer}">
+            <span class="material-symbols-outlined">visibility</span>
+            <span th:class="${'text-sm ' + (activePage == 'message-viewer' ? 'font-semibold' : 'font-medium')}">Message Viewer</span>
+        </a>
+        <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'consumer-groups' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/consumer-groups}">
+            <span class="material-symbols-outlined">group_work</span>
+            <span th:class="${'text-sm ' + (activePage == 'consumer-groups' ? 'font-semibold' : 'font-medium')}">Consumer Groups</span>
+        </a>
+        <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'dlt' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/dlt-management}">
+            <span class="material-symbols-outlined">error_outline</span>
+            <span th:class="${'text-sm ' + (activePage == 'dlt' ? 'font-semibold' : 'font-medium')}">DLT Management</span>
+        </a>
+        <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'metrics' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/metrics}">
+            <span class="material-symbols-outlined">monitoring</span>
+            <span th:class="${'text-sm ' + (activePage == 'metrics' ? 'font-semibold' : 'font-medium')}">Application Metrics</span>
+        </a>
+        <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'optimizer' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/optimizer}">
+            <span class="material-symbols-outlined">auto_fix_high</span>
+            <span th:class="${'text-sm ' + (activePage == 'optimizer' ? 'font-semibold' : 'font-medium')}">Kafka Optimizer</span>
+        </a>
+        <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+            <p class="px-3 text-[10px] font-bold text-slate-400 uppercase mb-2">Systems</p>
+            <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'db-status' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/db-status}">
+                <span class="material-symbols-outlined">database</span>
+                <span th:class="${'text-sm ' + (activePage == 'db-status' ? 'font-semibold' : 'font-medium')}">Oracle DB Status</span>
+            </a>
+            <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'settings' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/settings}">
+                <span class="material-symbols-outlined">settings</span>
+                <span th:class="${'text-sm ' + (activePage == 'settings' ? 'font-semibold' : 'font-medium')}">Settings</span>
+            </a>
+        </div>
+    </nav>
+    <div class="p-4 border-t border-slate-200 dark:border-slate-800">
+        <div class="flex items-center gap-3 p-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+            <div class="size-8 bg-slate-300 dark:bg-slate-700 rounded-full bg-cover bg-center" th:style="'background-image: url(\'https://ui-avatars.com/api/?name=' + ${stats.systemUser} + '&background=random\')'"></div>
+            <div class="overflow-hidden">
+                <p class="text-xs font-bold truncate" th:text="${stats.systemUser}">System Administrator</p>
+                <p class="text-[10px] text-slate-500">Session Active</p>
+            </div>
+        </div>
+    </div>
+</aside>
+
+<!-- Footer Status Fragment -->
+<footer th:fragment="footer-status" class="h-10 bg-white dark:bg-background-dark border-t border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 shrink-0">
+    <div class="flex items-center gap-4 text-[11px] font-medium text-slate-500">
+        <div class="flex items-center gap-1.5">
+            <span id="ws-status-dot" class="size-2 rounded-full bg-slate-400 animate-pulse" data-tooltip="WebSocket Status"></span>
+            <span id="ws-status-text">WS: Connecting</span>
+        </div>
+        <div class="flex items-center gap-1.5 border-l border-slate-200 dark:border-slate-800 pl-4">
+            <span th:class="${'size-2 rounded-full ' + (stats.dbStatus.contains('Connected') ? 'bg-emerald-500' : 'bg-rose-500')}"></span>
+            <span th:text="${stats.dbStatus}">DB: Connected</span>
+        </div>
+        <div class="flex items-center gap-1.5 border-l border-slate-200 dark:border-slate-800 pl-4">
+            <span class="size-2 rounded-full bg-emerald-500"></span>
+            Kafka Cluster: <span class="text-slate-700 dark:text-slate-300 ml-1" th:text="${stats.kafkaClusterName}">PROD-CLUSTER-01</span>
+            <span id="kafka-protocol-badge" class="ml-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[9px] font-bold text-slate-500 uppercase tracking-tight" th:text="${stats.kafkaSecurityProtocol}">PLAINTEXT</span>
+        </div>
+        <div id="ssl-status-container" class="flex items-center gap-1.5 border-l border-slate-200 dark:border-slate-800 pl-4" th:if="${stats.sslCertExpiryDays != null}">
+            <span id="ssl-status-dot" th:class="${'size-2 rounded-full ' + (stats.sslCertExpiryDays > 30 ? 'bg-emerald-500' : (stats.sslCertExpiryDays > 7 ? 'bg-amber-500' : 'bg-rose-500'))}"></span>
+            SSL Cert: <span id="ssl-status-text" class="text-slate-700 dark:text-slate-300 ml-1" th:text="${stats.sslCertExpiryDays + ' days left'}">365 days left</span>
+        </div>
+    </div>
+    <div class="text-[11px] font-medium text-slate-400" id="last-refreshed">
+        <span th:text="${stats.appVersion}">v1.0.0</span> • Last refreshed: <span id="footer-time">--:--:--</span>
+        <script>
+            function updateFooterTime() {
+                const now = new Date();
+                const timeStr = now.getHours().toString().padStart(2, '0') + ':' +
+                                now.getMinutes().toString().padStart(2, '0') + ':' +
+                                now.getSeconds().toString().padStart(2, '0');
+                const elem = document.getElementById('footer-time');
+                if (elem) elem.innerText = timeStr;
+            }
+            setInterval(updateFooterTime, 1000);
+            updateFooterTime();
+        </script>
+    </div>
+</footer>

@@ -1,0 +1,92 @@
+-- Create APP_USER (Idempotent)
+DECLARE
+  v_count NUMBER;
+BEGIN
+  -- Check if user exists in the current container
+  SELECT count(*) INTO v_count FROM all_users WHERE username = 'TESTUSER';
+  IF v_count = 0 THEN
+    -- Switch to the PDB
+    EXECUTE IMMEDIATE 'CREATE USER TESTUSER IDENTIFIED BY testpass';
+    EXECUTE IMMEDIATE 'GRANT CONNECT, RESOURCE TO TESTUSER';
+    EXECUTE IMMEDIATE 'GRANT UNLIMITED TABLESPACE TO TESTUSER';
+    EXECUTE IMMEDIATE 'ALTER USER TESTUSER QUOTA UNLIMITED ON USERS';
+  END IF;
+  -- Switch to the app user schema for the rest of the session
+  EXECUTE IMMEDIATE 'ALTER SESSION SET CURRENT_SCHEMA = TESTUSER';
+END;
+/
+
+-- Switch to the app user schema
+ALTER SESSION SET CURRENT_SCHEMA = TESTUSER;
+
+-- Sequence for ID generation (Idempotent)
+DECLARE
+  v_count NUMBER;
+BEGIN
+  SELECT count(*) INTO v_count FROM user_sequences WHERE sequence_name = 'EVENT_SEQ';
+  IF v_count = 0 THEN
+    EXECUTE IMMEDIATE 'CREATE SEQUENCE EVENT_SEQ START WITH 1 INCREMENT BY 50';
+  END IF;
+  
+  SELECT count(*) INTO v_count FROM user_sequences WHERE sequence_name = 'KEVENT_SEQ';
+  IF v_count = 0 THEN
+    EXECUTE IMMEDIATE 'CREATE SEQUENCE KEVENT_SEQ START WITH 1 INCREMENT BY 50';
+  END IF;
+
+  SELECT count(*) INTO v_count FROM user_sequences WHERE sequence_name = 'DLT_SEQ';
+  IF v_count = 0 THEN
+    EXECUTE IMMEDIATE 'CREATE SEQUENCE DLT_SEQ START WITH 1 INCREMENT BY 50';
+  END IF;
+END;
+/
+
+-- Events table matching Event.java entity (Idempotent)
+DECLARE
+  v_count NUMBER;
+BEGIN
+  SELECT count(*) INTO v_count FROM user_tables WHERE table_name = 'EVENTS';
+  IF v_count = 0 THEN
+    EXECUTE IMMEDIATE 'CREATE TABLE EVENTS (
+        ID NUMBER PRIMARY KEY,
+        MESSAGE_ID VARCHAR2(255) NOT NULL UNIQUE,
+        TIMESTAMP TIMESTAMP(6) NOT NULL,
+        EVENT_TYPE VARCHAR2(255) NOT NULL,
+        PAYLOAD CLOB CHECK (PAYLOAD IS JSON)
+    )';
+    
+    EXECUTE IMMEDIATE 'CREATE INDEX idx_event_type ON EVENTS(EVENT_TYPE)';
+  END IF;
+
+  SELECT count(*) INTO v_count FROM user_tables WHERE table_name = 'KEVENTS';
+  IF v_count = 0 THEN
+    EXECUTE IMMEDIATE 'CREATE TABLE KEVENTS (
+        ID NUMBER PRIMARY KEY,
+        EVENT_ID VARCHAR2(255) NOT NULL UNIQUE,
+        PAYLOAD CLOB,
+        PARTITION_KEY VARCHAR2(255),
+        HEADERS CLOB,
+        KAFKA_TOPIC VARCHAR2(255),
+        KAFKA_PARTITION NUMBER,
+        KAFKA_OFFSET NUMBER,
+        CREATED_AT TIMESTAMP(6)
+    )';
+    
+    EXECUTE IMMEDIATE 'CREATE INDEX idx_kevent_event_id ON KEVENTS(EVENT_ID)';
+  END IF;
+
+  SELECT count(*) INTO v_count FROM user_tables WHERE table_name = 'DLT_EVENTS';
+  IF v_count = 0 THEN
+    EXECUTE IMMEDIATE 'CREATE TABLE DLT_EVENTS (
+        ID NUMBER PRIMARY KEY,
+        ORIGINAL_TOPIC VARCHAR2(255),
+        ORIGINAL_PARTITION NUMBER,
+        ORIGINAL_OFFSET NUMBER,
+        ERROR_MESSAGE VARCHAR2(4000),
+        PAYLOAD VARCHAR2(4000),
+        DHM TIMESTAMP(6),
+        STATUS VARCHAR2(255),
+        RESOLVED_AT TIMESTAMP(6)
+    )';
+  END IF;
+END;
+/

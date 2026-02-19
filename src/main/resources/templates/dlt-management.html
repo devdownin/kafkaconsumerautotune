@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head('Page')}">
+    <title>Page</title>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="flex h-screen overflow-hidden">
+    <!-- Sidebar Navigation -->
+    <div th:replace="~{fragments/sidebar :: sidebar}"></div>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <!-- Top Navbar -->
+        <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
+            <div class="flex items-center gap-4">
+                <h2 class="text-lg font-bold">DLT Error Management</h2>
+                <span class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-500 text-[10px] font-bold uppercase tracking-wider">
+                    <span class="size-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                    Action Needed
+                </span>
+            </div>
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-2">
+                    <div class="relative inline-block text-left group">
+                        <button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" title="Export DLT Data">
+                            <span class="material-symbols-outlined">download</span>
+                        </button>
+                        <div class="hidden group-hover:block absolute right-0 mt-0 w-36 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-30 overflow-hidden">
+                            <button onclick="exportDlt('csv')" class="w-full text-left px-4 py-2.5 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-2">
+                                <span class="material-symbols-outlined text-sm text-slate-400">description</span> CSV Format
+                            </button>
+                            <button onclick="exportDlt('json')" class="w-full text-left px-4 py-2.5 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-2">
+                                <span class="material-symbols-outlined text-sm text-slate-400">code</span> JSON Format
+                            </button>
+                        </div>
+                    </div>
+                    <button id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500">
+                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden">dark_mode</span>
+                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden">light_mode</span>
+                    </button>
+                    <button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()" title="Refresh">
+                        <span class="material-symbols-outlined">refresh</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto p-8 space-y-6">
+            <div th:if="${param.success}" class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 px-4 py-3 rounded-lg text-sm font-medium flex items-center gap-3 animate-pulse">
+                <span class="material-symbols-outlined">check_circle</span>
+                <span th:if="${param.success[0] == 'retried'}">Event successfully sent back to original topic.</span>
+                <span th:if="${param.success[0] == 'discarded'}">Event successfully discarded.</span>
+                <span th:if="${param.success[0] == 'retried-all'}">All unresolved events have been sent back to their original topics.</span>
+                <span th:if="${param.success[0] == 'discarded-all'}">All unresolved events have been discarded.</span>
+                <span th:if="${param.success[0] == 'retried-bulk'}">Selected events have been sent back to their original topics.</span>
+                <span th:if="${param.success[0] == 'discarded-bulk'}">Selected events have been discarded.</span>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm">
+                    <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Total DLT Count (24h)</p>
+                    <h3 class="text-2xl font-bold mt-1" id="total-dlt-count-24h" th:text="${stats.totalDlt24h}">1,284</h3>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm">
+                    <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Unresolved Errors</p>
+                    <h3 class="text-2xl font-bold mt-1 text-rose-500" id="unresolved-errors" th:text="${stats.unresolvedErrors}">156</h3>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm">
+                    <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Avg. Resolution Time</p>
+                    <h3 class="text-2xl font-bold mt-1" id="avg-resolution-time" th:text="${stats.avgResolutionTime}">42m</h3>
+                </div>
+            </div>
+
+            <!-- Toolbar & Main View Container -->
+            <div class="flex flex-col lg:flex-row gap-6 items-start">
+                <!-- Main Table Section -->
+                <div class="flex-1 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <!-- ToolBar -->
+                    <div class="flex flex-wrap items-center justify-between gap-4 p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                        <!-- Bulk Actions Toolbar (Hidden by default) -->
+                        <div id="bulk-toolbar" class="hidden absolute inset-x-0 top-0 bg-primary text-white p-4 z-20 rounded-t-xl flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <span class="text-sm font-bold"><span id="selected-count">0</span> items selected</span>
+                                <div class="h-4 w-px bg-white/20"></div>
+                                <div class="flex gap-2">
+                                    <button onclick="submitBulk('retry')" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold transition-all">
+                                        <span class="material-symbols-outlined text-sm">replay</span> Retry Selected
+                                    </button>
+                                    <button onclick="submitBulk('discard')" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold transition-all">
+                                        <span class="material-symbols-outlined text-sm">delete</span> Discard Selected
+                                    </button>
+                                </div>
+                            </div>
+                            <button onclick="clearSelection()" class="p-1 hover:bg-white/10 rounded">
+                                <span class="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+
+                        <div class="flex gap-4 flex-wrap items-center">
+                            <select id="filter-error-type" onchange="filterEvents()" class="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-sm rounded-lg focus:ring-primary px-4 py-2 cursor-pointer min-w-[160px]">
+                                <option value="all">All Error Types</option>
+                                <option value="parsing">JSON Parsing</option>
+                                <option value="validation">Validation</option>
+                            </select>
+                            <input type="text" id="filter-topic" oninput="filterEvents()" placeholder="Filter by topic..." class="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-sm rounded-lg focus:ring-primary px-4 py-2 w-48">
+
+                            <div class="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-2"></div>
+
+                            <form th:action="@{/dlt-management/retry-all}" method="POST" class="inline">
+                                <button type="submit" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-bold transition-colors">
+                                    <span class="material-symbols-outlined text-sm">replay</span>
+                                    Retry All
+                                </button>
+                            </form>
+                            <form th:action="@{/dlt-management/discard-all}" method="POST" class="inline">
+                                <button type="submit" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 text-xs font-bold transition-colors">
+                                    <span class="material-symbols-outlined text-sm">delete_sweep</span>
+                                    Discard All
+                                </button>
+                            </form>
+                        </div>
+                        <div class="text-slate-500 text-sm">
+                            Showing <span class="text-slate-900 dark:text-white font-bold" id="showing-count" th:text="${#lists.size(dltEvents)}">0</span> recent errors
+                        </div>
+                    </div>
+                    <!-- Data Table -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-800/50">
+                                <th class="px-6 py-4 w-10">
+                                    <input type="checkbox" id="select-all" onclick="toggleSelectAll()" class="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary size-4">
+                                </th>
+                                <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Timestamp</th>
+                                <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Topic</th>
+                                <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Partition</th>
+                                <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Offset</th>
+                                <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Error Type</th>
+                                <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-right">Actions</th>
+                            </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group" th:each="event : ${dltEvents}" th:onclick="'inspectEvent(event, ' + ${event.id} + ')'">
+                                <td class="px-6 py-4" onclick="event.stopPropagation()">
+                                    <input type="checkbox" th:value="${event.id}" name="event-selection" onchange="updateSelection()" class="event-checkbox rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary size-4">
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500" th:text="${#temporals.format(event.dhm, 'yyyy-MM-dd HH:mm:ss')}">2023-10-27 14:22:15</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium" th:text="${event.originalTopic}">orders.v1</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500" th:text="${event.originalPartition}">8</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-500" th:text="${event.originalOffset}">102938475</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span th:class="${'px-2 py-1 rounded text-[10px] font-bold uppercase ' + (event.severity == 'HIGH' ? 'bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400' : 'bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400')}" th:text="${event.severity}">MEDIUM</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
+                                    <button class="text-primary font-bold hover:underline">Inspect</button>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(dltEvents)}">
+                                <td colspan="6" class="px-6 py-10 text-center text-slate-500">No DLT events found.</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Side Inspection Panel -->
+                <aside class="w-full lg:w-[450px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col h-fit sticky top-0 shadow-lg" id="inspection-panel" style="display: none;">
+                    <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 rounded-t-xl">
+                        <div>
+                            <h3 class="text-base font-bold">Inspection Details</h3>
+                            <p class="text-[10px] text-slate-500 uppercase tracking-widest mt-1">Offset: <span id="inspect-offset" class="font-mono">-</span></p>
+                        </div>
+                        <button class="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors text-slate-500" onclick="hideInspection()">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
+                    <div class="p-6 space-y-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Severity</p>
+                                <p class="text-sm font-medium" id="inspect-severity">High</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Partition</p>
+                                <p class="text-sm font-medium" id="inspect-partition">-</p>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Error Trace</p>
+                            <div class="p-3 bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/20 rounded-lg">
+                                <p class="text-xs font-mono text-rose-600 dark:text-rose-400 leading-relaxed break-words" id="inspect-error">-</p>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Raw Payload (Editable)</p>
+                                <div class="flex gap-3">
+                                    <button onclick="beautifyJson()" class="text-[10px] text-primary font-bold uppercase hover:underline flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-xs">auto_fix_high</span> Format
+                                    </button>
+                                    <button onclick="copyPayloadToClipboard()" class="text-[10px] text-primary font-bold uppercase hover:underline flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-xs">content_copy</span> Copy
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="relative group">
+                                <textarea id="inspect-payload-editor" class="w-full h-[240px] bg-slate-950 text-emerald-500 font-mono text-xs p-3 rounded-lg border border-slate-800 focus:ring-1 focus:ring-primary focus:border-primary leading-relaxed resize-none transition-all"></textarea>
+                                <div id="json-valid-badge" class="absolute bottom-3 right-3 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">Valid JSON</div>
+                                <div id="json-invalid-badge" class="hidden absolute bottom-3 right-3 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter bg-rose-500/10 text-rose-500 border border-rose-500/20">Invalid JSON</div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-3 pt-2">
+                            <button id="save-retry-btn" onclick="saveAndRetry()" class="w-full flex items-center justify-center rounded-lg h-10 bg-emerald-600 text-white text-sm font-bold shadow-sm hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                <span class="material-symbols-outlined mr-2 text-xl">save</span>
+                                Save & Retry (Modified)
+                            </button>
+                            <div class="flex gap-3">
+                                <form id="retry-form" method="POST" class="flex-1">
+                                    <button type="submit" class="w-full flex items-center justify-center rounded-lg h-10 bg-primary text-white text-sm font-bold shadow-sm hover:bg-primary/90 transition-all">
+                                        <span class="material-symbols-outlined mr-2 text-xl">replay</span>
+                                        Retry
+                                    </button>
+                                </form>
+                                <form id="discard-form" method="POST" class="flex-1">
+                                <button type="submit" class="w-full flex items-center justify-center rounded-lg h-10 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-bold border border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-200 dark:hover:border-rose-500/20 transition-all">
+                                    <span class="material-symbols-outlined mr-2 text-xl">delete</span>
+                                    Discard
+                                </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+
+        <!-- Footer Status Bar -->
+        <div th:replace="~{fragments/sidebar :: footer-status}"></div>
+    </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    var dltEvents = /*[[${dltEvents}]]*/ [];
+
+    // WebSocket Setup
+    var socket = new SockJS('/ws');
+    var stompClient = Stomp.over(socket);
+
+    stompClient.connect({}, function (frame) {
+        stompClient.subscribe('/topic/stats', function (statsMessage) {
+            var stats = JSON.parse(statsMessage.body);
+            updateStats(stats);
+        });
+        stompClient.subscribe('/topic/dlt', function (dltMessage) {
+            var event = JSON.parse(dltMessage.body);
+            dltEvents.unshift(event);
+            if (dltEvents.length > 50) dltEvents.pop();
+            filterEvents();
+        });
+    });
+
+    function updateStats(stats) {
+        document.getElementById('total-dlt-count-24h').innerText = stats.totalDlt24h.toLocaleString('en-US');
+        document.getElementById('unresolved-errors').innerText = stats.unresolvedErrors.toLocaleString('en-US');
+        document.getElementById('avg-resolution-time').innerText = stats.avgResolutionTime;
+    }
+    /*]]>*/
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initThemeToggle();
+
+        // JSON validation for editor
+        const editor = document.getElementById('inspect-payload-editor');
+        if (editor) {
+            editor.addEventListener('input', validateJson);
+        }
+
+        // Auto-hide success message
+        const successMsg = document.querySelector('.bg-emerald-500\\/10');
+        if (successMsg) {
+            setTimeout(() => {
+                successMsg.style.transition = 'opacity 0.5s ease';
+                successMsg.style.opacity = '0';
+                setTimeout(() => successMsg.remove(), 500);
+            }, 3000);
+        }
+    });
+
+    function initThemeToggle() {
+        var themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+        var themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+
+        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            themeToggleLightIcon.classList.remove('hidden');
+        } else {
+            themeToggleDarkIcon.classList.remove('hidden');
+        }
+
+        var themeToggleBtn = document.getElementById('theme-toggle');
+
+        themeToggleBtn.addEventListener('click', function() {
+            themeToggleDarkIcon.classList.toggle('hidden');
+            themeToggleLightIcon.classList.toggle('hidden');
+
+            if (localStorage.getItem('color-theme')) {
+                if (localStorage.getItem('color-theme') === 'light') {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('color-theme', 'dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('color-theme', 'light');
+                }
+            } else {
+                if (document.documentElement.classList.contains('dark')) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('color-theme', 'light');
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('color-theme', 'dark');
+                }
+            }
+        });
+    }
+
+    var currentInspectedId = null;
+
+    function inspectEvent(e, id) {
+        if (e) e.stopPropagation();
+        var event = dltEvents.find(e => e.id === id);
+        if (event) {
+            currentInspectedId = id;
+            document.getElementById('retry-form').action = '/dlt-management/' + event.id + '/retry';
+            document.getElementById('discard-form').action = '/dlt-management/' + event.id + '/discard';
+
+            document.getElementById('inspect-offset').innerText = event.originalOffset;
+            document.getElementById('inspect-partition').innerText = event.originalPartition;
+            document.getElementById('inspect-error').innerText = event.errorMessage;
+
+            // Dynamic Severity from Backend
+            const severityElem = document.getElementById('inspect-severity');
+            severityElem.innerText = event.severity || 'MEDIUM';
+            if (event.severity === 'HIGH') {
+                severityElem.className = 'text-sm font-medium text-rose-500';
+            } else {
+                severityElem.className = 'text-sm font-medium text-amber-500';
+            }
+
+            // Format JSON if possible
+            let payload = event.payload;
+            try {
+                payload = JSON.stringify(JSON.parse(payload), null, 2);
+            } catch (err) {}
+
+            const editor = document.getElementById('inspect-payload-editor');
+            editor.value = payload;
+            validateJson();
+
+            document.getElementById('inspection-panel').style.display = 'flex';
+
+            // Highlight active row
+            document.querySelectorAll('tbody tr').forEach(tr => tr.classList.remove('bg-primary/5', 'ring-1', 'ring-primary/20'));
+            const activeRow = e ? e.currentTarget : null;
+            if (activeRow) activeRow.classList.add('bg-primary/5', 'ring-1', 'ring-primary/20');
+        }
+    }
+
+    function validateJson() {
+        const editor = document.getElementById('inspect-payload-editor');
+        const validBadge = document.getElementById('json-valid-badge');
+        const invalidBadge = document.getElementById('json-invalid-badge');
+        const saveBtn = document.getElementById('save-retry-btn');
+
+        try {
+            JSON.parse(editor.value);
+            validBadge.classList.remove('hidden');
+            invalidBadge.classList.add('hidden');
+            saveBtn.disabled = false;
+            editor.classList.remove('border-rose-500');
+            editor.classList.add('text-emerald-500');
+            editor.classList.remove('text-rose-500');
+        } catch (e) {
+            validBadge.classList.add('hidden');
+            invalidBadge.classList.remove('hidden');
+            saveBtn.disabled = true;
+            editor.classList.add('border-rose-500');
+            editor.classList.remove('text-emerald-500');
+            editor.classList.add('text-rose-500');
+        }
+    }
+
+    function beautifyJson() {
+        const editor = document.getElementById('inspect-payload-editor');
+        try {
+            editor.value = JSON.stringify(JSON.parse(editor.value), null, 4);
+            validateJson();
+        } catch (e) {
+            showToast('Cannot format: Invalid JSON', 'error');
+        }
+    }
+
+    async function saveAndRetry() {
+        if (!currentInspectedId) return;
+        const payload = document.getElementById('inspect-payload-editor').value;
+
+        const saveBtn = document.getElementById('save-retry-btn');
+        const originalText = saveBtn.innerHTML;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="material-symbols-outlined animate-spin mr-2">sync</span> Processing...';
+
+        try {
+            const response = await fetch(`/dlt-management/${currentInspectedId}/retry-with-payload`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ payload: payload })
+            });
+
+            if (response.ok) {
+                window.location.href = '/dlt-management?success=retried';
+            } else {
+                showToast('Error retrying event', 'error');
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalText;
+            }
+        } catch (e) {
+            showToast('Network error', 'error');
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalText;
+        }
+    }
+
+    function hideInspection() {
+        document.getElementById('inspection-panel').style.display = 'none';
+    }
+
+    function filterEvents() {
+        const errorType = document.getElementById('filter-error-type').value;
+        const topic = document.getElementById('filter-topic').value.toLowerCase();
+        const partition = document.getElementById('filter-partition').value;
+
+        const filtered = dltEvents.filter(event => {
+            const matchesType = errorType === 'all' ||
+                (errorType === 'parsing' && !event.errorMessage.includes('Validation')) ||
+                (errorType === 'validation' && event.errorMessage.includes('Validation'));
+            const matchesTopic = !topic || event.originalTopic.toLowerCase().includes(topic);
+            const matchesPartition = !partition || event.originalPartition.toString() === partition;
+
+            return matchesType && matchesTopic && matchesPartition;
+        });
+
+        renderTable(filtered);
+    }
+
+    function copyPayloadToClipboard() {
+        const payload = document.getElementById('inspect-payload-editor').value;
+        navigator.clipboard.writeText(payload).then(() => {
+            showToast('Payload copied to clipboard', 'success');
+        });
+    }
+
+    // Selection Logic
+    function toggleSelectAll() {
+        const selectAll = document.getElementById('select-all');
+        const checkboxes = document.querySelectorAll('.event-checkbox');
+        checkboxes.forEach(cb => cb.checked = selectAll.checked);
+        updateSelection();
+    }
+
+    function updateSelection() {
+        const checkboxes = document.querySelectorAll('.event-checkbox:checked');
+        const toolbar = document.getElementById('bulk-toolbar');
+        const countElem = document.getElementById('selected-count');
+
+        countElem.innerText = checkboxes.length;
+
+        if (checkboxes.length > 0) {
+            toolbar.classList.remove('hidden');
+        } else {
+            toolbar.classList.add('hidden');
+            document.getElementById('select-all').checked = false;
+        }
+    }
+
+    function clearSelection() {
+        document.querySelectorAll('.event-checkbox').forEach(cb => cb.checked = false);
+        document.getElementById('select-all').checked = false;
+        updateSelection();
+    }
+
+    function submitBulk(action) {
+        const selectedIds = Array.from(document.querySelectorAll('.event-checkbox:checked')).map(cb => cb.value);
+        if (selectedIds.length === 0) return;
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = action === 'retry' ? '/dlt-management/bulk-retry' : '/dlt-management/bulk-discard';
+
+        selectedIds.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'ids';
+            input.value = id;
+            form.appendChild(input);
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        const toast = document.createElement('div');
+        toast.className = `flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl text-sm font-bold text-white transition-all duration-300 translate-y-20 opacity-0`;
+        const colors = { success: 'bg-emerald-500', error: 'bg-rose-500', info: 'bg-primary' };
+        const icons = { success: 'check_circle', error: 'error', info: 'info' };
+        toast.classList.add(colors[type]);
+        toast.innerHTML = `<span class="material-symbols-outlined">${icons[type]}</span><span>${message}</span>`;
+        container.appendChild(toast);
+        requestAnimationFrame(() => { toast.classList.remove('translate-y-20', 'opacity-0'); });
+        setTimeout(() => {
+            toast.classList.add('opacity-0', 'translate-y-4');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    function exportDlt(format) {
+        if (dltEvents.length === 0) {
+            showToast("No data to export", "error");
+            return;
+        }
+
+        // Get filtered events based on current UI state
+        const errorType = document.getElementById('filter-error-type').value;
+        const topic = document.getElementById('filter-topic').value.toLowerCase();
+
+        const dataToExport = dltEvents.filter(event => {
+            const matchesType = errorType === 'all' ||
+                (errorType === 'parsing' && !event.errorMessage.includes('Validation')) ||
+                (errorType === 'validation' && event.errorMessage.includes('Validation'));
+            const matchesTopic = !topic || event.originalTopic.toLowerCase().includes(topic);
+            return matchesType && matchesTopic;
+        });
+
+        if (format === 'csv') {
+            const headers = ["ID", "Timestamp", "Topic", "Partition", "Offset", "Status", "Error Message"];
+            const csvContent = [
+                headers.join(","),
+                ...dataToExport.map(e => [
+                    e.id,
+                    e.dhm,
+                    e.originalTopic,
+                    e.originalPartition,
+                    e.originalOffset,
+                    e.status,
+                    `"${e.errorMessage.replace(/"/g, '""')}"`
+                ].join(","))
+            ].join("\n");
+            downloadFile(csvContent, `dlt_export_${new Date().getTime()}.csv`, 'text/csv');
+        } else {
+            const jsonContent = JSON.stringify(dataToExport, null, 4);
+            downloadFile(jsonContent, `dlt_export_${new Date().getTime()}.json`, 'application/json');
+        }
+        showToast(`Exported ${dataToExport.length} items to ${format.toUpperCase()}`, "success");
+    }
+
+    function downloadFile(content, fileName, contentType) {
+        const blob = new Blob([content], { type: contentType });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", fileName);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function renderTable(events) {
+        const tbody = document.querySelector('tbody');
+        tbody.innerHTML = '';
+
+        if (events.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-10 text-center text-slate-500">No DLT events found.</td></tr>';
+            document.getElementById('showing-count').innerText = '0';
+            return;
+        }
+
+        events.forEach(event => {
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group';
+            row.onclick = () => inspectEvent(event.id);
+
+            const errorType = event.errorMessage.includes('Validation') ? 'Validation' : 'Parsing';
+            const date = new Date(event.dhm);
+            const formattedDate = date.getFullYear() + '-' +
+                                ('0' + (date.getMonth() + 1)).slice(-2) + '-' +
+                                ('0' + date.getDate()).slice(-2) + ' ' +
+                                ('0' + date.getHours()).slice(-2) + ':' +
+                                ('0' + date.getMinutes()).slice(-2) + ':' +
+                                ('0' + date.getSeconds()).slice(-2);
+
+            const severityClass = event.severity === 'HIGH' ? 'bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400' : 'bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400';
+
+            row.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${formattedDate}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">${event.originalTopic}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${event.originalPartition}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-500">${event.originalOffset}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${severityClass}">${event.severity || 'MEDIUM'}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
+                    <button class="text-primary font-bold hover:underline">Inspect</button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+        document.getElementById('showing-count').innerText = events.length;
+    }
+</script>
+</body>
+</html>
