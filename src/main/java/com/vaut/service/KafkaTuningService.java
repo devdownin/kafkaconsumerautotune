@@ -21,6 +21,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
+import com.vaut.config.KafkaTuningProperties;
+
 /**
  * Service that automatically tunes Kafka consumer parameters based on observed performance.
  * It monitors throughput and batch processing time to adjust max.poll.records.
@@ -39,6 +41,7 @@ public class KafkaTuningService {
     private final KafkaListenerEndpointRegistry registry;
     private final MeterRegistry meterRegistry;
     private final Optional<AdminClient> adminClient;
+    private final KafkaTuningProperties tuningProperties;
 
     @Value("${kafka.topic.name}")
     private String topicName;
@@ -51,16 +54,6 @@ public class KafkaTuningService {
     private double integral = 0;
     private double previousError = 0;
 
-    // Tuning constants
-    private static final long MIN_RESTART_INTERVAL_MS = 300000; // 5 minutes (to avoid rebalance storms)
-    private static final double CHANGE_THRESHOLD = 0.1; // 10% change required to trigger restart
-
-    // PID Coefficients
-    private static final double KP = 150.0;
-    private static final double KI = 20.0;
-    private static final double KD = 50.0;
-    private static final double TARGET_BATCH_DURATION_MS = 1200.0; // Target 1.2s per batch
-
     // Current tuned values
     private int currentMaxPollRecords = -1;
     private int currentFetchMinBytes = -1;
@@ -70,10 +63,8 @@ public class KafkaTuningService {
      * Periodic task to analyze metrics and adjust Kafka parameters if necessary.
      * It uses a PID controller to target an optimal batch duration and synchronizes
      * concurrency with the number of topic partitions.
-     *
-     * Runs every 60 seconds after an initial delay of 30 seconds.
      */
-    @Scheduled(fixedRate = 60000, initialDelay = 30000)
+    @Scheduled(fixedRateString = "${kafka.tuning.fixed-rate:60000}", initialDelayString = "${kafka.tuning.initial-delay:30000}")
     public void tune() {
         try {
             if (currentMaxPollRecords == -1) {
@@ -97,10 +88,10 @@ public class KafkaTuningService {
             double avgBatchDuration = getAvgBatchDuration();
 
             log.info("Kafka Tuning [PID] - Throughput: {} msg/s, Avg Duration: {}ms, Target: {}ms, Current MaxPoll: {}",
-                    String.format("%.2f", throughput), String.format("%.2f", avgBatchDuration), TARGET_BATCH_DURATION_MS, currentMaxPollRecords);
+                    String.format("%.2f", throughput), String.format("%.2f", avgBatchDuration), tuningProperties.getTargetBatchDurationMs(), currentMaxPollRecords);
 
             // Error: positive if faster than target (can increase batch), negative if slower (must decrease batch)
-            double error = (TARGET_BATCH_DURATION_MS - avgBatchDuration) / TARGET_BATCH_DURATION_MS;
+            double error = (tuningProperties.getTargetBatchDurationMs() - avgBatchDuration) / tuningProperties.getTargetBatchDurationMs();
 
             // Update PID state
             integral += error;
@@ -110,14 +101,14 @@ public class KafkaTuningService {
             previousError = error;
 
             // PID Output
-            double output = (KP * error) + (KI * integral) + (KD * derivative);
+            double output = (tuningProperties.getKp() * error) + (tuningProperties.getKi() * integral) + (tuningProperties.getKd() * derivative);
 
             boolean needsRestart = false;
             Map<String, Object> newConfigs = new HashMap<>();
 
             // 1. Adjust Max Poll Records using PID
             int nextMaxPoll = currentMaxPollRecords + (int) Math.round(output);
-            nextMaxPoll = Math.max(20, Math.min(1000, nextMaxPoll));
+            nextMaxPoll = Math.max(tuningProperties.getMinMaxPollRecords(), Math.min(tuningProperties.getMaxMaxPollRecords(), nextMaxPoll));
 
             if (shouldUpdate(currentMaxPollRecords, nextMaxPoll)) {
                 log.info("AUTO-TUNE [PID]: Adjusting max.poll.records {} -> {} (Error: {})",
@@ -157,7 +148,7 @@ public class KafkaTuningService {
             }
 
             if (needsRestart) {
-                if (now - lastRestartTimestamp > MIN_RESTART_INTERVAL_MS) {
+                if (now - lastRestartTimestamp > tuningProperties.getMinRestartIntervalMs()) {
                     applyConfigs(newConfigs);
                     lastRestartTimestamp = now;
                 } else {
@@ -181,7 +172,8 @@ public class KafkaTuningService {
         if (current == proposed) return false;
         double change = Math.abs((double) (proposed - current) / current);
         // Update if change is significant OR if hitting limits
-        return change >= CHANGE_THRESHOLD || (proposed == 20 || proposed == 1000);
+        return change >= tuningProperties.getChangeThreshold() ||
+               (proposed == tuningProperties.getMinMaxPollRecords() || proposed == tuningProperties.getMaxMaxPollRecords());
     }
 
     /**
