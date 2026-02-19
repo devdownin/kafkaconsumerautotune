@@ -1,4 +1,4 @@
-# Suggestions d'Amélioration - Consotopic
+# Suggestions d'Amélioration - kafka Consumer Service
 
 Ce document détaille les recommandations pour améliorer la qualité du code, la résilience et la généricité de l'application.
 
