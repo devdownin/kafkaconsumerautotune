@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 
 <html class="dark" lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head('Page')}">
-    <title>Page</title>
+<head th:replace="~{fragments/head :: head('DLT Error Management')}">
+    <title>DLT Error Management</title>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
 <div class="flex h-screen overflow-hidden">
@@ -189,6 +189,12 @@
                             </div>
                         </div>
                         <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Message Headers</p>
+                            <div id="inspect-headers" class="flex flex-wrap gap-2">
+                                <!-- Headers will be injected here -->
+                            </div>
+                        </div>
+                        <div>
                             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Error Trace</p>
                             <div class="p-3 bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/20 rounded-lg">
                                 <p class="text-xs font-mono text-rose-600 dark:text-rose-400 leading-relaxed break-words" id="inspect-error">-</p>
@@ -360,6 +366,28 @@
             const editor = document.getElementById('inspect-payload-editor');
             editor.value = payload;
             validateJson();
+
+            // Populate Headers
+            const headersContainer = document.getElementById('inspect-headers');
+            headersContainer.innerHTML = '';
+            if (event.headers) {
+                try {
+                    const headersMap = JSON.parse(event.headers);
+                    Object.entries(headersMap).forEach(([k, v]) => {
+                        const badge = document.createElement('div');
+                        badge.className = 'flex flex-col px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 min-w-[120px]';
+                        badge.innerHTML = `
+                            <span class="text-[8px] font-bold text-slate-400 uppercase truncate" title="${k}">${k}</span>
+                            <span class="text-[10px] font-medium text-slate-700 dark:text-slate-300 truncate" title="${v}">${v}</span>
+                        `;
+                        headersContainer.appendChild(badge);
+                    });
+                } catch (e) {
+                    headersContainer.innerHTML = '<span class="text-xs text-slate-500 italic">Error parsing headers</span>';
+                }
+            } else {
+                headersContainer.innerHTML = '<span class="text-xs text-slate-500 italic">No headers present</span>';
+            }
 
             document.getElementById('inspection-panel').style.display = 'flex';
 
@@ -594,7 +622,7 @@
         events.forEach(event => {
             const row = document.createElement('tr');
             row.className = 'hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group';
-            row.onclick = () => inspectEvent(event.id);
+            row.onclick = () => inspectEvent(null, event.id);
 
             const errorType = event.errorMessage.includes('Validation') ? 'Validation' : 'Parsing';
             const date = new Date(event.dhm);

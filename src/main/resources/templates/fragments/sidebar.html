@@ -40,7 +40,7 @@
             <p class="px-3 text-[10px] font-bold text-slate-400 uppercase mb-2">Systems</p>
             <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'db-status' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/db-status}">
                 <span class="material-symbols-outlined">database</span>
-                <span th:class="${'text-sm ' + (activePage == 'db-status' ? 'font-semibold' : 'font-medium')}">Oracle DB Status</span>
+                <span th:class="${'text-sm ' + (activePage == 'db-status' ? 'font-semibold' : 'font-medium')}">Database Status</span>
             </a>
             <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'settings' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/settings}">
                 <span class="material-symbols-outlined">settings</span>
