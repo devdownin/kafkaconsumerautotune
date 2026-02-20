@@ -36,6 +36,10 @@ public class DltEvent {
     @Column(name = "payload", length = 10000)
     private String payload;
 
+    @Lob
+    @Column(name = "headers", columnDefinition = "CLOB")
+    private String headers;
+
     @Column(name = "dhm")
     private LocalDateTime dhm;
 
