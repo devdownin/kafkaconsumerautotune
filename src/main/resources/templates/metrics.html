@@ -264,6 +264,7 @@
                                         <span class="material-symbols-outlined text-xs opacity-0 group-hover/th:opacity-100 transition-opacity">unfold_more</span>
                                     </div>
                                 </th>
+                                <th class="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800">Trend</th>
                                 <th class="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800">Description</th>
                             </tr>
                         </thead>
@@ -286,11 +287,14 @@
                                     <span class="text-[10px] text-slate-400 font-medium" th:text="${metric.baseUnit}">bytes</span>
                                 </td>
                                 <td class="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                                    <div class="metric-sparkline h-8 w-24" th:data-history="${metric.history}"></div>
+                                </td>
+                                <td class="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
                                     <p class="text-xs text-slate-500 max-w-xs truncate group-hover:whitespace-normal" th:text="${metric.description}">Description here</p>
                                 </td>
                             </tr>
                             <tr class="no-results-row hidden">
-                                <td colspan="5" class="px-6 py-10 text-center text-slate-500 italic">No metrics found matching your criteria.</td>
+                                <td colspan="6" class="px-6 py-10 text-center text-slate-500 italic">No metrics found matching your criteria.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -319,6 +323,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
     var socket = new SockJS('/ws');
     var stompClient = Stomp.over(socket);
@@ -407,7 +412,45 @@
     document.addEventListener('DOMContentLoaded', function() {
         initThemeToggle();
         initMetricFilters();
+        initSparklines();
     });
+
+    function initSparklines() {
+        document.querySelectorAll('.metric-sparkline').forEach(el => {
+            const historyStr = el.getAttribute('data-history');
+            if (!historyStr) return;
+
+            try {
+                const history = JSON.parse(historyStr);
+                if (!history || history.length < 2) {
+                    el.innerHTML = '<span class="text-[8px] text-slate-400 italic">No trend data</span>';
+                    return;
+                }
+
+                const options = {
+                    series: [{ data: history }],
+                    chart: {
+                        type: 'area',
+                        height: 32,
+                        width: 100,
+                        sparkline: { enabled: true },
+                        animations: { enabled: false }
+                    },
+                    stroke: { curve: 'smooth', width: 2 },
+                    fill: {
+                        type: 'gradient',
+                        gradient: { shadeIntensity: 1, opacityFrom: 0.45, opacityTo: 0.1 }
+                    },
+                    colors: ['#135bec'],
+                    tooltip: { enabled: false }
+                };
+
+                new ApexCharts(el, options).render();
+            } catch (e) {
+                console.error("Error parsing history for sparkline", e);
+            }
+        });
+    }
 
     function initMetricFilters() {
         const searchInput = document.getElementById('metric-search');
