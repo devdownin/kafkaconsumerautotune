@@ -4,11 +4,11 @@ public final class AppConstants {
     private AppConstants() {}
 
     // Metric Names
-    public static final String METRIC_KAFKA_EVENTS_RECEIVED_COUNT = "kafka.events.received.count";
-    public static final String METRIC_KAFKA_EVENT_RECEIVED_SIZE = "kafka.event.received.size";
-    public static final String METRIC_KAFKA_EVENTS_ERRORS = "kafka.events.errors";
-    public static final String METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS = "kafka.events.processed";
-    public static final String METRIC_KAFKA_EVENTS_BATCH_DURATION = "kafka.events.batch.duration";
+    public static final String METRIC_KAFKA_EVENTS_RECEIVED_COUNT = "myconsumer.kafka.events.received.count";
+    public static final String METRIC_KAFKA_EVENT_RECEIVED_SIZE = "myconsumer.kafka.event.received.size";
+    public static final String METRIC_KAFKA_EVENTS_ERRORS = "myconsumer.kafka.events.errors";
+    public static final String METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS = "myconsumer.kafka.events.processed";
+    public static final String METRIC_KAFKA_EVENTS_BATCH_DURATION = "myconsumer.kafka.events.batch.duration";
 
     // WebSocket Topics
     public static final String WEBSOCKET_TOPIC_EVENTS = "/topic/events";
