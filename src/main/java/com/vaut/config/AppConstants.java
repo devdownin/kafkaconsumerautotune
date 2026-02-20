@@ -15,4 +15,5 @@ public final class AppConstants {
     public static final String WEBSOCKET_TOPIC_STATS = "/topic/stats";
     public static final String WEBSOCKET_TOPIC_DLT = "/topic/dlt";
     public static final String WEBSOCKET_TOPIC_METRICS = "/topic/metrics";
+    public static final String WEBSOCKET_TOPIC_METRICS_LIVE = "/topic/metrics-live";
 }

@@ -58,6 +58,9 @@ class DashboardServiceTest {
     @Mock
     private KafkaTuningService kafkaTuningService;
 
+    @Mock
+    private com.vaut.config.MetricThresholdProperties metricThresholdProperties;
+
     private DashboardService dashboardService;
 
     @org.junit.jupiter.api.BeforeEach
@@ -68,7 +71,7 @@ class DashboardServiceTest {
             "fetchMaxWaitMs", 500,
             "concurrency", 6
         ));
-        dashboardService = new DashboardService(eventRepository, dltEventRepository, entityManager, Optional.empty(), dataSource, loggingSystem, meterRegistry, Optional.of(adminClient), kafkaProperties, webSocketService, kafkaTuningService);
+        dashboardService = new DashboardService(eventRepository, dltEventRepository, entityManager, Optional.empty(), dataSource, loggingSystem, meterRegistry, Optional.of(adminClient), kafkaProperties, webSocketService, kafkaTuningService, metricThresholdProperties);
     }
 
     @Test

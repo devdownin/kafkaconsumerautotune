@@ -34,4 +34,8 @@ public class WebSocketService {
     public void sendJvmStats(JvmStatsDTO stats) {
         messagingTemplate.convertAndSend(AppConstants.WEBSOCKET_TOPIC_METRICS, stats);
     }
+
+    public void broadcast(String topic, Object payload) {
+        messagingTemplate.convertAndSend(topic, payload);
+    }
 }
