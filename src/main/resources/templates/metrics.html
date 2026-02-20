@@ -264,12 +264,13 @@
                                         <span class="material-symbols-outlined text-xs opacity-0 group-hover/th:opacity-100 transition-opacity">unfold_more</span>
                                     </div>
                                 </th>
+                                <th class="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800">Trend</th>
                                 <th class="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800">Description</th>
                             </tr>
                         </thead>
                         <tbody id="metrics-table-body">
-                            <tr th:each="metric : ${metrics}" class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
-                                th:data-app-specific="${metric.appSpecific}" th:data-name="${metric.name}">
+                            <tr th:each="metric : ${metrics}" class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group metric-row"
+                                th:data-app-specific="${metric.appSpecific}" th:data-name="${metric.name}" th:id="'metric-' + ${metric.name}">
                                 <td class="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
                                     <div class="flex items-center gap-2">
                                         <span th:if="${metric.appSpecific}" class="size-1.5 rounded-full bg-primary shrink-0" title="Application Specific"></span>
@@ -280,17 +281,27 @@
                                     <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 uppercase" th:text="${metric.type}">GAUGE</span>
                                 </td>
                                 <td class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 text-right">
-                                    <span class="text-xs font-bold text-primary" th:text="${metric.value}">123.45</span>
+                                    <span th:class="'metric-value text-xs font-bold ' + (${metric.status == 'CRITICAL' ? 'text-rose-500' : (metric.status == 'WARNING' ? 'text-amber-500' : 'text-primary')})" th:text="${metric.value}">123.45</span>
                                 </td>
                                 <td class="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
                                     <span class="text-[10px] text-slate-400 font-medium" th:text="${metric.baseUnit}">bytes</span>
+                                </td>
+                                <td class="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                                    <div class="flex items-center gap-4">
+                                        <div class="metric-sparkline h-8 w-24" th:data-history="${metric.history}"></div>
+                                        <div class="metric-trend flex items-center">
+                                            <span th:if="${metric.trend == 'UP'}" class="material-symbols-outlined text-rose-500 text-sm">trending_up</span>
+                                            <span th:if="${metric.trend == 'DOWN'}" class="material-symbols-outlined text-emerald-500 text-sm">trending_down</span>
+                                            <span th:if="${metric.trend == 'STABLE'}" class="material-symbols-outlined text-slate-400 text-sm">remove</span>
+                                        </div>
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
                                     <p class="text-xs text-slate-500 max-w-xs truncate group-hover:whitespace-normal" th:text="${metric.description}">Description here</p>
                                 </td>
                             </tr>
                             <tr class="no-results-row hidden">
-                                <td colspan="5" class="px-6 py-10 text-center text-slate-500 italic">No metrics found matching your criteria.</td>
+                                <td colspan="6" class="px-6 py-10 text-center text-slate-500 italic">No metrics found matching your criteria.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -319,6 +330,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
     var socket = new SockJS('/ws');
     var stompClient = Stomp.over(socket);
@@ -336,6 +348,11 @@
         stompClient.subscribe('/topic/stats', function (message) {
             var stats = JSON.parse(message.body);
             updateGlobalStats(stats);
+        });
+
+        stompClient.subscribe('/topic/metrics-live', function (message) {
+            var metrics = JSON.parse(message.body);
+            updateLiveMetrics(metrics);
         });
     }, function() {
         document.getElementById('ws-alert').classList.remove('hidden');
@@ -366,6 +383,38 @@
             const elem = document.getElementById('throughput-val');
             if (elem) elem.innerText = val;
         }
+    }
+
+    var sparklineCharts = {};
+
+    function updateLiveMetrics(metrics) {
+        metrics.forEach(metric => {
+            const row = document.getElementById('metric-' + metric.name);
+            if (!row) return;
+
+            // Update Value
+            const valueElem = row.querySelector('.metric-value');
+            if (valueElem) {
+                valueElem.innerText = metric.value;
+                valueElem.className = 'metric-value text-xs font-bold ' +
+                    (metric.status === 'CRITICAL' ? 'text-rose-500' : (metric.status === 'WARNING' ? 'text-amber-500' : 'text-primary'));
+            }
+
+            // Update Trend
+            const trendElem = row.querySelector('.metric-trend');
+            if (trendElem) {
+                let icon = 'remove';
+                let color = 'text-slate-400';
+                if (metric.trend === 'UP') { icon = 'trending_up'; color = 'text-rose-500'; }
+                else if (metric.trend === 'DOWN') { icon = 'trending_down'; color = 'text-emerald-500'; }
+                trendElem.innerHTML = `<span class="material-symbols-outlined ${color} text-sm">${icon}</span>`;
+            }
+
+            // Update Sparkline
+            if (sparklineCharts[metric.name]) {
+                sparklineCharts[metric.name].updateSeries([{ data: metric.history }]);
+            }
+        });
     }
 
     function updateJvmUI(stats) {
@@ -407,7 +456,52 @@
     document.addEventListener('DOMContentLoaded', function() {
         initThemeToggle();
         initMetricFilters();
+        initSparklines();
     });
+
+    function initSparklines() {
+        document.querySelectorAll('.metric-sparkline').forEach(el => {
+            const row = el.closest('.metric-row');
+            const metricName = row ? row.getAttribute('data-name') : null;
+            const historyStr = el.getAttribute('data-history');
+            if (!historyStr) return;
+
+            try {
+                const history = JSON.parse(historyStr);
+                if (!history || history.length < 2) {
+                    el.innerHTML = '<span class="text-[8px] text-slate-400 italic">No trend data</span>';
+                    return;
+                }
+
+                const options = {
+                    series: [{ data: history }],
+                    chart: {
+                        id: metricName,
+                        type: 'area',
+                        height: 32,
+                        width: 100,
+                        sparkline: { enabled: true },
+                        animations: { enabled: false }
+                    },
+                    stroke: { curve: 'smooth', width: 2 },
+                    fill: {
+                        type: 'gradient',
+                        gradient: { shadeIntensity: 1, opacityFrom: 0.45, opacityTo: 0.1 }
+                    },
+                    colors: ['#135bec'],
+                    tooltip: { enabled: false }
+                };
+
+                const chart = new ApexCharts(el, options);
+                chart.render();
+                if (metricName) {
+                    sparklineCharts[metricName] = chart;
+                }
+            } catch (e) {
+                console.error("Error parsing history for sparkline", e);
+            }
+        });
+    }
 
     function initMetricFilters() {
         const searchInput = document.getElementById('metric-search');

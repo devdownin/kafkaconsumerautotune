@@ -6,7 +6,9 @@ import com.vaut.entity.DltEvent;
 import com.vaut.entity.KEvent;
 import com.vaut.repository.DltEventRepository;
 
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -49,7 +51,10 @@ public class EventBatchConsumer {
         long startTime = System.currentTimeMillis();
         log.info("Received batch of {} records from Kafka", records.size());
         
-        meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_RECEIVED_COUNT).increment(records.size());
+        Counter.builder(AppConstants.METRIC_KAFKA_EVENTS_RECEIVED_COUNT)
+                .description("Total number of Kafka events received by the consumer since startup")
+                .register(meterRegistry)
+                .increment(records.size());
         
         List<KEvent> eventsToPersist = new ArrayList<>();
         List<DltEvent> dltEventsToPersist = new ArrayList<>();
@@ -74,7 +79,10 @@ public class EventBatchConsumer {
         acknowledgment.acknowledge();
 
         long duration = System.currentTimeMillis() - startTime;
-        meterRegistry.timer(AppConstants.METRIC_KAFKA_EVENTS_BATCH_DURATION).record(duration, TimeUnit.MILLISECONDS);
+        Timer.builder(AppConstants.METRIC_KAFKA_EVENTS_BATCH_DURATION)
+                .description("Time taken to process the last batch of events in milliseconds")
+                .register(meterRegistry)
+                .record(duration, TimeUnit.MILLISECONDS);
         log.info("Batch of {} records processed in {}ms", records.size(), duration);
     }
 
@@ -82,7 +90,11 @@ public class EventBatchConsumer {
         // Successful events
         if (!events.isEmpty()) {
             List<KEvent> persisted = persistenceService.saveEventsBatch(events);
-            meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS, "type", "success").increment(events.size());
+            Counter.builder(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS)
+                    .description("Number of successfully processed and persisted events")
+                    .tag("type", "success")
+                    .register(meterRegistry)
+                    .increment(events.size());
             webSocketService.sendNewEvents(persisted);
         }
 

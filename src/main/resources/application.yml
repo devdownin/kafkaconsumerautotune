@@ -74,6 +74,30 @@ spring:
 # Configuration de l'application (UI & Business)
 app:
   edition: PARTAGE Edition
+  metrics:
+    thresholds:
+      "myconsumer.kafka.events.received.count":
+        warning: 100000
+        critical: 500000
+        description: "Total number of Kafka events received by the consumer since startup."
+      "myconsumer.kafka.events.errors":
+        warning: 10
+        critical: 50
+        description: "Number of technical errors encountered during event processing."
+      "myconsumer.kafka.events.processed":
+        description: "Number of successfully processed and persisted events."
+      "myconsumer.kafka.events.batch.duration":
+        warning: 2000
+        critical: 5000
+        description: "Time taken to process the last batch of events in milliseconds."
+      "jvm.memory.used":
+        warning: 805306368 # 768MB
+        critical: 1073741824 # 1GB
+        description: "Current JVM heap memory usage in bytes."
+      "process.cpu.usage":
+        warning: 0.7
+        critical: 0.9
+        description: "CPU usage of the application process (0.0 to 1.0)."
   event:
     id-json-path: "$.idPassage"
   message-viewer:
