@@ -211,6 +211,89 @@
                 </div>
             </div>
 
+            <!-- Metrics Explorer Table -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+                <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-indigo-500/10 text-indigo-500 rounded-lg">
+                            <span class="material-symbols-outlined">list_alt</span>
+                        </div>
+                        <div>
+                            <h4 class="text-base font-bold">Metrics Explorer</h4>
+                            <p class="text-xs text-slate-500">Search and filter all registered Micrometer meters</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+                            <input type="text" id="metric-search" placeholder="Filter metrics..."
+                                   class="pl-9 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-xs focus:ring-2 focus:ring-primary w-64">
+                        </div>
+                        <select id="metric-filter" class="bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-xs focus:ring-2 focus:ring-primary py-2 px-3">
+                            <option value="all">All Metrics</option>
+                            <option value="app">App Specific</option>
+                            <option value="jvm">JVM / System</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-800/50">
+                                <th class="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800 cursor-pointer group/th" onclick="sortMetricsTable(0)">
+                                    <div class="flex items-center gap-1">
+                                        Metric Name
+                                        <span class="material-symbols-outlined text-xs opacity-0 group-hover/th:opacity-100 transition-opacity">unfold_more</span>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800 cursor-pointer group/th" onclick="sortMetricsTable(1)">
+                                    <div class="flex items-center gap-1">
+                                        Type
+                                        <span class="material-symbols-outlined text-xs opacity-0 group-hover/th:opacity-100 transition-opacity">unfold_more</span>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800 text-right cursor-pointer group/th" onclick="sortMetricsTable(2)">
+                                    <div class="flex items-center justify-end gap-1">
+                                        Value
+                                        <span class="material-symbols-outlined text-xs opacity-0 group-hover/th:opacity-100 transition-opacity">unfold_more</span>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800 cursor-pointer group/th" onclick="sortMetricsTable(3)">
+                                    <div class="flex items-center gap-1">
+                                        Unit
+                                        <span class="material-symbols-outlined text-xs opacity-0 group-hover/th:opacity-100 transition-opacity">unfold_more</span>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800">Description</th>
+                            </tr>
+                        </thead>
+                        <tbody id="metrics-table-body">
+                            <tr th:each="metric : ${metrics}" class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
+                                th:data-app-specific="${metric.appSpecific}" th:data-name="${metric.name}">
+                                <td class="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                                    <div class="flex items-center gap-2">
+                                        <span th:if="${metric.appSpecific}" class="size-1.5 rounded-full bg-primary shrink-0" title="Application Specific"></span>
+                                        <span class="text-xs font-mono font-medium" th:text="${metric.name}">jvm.memory.used</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 uppercase" th:text="${metric.type}">GAUGE</span>
+                                </td>
+                                <td class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 text-right">
+                                    <span class="text-xs font-bold text-primary" th:text="${metric.value}">123.45</span>
+                                </td>
+                                <td class="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                                    <span class="text-[10px] text-slate-400 font-medium" th:text="${metric.baseUnit}">bytes</span>
+                                </td>
+                                <td class="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                                    <p class="text-xs text-slate-500 max-w-xs truncate group-hover:whitespace-normal" th:text="${metric.description}">Description here</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- Detailed Actuator Link -->
             <div class="bg-blue-500/5 border border-blue-500/20 rounded-xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
                 <div class="flex items-center gap-4 text-blue-500">
@@ -311,7 +394,67 @@
         initThemeToggle();
         setInterval(updateTime, 1000);
         updateTime();
+        initMetricFilters();
     });
+
+    function initMetricFilters() {
+        const searchInput = document.getElementById('metric-search');
+        const filterSelect = document.getElementById('metric-filter');
+        const rows = document.querySelectorAll('#metrics-table-body tr');
+
+        function filterTable() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const filterValue = filterSelect.value;
+
+            rows.forEach(row => {
+                const name = row.getAttribute('data-name').toLowerCase();
+                const isApp = row.getAttribute('data-app-specific') === 'true';
+
+                const matchesSearch = name.includes(searchTerm);
+                let matchesFilter = true;
+
+                if (filterValue === 'app') matchesFilter = isApp;
+                if (filterValue === 'jvm') matchesFilter = !isApp;
+
+                if (matchesSearch && matchesFilter) {
+                    row.classList.remove('hidden');
+                } else {
+                    row.classList.add('hidden');
+                }
+            });
+        }
+
+        searchInput.addEventListener('input', filterTable);
+        filterSelect.addEventListener('change', filterTable);
+    }
+
+    let sortDirections = [true, true, true, true]; // true for asc
+    function sortMetricsTable(colIndex) {
+        const tbody = document.getElementById('metrics-table-body');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        const asc = sortDirections[colIndex];
+
+        const sortedRows = rows.sort((a, b) => {
+            let valA, valB;
+
+            if (colIndex === 2) { // Value column (numeric)
+                valA = parseFloat(a.cells[colIndex].textContent.trim().replace(',', ''));
+                valB = parseFloat(b.cells[colIndex].textContent.trim().replace(',', ''));
+                if (isNaN(valA)) valA = 0;
+                if (isNaN(valB)) valB = 0;
+                return asc ? valA - valB : valB - valA;
+            } else {
+                valA = a.cells[colIndex].textContent.trim().toLowerCase();
+                valB = b.cells[colIndex].textContent.trim().toLowerCase();
+                return asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            }
+        });
+
+        tbody.append(...sortedRows);
+        sortDirections[colIndex] = !asc;
+
+        // Update sort icons if we wanted to be fancy, but this is a good start.
+    }
 
     function updateTime() {
         const now = new Date();

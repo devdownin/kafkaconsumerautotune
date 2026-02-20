@@ -73,6 +73,7 @@ public class DashboardController {
 	@GetMapping("/metrics")
 	public String metrics(Model model) {
 		model.addAttribute("stats", dashboardService.getStats());
+		model.addAttribute("metrics", dashboardService.getAllMetrics());
 		model.addAttribute("activePage", "metrics");
 		return "metrics";
 	}

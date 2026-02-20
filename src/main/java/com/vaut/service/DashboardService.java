@@ -50,6 +50,8 @@ import java.lang.management.MemoryMXBean;
 import java.lang.management.ThreadMXBean;
 import com.sun.management.OperatingSystemMXBean;
 import com.vaut.dto.dashboard.JvmStatsDTO;
+import com.vaut.dto.dashboard.MetricDTO;
+import io.micrometer.core.instrument.Measurement;
 
 /**
  * Service that provides statistics and monitoring data for the dashboard.
@@ -275,6 +277,38 @@ public class DashboardService {
 
     public void updateLogLevel(String loggerName, String level) {
         loggingSystem.setLogLevel(loggerName, LogLevel.valueOf(level.toUpperCase()));
+    }
+
+    public List<MetricDTO> getAllMetrics() {
+        return meterRegistry.getMeters().stream()
+                .flatMap(meter -> {
+                    String name = meter.getId().getName();
+                    String type = meter.getId().getType().name();
+                    String description = meter.getId().getDescription();
+                    String baseUnit = meter.getId().getBaseUnit();
+                    boolean appSpecific = name.startsWith("kafka.events") || name.startsWith("app.");
+
+                    List<MetricDTO> metrics = new ArrayList<>();
+                    List<Measurement> measurements = new ArrayList<>();
+                    meter.measure().forEach(measurements::add);
+
+                    for (Measurement measurement : measurements) {
+                        String suffix = measurement.getStatistic().name().toLowerCase();
+                        String fullName = name + (measurements.size() > 1 ? "." + suffix : "");
+
+                        metrics.add(MetricDTO.builder()
+                                .name(fullName)
+                                .type(type)
+                                .description(description != null ? description : "N/A")
+                                .value(String.format("%.2f", measurement.getValue()))
+                                .baseUnit(baseUnit != null ? baseUnit : "")
+                                .appSpecific(appSpecific)
+                                .build());
+                    }
+                    return metrics.stream();
+                })
+                .sorted((a, b) -> a.name().compareToIgnoreCase(b.name()))
+                .collect(Collectors.toList());
     }
 
     public DashboardStatsDTO getStats() {
