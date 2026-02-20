@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html class="dark" lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head('Analytical Message Analysis')}">
+<head th:replace="~{fragments/head :: head('Message Analysis')}">
     <title>Analytical Message Analysis</title>
     <!-- Page specific scripts/styles -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet" />
@@ -39,6 +39,42 @@
     <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet" />
+<style>
+    .serif-title { font-family: 'Georgia', serif; }
+    .glass-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); }
+    .hover-scale { transition: transform 0.2s; }
+    .hover-scale:hover { transform: scale(1.02); }
+    .category-active { border-left: 4px solid #135bec; background: rgba(19, 91, 236, 0.1); }
+
+    .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+    /* Modern JSON Prism Styling */
+    pre[class*="language-"], code[class*="language-"] {
+        font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', 'Consolas', monospace !important;
+        text-shadow: none !important;
+    }
+
+    #raw-json-content { color: #e06c75 !important; } /* Default fallback to reddish */
+    .token.property { color: #56b6c2 !important; font-weight: 600; }
+    .token.string { color: #98c379 !important; }
+    .token.number { color: #d19a66 !important; }
+    .token.boolean { color: #c678dd !important; }
+    .token.operator, .token.punctuation { color: #abb2bf !important; }
+    .token.keyword { color: #61afef !important; }
+    .token.null { color: #d19a66 !important; }
+
+    .search-match {
+        background-color: rgba(255, 255, 0, 0.3);
+        border-bottom: 2px solid yellow;
+        border-radius: 2px;
+    }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 <!-- Toast Container -->
 <div id="toast-container" class="fixed bottom-8 right-8 z-[100] flex flex-col gap-3"></div>
 
