@@ -74,6 +74,17 @@ spring:
 # Configuration de l'application (UI & Business)
 app:
   edition: PARTAGE Edition
+  metrics:
+    thresholds:
+      "kafka.events.received.count":
+        warning: 100000
+        critical: 500000
+      "jvm.memory.used":
+        warning: 805306368 # 768MB
+        critical: 1073741824 # 1GB
+      "process.cpu.usage":
+        warning: 0.7
+        critical: 0.9
   event:
     id-json-path: "$.idPassage"
   message-viewer:

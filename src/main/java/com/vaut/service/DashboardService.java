@@ -54,6 +54,7 @@ import java.lang.management.ThreadMXBean;
 import com.sun.management.OperatingSystemMXBean;
 import com.vaut.dto.dashboard.JvmStatsDTO;
 import com.vaut.dto.dashboard.MetricDTO;
+import com.vaut.config.MetricThresholdProperties;
 import io.micrometer.core.instrument.Measurement;
 
 /**
@@ -75,6 +76,7 @@ public class DashboardService {
     private final KafkaProperties kafkaProperties;
     private final WebSocketService webSocketService;
     private final KafkaTuningService kafkaTuningService;
+    private final MetricThresholdProperties metricThresholdProperties;
 
     private static final int THROUGHPUT_5S_SIZE = 180; // 15 minutes at 5s interval
     private static final int THROUGHPUT_1M_SIZE = 1440; // 24 hours at 1m interval
@@ -230,6 +232,7 @@ public class DashboardService {
             }
         });
         metricsHistory.keySet().retainAll(currentMetricNames);
+        webSocketService.broadcast(AppConstants.WEBSOCKET_TOPIC_METRICS_LIVE, getAllMetrics());
     }
 
     @Scheduled(fixedRate = 5000)
@@ -318,7 +321,7 @@ public class DashboardService {
                     String type = meter.getId().getType().name();
                     String description = meter.getId().getDescription();
                     String baseUnit = meter.getId().getBaseUnit();
-                    boolean appSpecific = name.startsWith("kafka.events") || name.startsWith("app.") || name.startsWith("myconsumer.");
+                    boolean appSpecific = name.startsWith("kafka.events") || name.startsWith("app.") || name.startsWith("myconsumer.") || name.startsWith("process.");
 
                     List<MetricDTO> metrics = new ArrayList<>();
                     List<Measurement> measurements = new ArrayList<>();
@@ -327,15 +330,39 @@ public class DashboardService {
                     for (Measurement measurement : measurements) {
                         String suffix = measurement.getStatistic().name().toLowerCase();
                         String fullName = name + (measurements.size() > 1 ? "." + suffix : "");
+                        double currentValue = measurement.getValue();
+
+                        List<Double> history = new ArrayList<>(metricsHistory.getOrDefault(fullName, Collections.emptyList()));
+
+                        String trend = "STABLE";
+                        if (history.size() >= 2) {
+                            double prevValue = history.get(history.size() - 2);
+                            if (currentValue > prevValue) trend = "UP";
+                            else if (currentValue < prevValue) trend = "DOWN";
+                        }
+
+                        String status = "NORMAL";
+                        MetricThresholdProperties.Threshold threshold = metricThresholdProperties.getThresholds().get(fullName);
+                        if (threshold == null) threshold = metricThresholdProperties.getThresholds().get(name);
+
+                        if (threshold != null) {
+                            if (threshold.getCritical() != null && currentValue >= threshold.getCritical()) {
+                                status = "CRITICAL";
+                            } else if (threshold.getWarning() != null && currentValue >= threshold.getWarning()) {
+                                status = "WARNING";
+                            }
+                        }
 
                         metrics.add(MetricDTO.builder()
                                 .name(fullName)
                                 .type(type)
                                 .description(description != null ? description : "N/A")
-                                .value(String.format("%.2f", measurement.getValue()))
+                                .value(String.format("%.2f", currentValue))
                                 .baseUnit(baseUnit != null ? baseUnit : "")
                                 .appSpecific(appSpecific)
-                                .history(new ArrayList<>(metricsHistory.getOrDefault(fullName, Collections.emptyList())))
+                                .history(history)
+                                .trend(trend)
+                                .status(status)
                                 .build());
                     }
                     return metrics.stream();

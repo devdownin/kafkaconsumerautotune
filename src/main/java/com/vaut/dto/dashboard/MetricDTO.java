@@ -18,4 +18,6 @@ public class MetricDTO {
     String baseUnit;
     boolean appSpecific;
     List<Double> history;
+    String trend; // UP, DOWN, STABLE
+    String status; // NORMAL, WARNING, CRITICAL
 }
