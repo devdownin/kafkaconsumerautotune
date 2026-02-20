@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 
 <html class="dark" lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head('Page')}">
-    <title>Page</title>
+<head th:replace="~{fragments/head :: head('DLT Error Management')}">
+    <title>DLT Error Management</title>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
 <div class="flex h-screen overflow-hidden">
@@ -622,7 +622,7 @@
         events.forEach(event => {
             const row = document.createElement('tr');
             row.className = 'hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group';
-            row.onclick = () => inspectEvent(event.id);
+            row.onclick = () => inspectEvent(null, event.id);
 
             const errorType = event.errorMessage.includes('Validation') ? 'Validation' : 'Parsing';
             const date = new Date(event.dhm);

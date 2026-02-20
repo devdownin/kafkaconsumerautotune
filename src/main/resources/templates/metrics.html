@@ -289,6 +289,9 @@
                                     <p class="text-xs text-slate-500 max-w-xs truncate group-hover:whitespace-normal" th:text="${metric.description}">Description here</p>
                                 </td>
                             </tr>
+                            <tr class="no-results-row hidden">
+                                <td colspan="5" class="px-6 py-10 text-center text-slate-500 italic">No metrics found matching your criteria.</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -358,8 +361,6 @@
     }
 
     function updateGlobalStats(stats) {
-        const throughputElem = document.querySelector('h3:has(+ p:contains("Total Throughput"))') || document.getElementById('throughput-val');
-        // I'll add an ID to the throughput h3 in HTML to make it easier
         if (stats.throughput && stats.throughput.length > 0) {
             const val = stats.throughput[stats.throughput.length - 1].toFixed(1) + ' Msg/s';
             const elem = document.getElementById('throughput-val');
@@ -373,41 +374,53 @@
         const commMb = Math.round(stats.heapCommitted / 1024 / 1024);
         const pct = maxMb > 0 ? (usedMb * 100 / maxMb) : 0;
 
-        document.getElementById('heap-summary').innerText = usedMb + ' MB';
-        document.getElementById('heap-used-val').innerText = usedMb + ' MB / ' + maxMb + ' MB';
-        document.getElementById('heap-committed-val').innerText = commMb + ' MB';
-        document.getElementById('heap-max-val').innerText = maxMb + ' MB';
-        document.getElementById('heap-progress').style.width = pct + '%';
+        const heapSum = document.getElementById('heap-summary');
+        if (heapSum) heapSum.innerText = usedMb + ' MB';
+        const heapUsedVal = document.getElementById('heap-used-val');
+        if (heapUsedVal) heapUsedVal.innerText = usedMb + ' MB / ' + maxMb + ' MB';
+        const heapCommVal = document.getElementById('heap-committed-val');
+        if (heapCommVal) heapCommVal.innerText = commMb + ' MB';
+        const heapMaxVal = document.getElementById('heap-max-val');
+        if (heapMaxVal) heapMaxVal.innerText = maxMb + ' MB';
+        const heapProg = document.getElementById('heap-progress');
+        if (heapProg) heapProg.style.width = pct + '%';
 
-        document.getElementById('threads-summary').innerText = stats.threadCount;
-        document.getElementById('thread-count-val').innerText = stats.threadCount;
-        document.getElementById('peak-thread-val').innerText = stats.peakThreadCount;
+        const threadsSum = document.getElementById('threads-summary');
+        if (threadsSum) threadsSum.innerText = stats.threadCount;
+        const threadCountVal = document.getElementById('thread-count-val');
+        if (threadCountVal) threadCountVal.innerText = stats.threadCount;
+        const peakThreadVal = document.getElementById('peak-thread-val');
+        if (peakThreadVal) peakThreadVal.innerText = stats.peakThreadCount;
 
-        document.getElementById('cpu-summary').innerText = stats.processCpuLoad.toFixed(1) + '%';
-        document.getElementById('process-cpu-val').innerText = stats.processCpuLoad.toFixed(1) + '%';
-        document.getElementById('process-cpu-progress').style.width = stats.processCpuLoad + '%';
-        document.getElementById('system-cpu-val').innerText = stats.systemCpuLoad.toFixed(1) + '%';
-        document.getElementById('system-cpu-progress').style.width = stats.systemCpuLoad + '%';
+        const cpuSum = document.getElementById('cpu-summary');
+        if (cpuSum) cpuSum.innerText = stats.processCpuLoad.toFixed(1) + '%';
+        const procCpuVal = document.getElementById('process-cpu-val');
+        if (procCpuVal) procCpuVal.innerText = stats.processCpuLoad.toFixed(1) + '%';
+        const procCpuProg = document.getElementById('process-cpu-progress');
+        if (procCpuProg) procCpuProg.style.width = stats.processCpuLoad + '%';
+        const sysCpuVal = document.getElementById('system-cpu-val');
+        if (sysCpuVal) sysCpuVal.innerText = stats.systemCpuLoad.toFixed(1) + '%';
+        const sysCpuProg = document.getElementById('system-cpu-progress');
+        if (sysCpuProg) sysCpuProg.style.width = stats.systemCpuLoad + '%';
     }
 
     document.addEventListener('DOMContentLoaded', function() {
         initThemeToggle();
-        setInterval(updateTime, 1000);
-        updateTime();
         initMetricFilters();
     });
 
     function initMetricFilters() {
         const searchInput = document.getElementById('metric-search');
         const filterSelect = document.getElementById('metric-filter');
-        const rows = document.querySelectorAll('#metrics-table-body tr');
 
         function filterTable() {
+            const rows = document.querySelectorAll('#metrics-table-body tr:not(.no-results-row)');
             const searchTerm = searchInput.value.toLowerCase();
             const filterValue = filterSelect.value;
+            let visibleCount = 0;
 
             rows.forEach(row => {
-                const name = row.getAttribute('data-name').toLowerCase();
+                const name = (row.getAttribute('data-name') || "").toLowerCase();
                 const isApp = row.getAttribute('data-app-specific') === 'true';
 
                 const matchesSearch = name.includes(searchTerm);
@@ -417,15 +430,23 @@
                 if (filterValue === 'jvm') matchesFilter = !isApp;
 
                 if (matchesSearch && matchesFilter) {
-                    row.classList.remove('hidden');
+                    row.style.display = 'table-row';
+                    visibleCount++;
                 } else {
-                    row.classList.add('hidden');
+                    row.style.display = 'none';
                 }
             });
+
+            const noResultsRow = document.querySelector('.no-results-row');
+            if (noResultsRow) {
+                noResultsRow.style.display = visibleCount === 0 ? 'table-row' : 'none';
+            }
         }
 
-        searchInput.addEventListener('input', filterTable);
-        filterSelect.addEventListener('change', filterTable);
+        if (searchInput && filterSelect) {
+            searchInput.addEventListener('input', filterTable);
+            filterSelect.addEventListener('change', filterTable);
+        }
     }
 
     let sortDirections = [true, true, true, true]; // true for asc
@@ -456,10 +477,6 @@
         // Update sort icons if we wanted to be fancy, but this is a good start.
     }
 
-    function updateTime() {
-        const now = new Date();
-        document.getElementById('time-now').innerText = now.toLocaleTimeString();
-    }
 
     function initThemeToggle() {
         var themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
