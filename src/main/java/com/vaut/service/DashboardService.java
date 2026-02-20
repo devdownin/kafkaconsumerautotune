@@ -42,7 +42,10 @@ import org.springframework.scheduling.annotation.Scheduled;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.lang.management.ManagementFactory;
@@ -77,6 +80,8 @@ public class DashboardService {
     private static final int THROUGHPUT_1M_SIZE = 1440; // 24 hours at 1m interval
     private final List<Double> throughput5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0.0));
     private final List<Double> throughput1m = new ArrayList<>(Collections.nCopies(THROUGHPUT_1M_SIZE, 0.0));
+    private final Map<String, List<Double>> metricsHistory = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final int MAX_HISTORY_POINTS = 20;
     private long lastProcessedCount = 0;
     private int minuteCounter = 0;
     private double minuteAccumulator = 0;
@@ -200,6 +205,33 @@ public class DashboardService {
         return cachedTotalLag.get();
     }
 
+    @Scheduled(fixedRate = 10000)
+    public void updateMetricsHistory() {
+        Set<String> currentMetricNames = new HashSet<>();
+        meterRegistry.getMeters().forEach(meter -> {
+            String name = meter.getId().getName();
+            List<Measurement> measurements = new ArrayList<>();
+            meter.measure().forEach(measurements::add);
+
+            for (Measurement measurement : measurements) {
+                String suffix = measurement.getStatistic().name().toLowerCase();
+                String fullName = name + (measurements.size() > 1 ? "." + suffix : "");
+                double value = measurement.getValue();
+                currentMetricNames.add(fullName);
+
+                metricsHistory.compute(fullName, (k, v) -> {
+                    List<Double> history = (v == null) ? new CopyOnWriteArrayList<>() : v;
+                    history.add(value);
+                    if (history.size() > MAX_HISTORY_POINTS) {
+                        history.remove(0);
+                    }
+                    return history;
+                });
+            }
+        });
+        metricsHistory.keySet().retainAll(currentMetricNames);
+    }
+
     @Scheduled(fixedRate = 5000)
     public void updateThroughputHistory() {
         double currentProcessed = Optional.ofNullable(meterRegistry.find(AppConstants.METRIC_KAFKA_EVENTS_RECEIVED_COUNT).counter())
@@ -264,7 +296,7 @@ public class DashboardService {
                     LoggerConfiguration config = loggingSystem.getLoggerConfiguration(name);
                     String configured = "DEFAULT";
                     if (config != null && config.getConfiguredLevel() != null) {
-                        configured = config.getConfiguredLevel()();
+                        configured = config.getConfiguredLevel().name();
                     }
                     return LogConfigDTO.builder()
                             .loggerName(name)
@@ -303,6 +335,7 @@ public class DashboardService {
                                 .value(String.format("%.2f", measurement.getValue()))
                                 .baseUnit(baseUnit != null ? baseUnit : "")
                                 .appSpecific(appSpecific)
+                                .history(new ArrayList<>(metricsHistory.getOrDefault(fullName, Collections.emptyList())))
                                 .build());
                     }
                     return metrics.stream();
