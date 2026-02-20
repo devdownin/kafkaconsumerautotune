@@ -286,7 +286,7 @@ public class DashboardService {
                     String type = meter.getId().getType().name();
                     String description = meter.getId().getDescription();
                     String baseUnit = meter.getId().getBaseUnit();
-                    boolean appSpecific = name.startsWith("kafka.events") || name.startsWith("app.") || name.startsWith("application.");
+                    boolean appSpecific = name.startsWith("kafka.events") || name.startsWith("app.") || name.startsWith("myconsumer.");
 
                     List<MetricDTO> metrics = new ArrayList<>();
                     List<Measurement> measurements = new ArrayList<>();
