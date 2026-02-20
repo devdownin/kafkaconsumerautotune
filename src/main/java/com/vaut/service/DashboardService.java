@@ -90,7 +90,7 @@ public class DashboardService {
     @Value("${spring.kafka.bootstrap-servers:kafkadev:9093}")
     private String bootstrapServers;
 
-    @Value("${kafka.topic.name:asf.peage.backoffice.sortie.recouvrable}")
+    @Value("${kafka.topic:asf.peage.backoffice.sortie.recouvrable}")
     private String topicName;
 
     @Value("${spring.kafka.consumer.group-id:ASF.PEAGE.BACKOFFICE.PARTAGE.RECOUVRABLE}")
@@ -99,7 +99,7 @@ public class DashboardService {
     @Value("${spring.kafka.ssl.enabled:false}")
     private boolean sslEnabled;
 
-    @Value("${spring.application.name:KafkaMonitor}")
+    @Value("${spring.application:KafkaMonitor}")
     private String appName;
 
     @Value("${app.edition:Enterprise Edition}")
@@ -264,7 +264,7 @@ public class DashboardService {
                     LoggerConfiguration config = loggingSystem.getLoggerConfiguration(name);
                     String configured = "DEFAULT";
                     if (config != null && config.getConfiguredLevel() != null) {
-                        configured = config.getConfiguredLevel().name();
+                        configured = config.getConfiguredLevel()();
                     }
                     return LogConfigDTO.builder()
                             .loggerName(name)
@@ -307,7 +307,7 @@ public class DashboardService {
                     }
                     return metrics.stream();
                 })
-                .sorted((a, b) -> a.name().compareToIgnoreCase(b.name()))
+                .sorted((a, b) -> a.getName().compareToIgnoreCase(b.getName()))
                 .collect(Collectors.toList());
     }
 
