@@ -1,6 +1,43 @@
 <!DOCTYPE html>
 <html class="dark" lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head('Analytical Message Analysis')}"></head>
+<head th:replace="~{fragments/head :: head('Message Analysis')}">
+    <title>Message Analysis</title>
+    <!-- Page specific scripts/styles -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet" />
+    <style>
+        .serif-title { font-family: 'Georgia', serif; }
+        .glass-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); }
+        .hover-scale { transition: transform 0.2s; }
+        .hover-scale:hover { transform: scale(1.02); }
+        .category-active { border-left: 4px solid #135bec; background: rgba(19, 91, 236, 0.1); }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+        /* Modern JSON Prism Styling */
+        pre[class*="language-"] {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: transparent !important;
+        }
+        .token.property { color: #80cbc4 !important; font-weight: bold; }
+        .token.string { color: #c3e88d !important; }
+        .token.number { color: #f78c6c !important; }
+        .token.boolean { color: #ffcb6b !important; }
+        .token.operator { color: #89ddff !important; }
+        .token.punctuation { color: #89ddff !important; }
+
+        .search-match {
+            background-color: rgba(255, 255, 0, 0.3);
+            border-bottom: 2px solid yellow;
+            border-radius: 2px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+</head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet" />
 <style>
