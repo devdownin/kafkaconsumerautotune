@@ -6,18 +6,30 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.util.List;
 
+/**
+ * Data Transfer Object for representing a single metric with its metadata and history.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class MetricDTO {
+    /** The unique name of the metric (e.g., jvm.memory.used). */
     String name;
+    /** The type of the metric (e.g., GAUGE, COUNTER). */
     String type;
+    /** A human-readable description of the metric. */
     String description;
+    /** The current value of the metric formatted as a string. */
     String value;
+    /** The unit of measurement (e.g., bytes, seconds). */
     String baseUnit;
+    /** Flag indicating if this is an application-specific metric as opposed to standard JVM/system metrics. */
     boolean appSpecific;
+    /** Historical data points for this metric to enable trend visualization. */
     List<Double> history;
-    String trend; // UP, DOWN, STABLE
-    String status; // NORMAL, WARNING, CRITICAL
+    /** The detected trend of the metric (UP, DOWN, STABLE). */
+    String trend;
+    /** The current status of the metric based on predefined thresholds (NORMAL, WARNING, CRITICAL). */
+    String status;
 }

@@ -1,19 +1,30 @@
 package com.vaut.config;
 
+/**
+ * Global constants for the application, including metric names and WebSocket topics.
+ */
 public final class AppConstants {
     private AppConstants() {}
 
-    // Metric Names
+    /** Total count of events received from Kafka. */
     public static final String METRIC_KAFKA_EVENTS_RECEIVED_COUNT = "myconsumer.kafka.events.received.count";
+    /** Size (in bytes) of individual events received from Kafka. */
     public static final String METRIC_KAFKA_EVENT_RECEIVED_SIZE = "myconsumer.kafka.event.received.size";
+    /** Count of errors encountered during event processing. */
     public static final String METRIC_KAFKA_EVENTS_ERRORS = "myconsumer.kafka.events.errors";
+    /** Count of successfully processed and persisted events. */
     public static final String METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS = "myconsumer.kafka.events.processed";
+    /** Duration (in milliseconds) taken to process a batch of events. */
     public static final String METRIC_KAFKA_EVENTS_BATCH_DURATION = "myconsumer.kafka.events.batch.duration";
 
-    // WebSocket Topics
+    /** WebSocket topic for broadcasting new successfully processed events. */
     public static final String WEBSOCKET_TOPIC_EVENTS = "/topic/events";
+    /** WebSocket topic for broadcasting general dashboard statistics. */
     public static final String WEBSOCKET_TOPIC_STATS = "/topic/stats";
+    /** WebSocket topic for broadcasting new Dead Letter Topic (DLT) events. */
     public static final String WEBSOCKET_TOPIC_DLT = "/topic/dlt";
+    /** WebSocket topic for broadcasting aggregate metric updates. */
     public static final String WEBSOCKET_TOPIC_METRICS = "/topic/metrics";
+    /** WebSocket topic for broadcasting real-time individual metric updates. */
     public static final String WEBSOCKET_TOPIC_METRICS_LIVE = "/topic/metrics-live";
 }

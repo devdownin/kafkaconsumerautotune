@@ -13,6 +13,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+/**
+ * Controller for the web dashboard interface.
+ * Handles routing to various monitoring and management views.
+ */
 @Controller
 @RequiredArgsConstructor
 public class DashboardController {
@@ -22,6 +26,12 @@ public class DashboardController {
 	private final KafkaOptimizerService optimizerService;
 	private final MessageViewerConfig messageViewerConfig;
 
+	/**
+	 * Renders the main dashboard view.
+	 *
+	 * @param model The UI model.
+	 * @return The name of the dashboard Thymeleaf template.
+	 */
 	@GetMapping("/")
 	public String dashboard(Model model) {
 		// Fetch the 10 most recent events
@@ -37,6 +47,12 @@ public class DashboardController {
 		return "dashboard";
 	}
 
+	/**
+	 * Renders the consumer groups monitoring view.
+	 *
+	 * @param model The UI model.
+	 * @return The name of the consumer-groups Thymeleaf template.
+	 */
 	@GetMapping("/consumer-groups")
 	public String consumerGroups(Model model) {
 		model.addAttribute("stats", dashboardService.getStats());
@@ -44,6 +60,12 @@ public class DashboardController {
 		return "consumer-groups";
 	}
 
+	/**
+	 * Renders the database status view.
+	 *
+	 * @param model The UI model.
+	 * @return The name of the db-status Thymeleaf template.
+	 */
 	@GetMapping("/db-status")
 	public String dbStatus(Model model) {
 		model.addAttribute("stats", dashboardService.getStats());
@@ -51,6 +73,12 @@ public class DashboardController {
 		return "db-status";
 	}
 
+	/**
+	 * Renders the message viewer view for inspecting individual events.
+	 *
+	 * @param model The UI model.
+	 * @return The name of the message-viewer Thymeleaf template.
+	 */
 	@GetMapping("/message-viewer")
 	public String messageViewer(Model model) {
 		var recentEvents = repository.findAll(PageRequest.of(0, 20, Sort.by("id").descending())).getContent();
@@ -62,6 +90,12 @@ public class DashboardController {
 		return "message-viewer";
 	}
 
+	/**
+	 * Renders the application settings view.
+	 *
+	 * @param model The UI model.
+	 * @return The name of the settings Thymeleaf template.
+	 */
 	@GetMapping("/settings")
 	public String settings(Model model) {
 		model.addAttribute("stats", dashboardService.getStats());
@@ -70,6 +104,12 @@ public class DashboardController {
 		return "settings";
 	}
 
+	/**
+	 * Renders the metrics explorer view.
+	 *
+	 * @param model The UI model.
+	 * @return The name of the metrics Thymeleaf template.
+	 */
 	@GetMapping("/metrics")
 	public String metrics(Model model) {
 		model.addAttribute("stats", dashboardService.getStats());
@@ -78,6 +118,12 @@ public class DashboardController {
 		return "metrics";
 	}
 
+	/**
+	 * Renders the Kafka parameter optimizer history view.
+	 *
+	 * @param model The UI model.
+	 * @return The name of the optimizer Thymeleaf template.
+	 */
 	@GetMapping("/optimizer")
 	public String optimizer(Model model) {
 		model.addAttribute("stats", dashboardService.getStats());
@@ -86,6 +132,13 @@ public class DashboardController {
 		return "optimizer";
 	}
 
+	/**
+	 * Endpoint to update the log level of a specific logger.
+	 *
+	 * @param loggerName The name of the logger to update.
+	 * @param level The new log level.
+	 * @return A redirect to the settings page.
+	 */
 	@PostMapping("/settings/logs")
 	public String updateLogLevel(@RequestParam String loggerName, @RequestParam String level) {
 		dashboardService.updateLogLevel(loggerName, level);
