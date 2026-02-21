@@ -8,11 +8,18 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Service that tracks and maintains a history of Kafka property optimizations.
+ * Provides a log of parameter changes made by the auto-tuning service.
+ */
 @Service
 public class KafkaOptimizerService {
 
     private final List<KafkaPropertyOptimization> optimizations = new ArrayList<>();
 
+    /**
+     * Initializes the optimizer service with some initial (mock) data for demonstration.
+     */
     public KafkaOptimizerService() {
         // Initial mock data
         optimizations.add(KafkaPropertyOptimization.builder()
@@ -48,12 +55,25 @@ public class KafkaOptimizerService {
                 .build());
     }
 
+    /**
+     * Retrieves the most recent optimization events.
+     *
+     * @return A list of the 10 most recent KafkaPropertyOptimization objects, sorted by timestamp descending.
+     */
     public List<KafkaPropertyOptimization> getRecentOptimizations() {
         List<KafkaPropertyOptimization> sorted = new ArrayList<>(optimizations);
         sorted.sort((a, b) -> b.getTimestamp().compareTo(a.getTimestamp()));
         return sorted.stream().limit(10).toList();
     }
 
+    /**
+     * Records a new optimization event.
+     *
+     * @param property The Kafka property that was changed.
+     * @param oldVal The previous value of the property.
+     * @param newVal The new value applied to the property.
+     * @param reason The reason for the change.
+     */
     public void addOptimization(String property, String oldVal, String newVal, String reason) {
         optimizations.add(0, KafkaPropertyOptimization.builder()
                 .propertyName(property)

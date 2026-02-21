@@ -1,7 +1,7 @@
 # Documentation Technique - Kafka Consumer Auto-tune
 
 ## 1. Résumé Exécutif
-Consotopic est une application Spring Boot de haute performance conçue pour consommer des messages Kafka en mode batch, les traiter, et les persister dans une base de données (Oracle/H2). L'application se distingue par son moteur d'**auto-tuning** intelligent basé sur un contrôleur PID qui ajuste dynamiquement les paramètres du consommateur Kafka pour optimiser le débit et la latence en temps réel. Elle intègre également un système robuste de gestion des erreurs via une Dead Letter Topic (DLT) et un tableau de bord complet de monitoring.
+Consotopic est une application Spring Boot de haute performance conçue pour consommer des messages Kafka en mode batch, les traiter, et les persister dans une base de données (Oracle/H2). L'application se distingue par son moteur d'**auto-tuning** intelligent basé sur un contrôleur PID qui ajuste dynamiquement les paramètres du consommateur Kafka pour optimiser le débit et la latence en temps réel. Elle intègre également un système robuste de gestion des erreurs via une Dead Letter Topic (DLT), un mécanisme de résilience par repli (fallback), et un tableau de bord complet de monitoring.
 
 ---
 
@@ -35,10 +35,12 @@ C'est le composant le plus innovant de l'application. Il surveille le débit (`m
     - Seuil de changement minimal de 10% pour éviter les micro-ajustements.
     - Temps de pause (cooldown) de 5 minutes entre deux redémarrages de consommateur pour éviter les tempêtes de rebalance.
 
-### 3.3 Gestion des Erreurs et DLT (DltService)
-Tout message dont le traitement échoue est dirigé vers deux destinations :
-1. **Kafka DLT Topic** : Pour une traçabilité technique avec headers (`DLT_EXCEPTION_MESSAGE`, etc.).
-2. **Base de données (DltEvent)** : Pour une gestion via l'interface utilisateur.
+### 3.3 Résilience et Gestion des Erreurs (DltService & Fallback)
+L'application implémente une stratégie de résilience à plusieurs niveaux pour éviter le blocage du flux de données (Poison Batch).
+- **Filtrage au Traitement** : Tout message dont le parsing ou l'extraction d'ID échoue est immédiatement dirigé vers la DLT.
+- **Mécanisme de Repli (Fallback) à la Persistance** : Si la persistence d'un batch complet échoue (ex: erreur de contrainte en base), l'application bascule automatiquement en mode individuel. Chaque message est alors tenté séparément. Ceux qui échouent encore sont envoyés à la DLT, permettant au reste du batch d'être validé et au consommateur de progresser.
+- **Kafka DLT Topic** : Pour une traçabilité technique avec headers (`DLT_EXCEPTION_MESSAGE`, etc.).
+- **Base de données (DltEvent)** : Pour une gestion via l'interface utilisateur.
 - **Actions possibles** : Retry (re-jeu), Discard (abandon), Modification du payload avant retry.
 
 ### 3.4 Dashboard et Observabilité
@@ -83,10 +85,10 @@ Via l'onglet "DLT Management" :
 
 ---
 
-## 6. Spécifications Techniques
-- **Java** : 21
+## 6. Spécifications Techniques et Qualité
+- **Java** : 21 (Utilisation intensive des Javadoc pour chaque fonction).
 - **Spring Boot** : 3.5.9
-- **Kafka Client** : Inclus dans Spring Kafka
+- **Tests** : Suite de tests d'intégration complète couvrant les cas nominaux et d'erreur (JSON invalide, ID manquant, doublons, erreurs de persistance).
 - **Base de données** : Oracle 23c (Runtime) / H2 (Dev/Test)
 - **Monitoring** : Micrometer + Prometheus
 - **UI** : Thymeleaf + Tailwind CSS + WebSockets (STOMP)

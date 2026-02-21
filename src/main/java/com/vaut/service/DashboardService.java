@@ -59,7 +59,7 @@ import io.micrometer.core.instrument.Measurement;
 
 /**
  * Service that provides statistics and monitoring data for the dashboard.
- * Generalized to work with KEvent.
+ * It aggregates information from Kafka, the database, JVM, and application metrics.
  */
 @Service
 @RequiredArgsConstructor
@@ -115,6 +115,10 @@ public class DashboardService {
     @Value("${app.event.id-json-path:$.idPassage}")
     private String idJsonPath;
 
+    /**
+     * Periodically refreshes Kafka-related metrics such as consumer group status and lag.
+     * Uses the AdminClient to query the Kafka cluster.
+     */
     @Scheduled(fixedRate = 30000)
     public void refreshKafkaMetrics() {
         if (adminClient.isEmpty()) return;
@@ -193,6 +197,11 @@ public class DashboardService {
         }
     }
 
+    /**
+     * Returns the cached information for the monitored Kafka consumer groups.
+     *
+     * @return A list of ConsumerGroupDTO objects.
+     */
     public List<ConsumerGroupDTO> getConsumerGroupsInfo() {
         if (cachedConsumerGroups.isEmpty() && adminClient.isPresent()) {
             refreshKafkaMetrics();
@@ -200,6 +209,11 @@ public class DashboardService {
         return cachedConsumerGroups;
     }
 
+    /**
+     * Calculates the total consumer lag across all partitions.
+     *
+     * @return The total lag as a long.
+     */
     public long calculateTotalLag() {
         if (lastKafkaUpdate.get() == 0 && adminClient.isPresent()) {
             refreshKafkaMetrics();
@@ -207,6 +221,10 @@ public class DashboardService {
         return cachedTotalLag.get();
     }
 
+    /**
+     * Periodically updates the historical data points for all tracked metrics.
+     * Broadcasts the updated metrics to connected clients via WebSockets.
+     */
     @Scheduled(fixedRate = 10000)
     public void updateMetricsHistory() {
         Set<String> currentMetricNames = new HashSet<>();
@@ -235,6 +253,10 @@ public class DashboardService {
         webSocketService.broadcast(AppConstants.WEBSOCKET_TOPIC_METRICS_LIVE, getAllMetrics());
     }
 
+    /**
+     * Periodically updates throughput history (messages per second) and broadcasts
+     * updated statistics and JVM status via WebSockets.
+     */
     @Scheduled(fixedRate = 5000)
     public void updateThroughputHistory() {
         double currentProcessed = Optional.ofNullable(meterRegistry.find(AppConstants.METRIC_KAFKA_EVENTS_RECEIVED_COUNT).counter())
@@ -272,6 +294,11 @@ public class DashboardService {
         webSocketService.sendJvmStats(getJvmStats());
     }
 
+    /**
+     * Retrieves current JVM and system performance statistics.
+     *
+     * @return A JvmStatsDTO object.
+     */
     public JvmStatsDTO getJvmStats() {
         MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
         ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
@@ -288,10 +315,21 @@ public class DashboardService {
                 .build();
     }
 
+    /**
+     * Retrieves the most recent events from the Dead Letter Topic (DLT).
+     *
+     * @param limit The maximum number of events to retrieve.
+     * @return A list of DltEvent objects.
+     */
     public List<DltEvent> getRecentDltEvents(int limit) {
         return dltEventRepository.findAll(PageRequest.of(0, limit, Sort.by("id").descending())).getContent();
     }
 
+    /**
+     * Retrieves the current logging configuration for tracked loggers.
+     *
+     * @return A list of LogConfigDTO objects.
+     */
     public List<LogConfigDTO> getLogConfigs() {
         List<String> loggersToTrack = Arrays.asList("com.vaut", "org.springframework.kafka", "org.hibernate.SQL", "org.apache.kafka");
         return loggersToTrack.stream()
@@ -310,10 +348,21 @@ public class DashboardService {
                 .toList();
     }
 
+    /**
+     * Updates the log level for a specific logger.
+     *
+     * @param loggerName The name of the logger to update.
+     * @param level The new log level (e.g., DEBUG, INFO).
+     */
     public void updateLogLevel(String loggerName, String level) {
         loggingSystem.setLogLevel(loggerName, LogLevel.valueOf(level.toUpperCase()));
     }
 
+    /**
+     * Retrieves all registered metrics with their current values, trends, and statuses.
+     *
+     * @return A list of MetricDTO objects.
+     */
     public List<MetricDTO> getAllMetrics() {
         return meterRegistry.getMeters().stream()
                 .flatMap(meter -> {
@@ -371,6 +420,11 @@ public class DashboardService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Aggregates all application statistics for the main dashboard view.
+     *
+     * @return A DashboardStatsDTO object.
+     */
     public DashboardStatsDTO getStats() {
         long successCount = eventRepository.count();
         long dltCount = dltEventRepository.count();
