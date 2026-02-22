@@ -66,15 +66,6 @@ public class WebSocketService {
     }
 
     /**
-     * Broadcasts a system-wide event (notification).
-     *
-     * @param event The system event to broadcast.
-     */
-    public void sendSystemEvent(SystemEventDTO event) {
-        messagingTemplate.convertAndSend(AppConstants.WEBSOCKET_TOPIC_SYSTEM_EVENTS, event);
-    }
-
-    /**
      * Broadcasts a generic payload to a specified WebSocket topic.
      *
      * @param topic The destination topic.

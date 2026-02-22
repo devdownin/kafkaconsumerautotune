@@ -9,6 +9,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * This application is a high-performance Kafka consumer with auto-tuning capabilities,
  * a monitoring dashboard, and Dead Letter Topic (DLT) management.
  */
+@EnableRetry
 @EnableScheduling
 @SpringBootApplication
 public class ConsotopicApplication {
