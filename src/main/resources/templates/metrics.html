@@ -546,7 +546,8 @@
     let sortDirections = [true, true, true, true]; // true for asc
     function sortMetricsTable(colIndex) {
         const tbody = document.getElementById('metrics-table-body');
-        const rows = Array.from(tbody.querySelectorAll('tr'));
+        const rows = Array.from(tbody.querySelectorAll('.metric-row'));
+        const noResultsRow = tbody.querySelector('.no-results-row');
         const asc = sortDirections[colIndex];
 
         const sortedRows = rows.sort((a, b) => {
@@ -565,10 +566,32 @@
             }
         });
 
-        tbody.append(...sortedRows);
+        // Clear and re-append
+        rows.forEach(row => row.remove());
+        sortedRows.forEach(row => {
+            if (noResultsRow) {
+                tbody.insertBefore(row, noResultsRow);
+            } else {
+                tbody.appendChild(row);
+            }
+        });
+
         sortDirections[colIndex] = !asc;
 
-        // Update sort icons if we wanted to be fancy, but this is a good start.
+        // Update UI icons
+        const headers = document.querySelectorAll('th.cursor-pointer');
+        headers.forEach((th, idx) => {
+            const icon = th.querySelector('.material-symbols-outlined');
+            if (idx === colIndex) {
+                icon.innerText = asc ? 'arrow_drop_up' : 'arrow_drop_down';
+                icon.classList.remove('opacity-0');
+                icon.classList.add('opacity-100', 'text-primary');
+            } else {
+                icon.innerText = 'unfold_more';
+                icon.classList.add('opacity-0');
+                icon.classList.remove('opacity-100', 'text-primary');
+            }
+        });
     }
 
 

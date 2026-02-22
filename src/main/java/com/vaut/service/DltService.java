@@ -21,6 +21,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Service for managing the Dead Letter Topic (DLT) flow.
+ * Handles routing failed messages to the DLT and provides operations for retrying or discarding them.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -38,7 +42,7 @@ public class DltService {
      *
      * @param record The original Kafka record that failed processing.
      * @param reason The reason for the failure.
-     * @return The DltEvent entity.
+     * @return The DltEvent entity representing the failure.
      */
     public DltEvent routeToDlt(ConsumerRecord<String, String> record, String reason) {
         // 1. Send to Kafka DLT topic
@@ -98,6 +102,11 @@ public class DltService {
         return "MEDIUM";
     }
 
+    /**
+     * Retries a specific DLT event by re-sending it to its original Kafka topic.
+     *
+     * @param id The ID of the DltEvent to retry.
+     */
     @Transactional
     public void retryEvent(Long id) {
         dltEventRepository.findById(id).ifPresent(event -> {
@@ -114,6 +123,11 @@ public class DltService {
         });
     }
 
+    /**
+     * Marks a specific DLT event as discarded.
+     *
+     * @param id The ID of the DltEvent to discard.
+     */
     @Transactional
     public void discardEvent(Long id) {
         dltEventRepository.findById(id).ifPresent(event -> {
@@ -126,6 +140,9 @@ public class DltService {
         });
     }
 
+    /**
+     * Retries all currently unresolved DLT events.
+     */
     @Transactional
     public void retryAll() {
         List<DltEvent> unresolved = dltEventRepository.findByStatus("UNRESOLVED");
@@ -133,6 +150,9 @@ public class DltService {
         unresolved.forEach(event -> retryEvent(event.getId()));
     }
 
+    /**
+     * Discards all currently unresolved DLT events.
+     */
     @Transactional
     public void discardAll() {
         List<DltEvent> unresolved = dltEventRepository.findByStatus("UNRESOLVED");
@@ -140,18 +160,34 @@ public class DltService {
         unresolved.forEach(event -> discardEvent(event.getId()));
     }
 
+    /**
+     * Retries a specific set of DLT events by their IDs.
+     *
+     * @param ids List of DltEvent IDs to retry.
+     */
     @Transactional
     public void bulkRetry(List<Long> ids) {
         log.info("Bulk retrying {} events", ids.size());
         ids.forEach(this::retryEvent);
     }
 
+    /**
+     * Discards a specific set of DLT events by their IDs.
+     *
+     * @param ids List of DltEvent IDs to discard.
+     */
     @Transactional
     public void bulkDiscard(List<Long> ids) {
         log.info("Bulk discarding {} events", ids.size());
         ids.forEach(this::discardEvent);
     }
 
+    /**
+     * Retries a specific DLT event with a modified payload.
+     *
+     * @param id The ID of the DltEvent to retry.
+     * @param modifiedPayload The new payload to use for the retry.
+     */
     @Transactional
     public void retryWithPayload(Long id, String modifiedPayload) {
         dltEventRepository.findById(id).ifPresent(event -> {

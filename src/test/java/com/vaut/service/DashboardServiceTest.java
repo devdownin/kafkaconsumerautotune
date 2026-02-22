@@ -20,7 +20,10 @@ import java.sql.DatabaseMetaData;
 import java.util.Map;
 import java.util.Optional;
 
+import com.vaut.dto.repository.DltStatsProjection;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -85,10 +88,12 @@ class DashboardServiceTest {
 
         // Given
         when(eventRepository.count()).thenReturn(95L);
-        when(dltEventRepository.count()).thenReturn(5L);
-        when(dltEventRepository.countByStatus("UNRESOLVED")).thenReturn(3L);
-        when(dltEventRepository.countByStatus("RESOLVED")).thenReturn(1L);
-        when(dltEventRepository.countByStatus("DISCARDED")).thenReturn(1L);
+        DltStatsProjection dltStats = mock(DltStatsProjection.class);
+        when(dltEventRepository.getDltStats(any())).thenReturn(dltStats);
+        when(dltStats.getTotalCount()).thenReturn(5L);
+        when(dltStats.getUnresolvedCount()).thenReturn(3L);
+        when(dltStats.getResolvedCount()).thenReturn(1L);
+        when(dltStats.getDiscardedCount()).thenReturn(1L);
 
         // When
         DashboardStatsDTO stats = dashboardService.getStats();
@@ -113,7 +118,8 @@ class DashboardServiceTest {
 
         // Given
         when(eventRepository.count()).thenReturn(0L);
-        when(dltEventRepository.count()).thenReturn(0L);
+        DltStatsProjection dltStats = mock(DltStatsProjection.class);
+        when(dltEventRepository.getDltStats(any())).thenReturn(dltStats);
 
         // When
         DashboardStatsDTO stats = dashboardService.getStats();
@@ -127,6 +133,8 @@ class DashboardServiceTest {
         io.micrometer.core.instrument.search.Search mockSearch = mock(io.micrometer.core.instrument.search.Search.class);
         when(meterRegistry.find(anyString())).thenReturn(mockSearch);
         when(mockSearch.counter()).thenReturn(mock(io.micrometer.core.instrument.Counter.class));
+        DltStatsProjection dltStats = mock(DltStatsProjection.class);
+        when(dltEventRepository.getDltStats(any())).thenReturn(dltStats);
 
         // Given
         DashboardStatsDTO statsInitial = dashboardService.getStats();

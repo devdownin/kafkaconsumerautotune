@@ -1,44 +1,45 @@
 package com.vaut.service;
 
-
-import com.vaut.config.AppConstants;
 import com.vaut.entity.DltEvent;
 import com.vaut.entity.KEvent;
 import com.vaut.repository.DltEventRepository;
-
+import com.vaut.service.base.AbstractBatchConsumer;
 import io.micrometer.core.instrument.MeterRegistry;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
+import java.util.Optional;
 
 /**
- * Kafka consumer service that processes events in batches.
- * This service handles generalized message processing, persistence, and DLT routing.
+ * Concrete implementation of a Kafka batch consumer for {@link KEvent}.
  */
 @Service
 @Slf4j
-@RequiredArgsConstructor
-public class EventBatchConsumer {
+public class EventBatchConsumer extends AbstractBatchConsumer<KEvent> {
 
     private final EventPersistenceService persistenceService;
     private final EventProcessingService processingService;
-    private final DltService dltService;
-    private final DltEventRepository dltEventRepository;
-    private final MeterRegistry meterRegistry;
-    private final WebSocketService webSocketService;
 
     /**
-     * Consumes a batch of records from Kafka.
-     *
-     * @param records The batch of Kafka records.
-     * @param acknowledgment Acknowledgment handle for manual offset commit.
+     * Constructs a new EventBatchConsumer.
+     */
+    public EventBatchConsumer(EventPersistenceService persistenceService,
+                              EventProcessingService processingService,
+                              DltService dltService,
+                              DltEventRepository dltEventRepository,
+                              MeterRegistry meterRegistry,
+                              WebSocketService webSocketService) {
+        super(dltService, dltEventRepository, meterRegistry, webSocketService);
+        this.persistenceService = persistenceService;
+        this.processingService = processingService;
+    }
+
+    /**
+     * Kafka listener entry point.
      */
     @KafkaListener(
             id = "eventBatchConsumer",
@@ -46,50 +47,41 @@ public class EventBatchConsumer {
             groupId = "${spring.kafka.consumer.group-id}",
             containerFactory = "batchFactory")
     public void consumeBatch(List<ConsumerRecord<String, String>> records, Acknowledgment acknowledgment) {
-        long startTime = System.currentTimeMillis();
-        log.info("Received batch of {} records from Kafka", records.size());
-        
-        meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_RECEIVED_COUNT).increment(records.size());
-        
-        List<KEvent> eventsToPersist = new ArrayList<>();
-        List<DltEvent> dltEventsToPersist = new ArrayList<>();
-        
-        for (ConsumerRecord<String, String> record : records) {
-            try {
-                processingService.recordSizeMetric(record);
-
-                processingService.processRecord(record).ifPresentOrElse(
-                    eventsToPersist::add,
-                    () -> dltEventsToPersist.add(dltService.routeToDlt(record, "Processing failed (Check logs)"))
-                );
-            } catch (Exception e) {
-                log.error("Unexpected error processing record at partition {} offset {}: {}",
-                        record.partition(), record.offset(), e.getMessage());
-                dltEventsToPersist.add(dltService.routeToDlt(record, "Unexpected error: " + e.getMessage()));
-            }
-        }
-        
-        persistBatches(eventsToPersist, dltEventsToPersist);
-        
-        acknowledgment.acknowledge();
-
-        long duration = System.currentTimeMillis() - startTime;
-        meterRegistry.timer(AppConstants.METRIC_KAFKA_EVENTS_BATCH_DURATION).record(duration, TimeUnit.MILLISECONDS);
-        log.info("Batch of {} records processed in {}ms", records.size(), duration);
+        super.consume(records, acknowledgment);
     }
 
-    private void persistBatches(List<KEvent> events, List<DltEvent> dltEvents) {
-        // Successful events
-        if (!events.isEmpty()) {
-            List<KEvent> persisted = persistenceService.saveEventsBatch(events);
-            meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS, "type", "success").increment(events.size());
-            webSocketService.sendNewEvents(persisted);
-        }
+    @Override
+    protected Optional<KEvent> processRecord(ConsumerRecord<String, String> record) {
+        return processingService.processRecord(record);
+    }
 
-        // DLT events
-        if (!dltEvents.isEmpty()) {
-            List<DltEvent> saved = dltEventRepository.saveAll(dltEvents);
-            saved.forEach(webSocketService::sendDltEvent);
-        }
+    @Override
+    protected List<KEvent> saveBatch(List<KEvent> entities) {
+        return persistenceService.saveEventsBatch(entities);
+    }
+
+    @Override
+    protected void broadcastPersisted(List<KEvent> entities) {
+        webSocketService.sendNewEvents(entities);
+    }
+
+    @Override
+    protected String getEntityId(KEvent entity) {
+        return entity.getEventId();
+    }
+
+    @Override
+    protected String getEntityTopic(KEvent entity) {
+        return entity.getKafkaTopic();
+    }
+
+    @Override
+    protected Integer getEntityPartition(KEvent entity) {
+        return entity.getKafkaPartition();
+    }
+
+    @Override
+    protected Long getEntityOffset(KEvent entity) {
+        return entity.getKafkaOffset();
     }
 }
