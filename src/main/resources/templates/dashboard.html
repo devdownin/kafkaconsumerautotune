@@ -63,6 +63,22 @@
                 </div>
             </div>
 
+            <!-- Fallback Mode Alert -->
+            <div id="fallback-alert" class="bg-amber-500/10 border border-amber-500/20 text-amber-500 px-6 py-4 rounded-xl flex items-center justify-between hidden">
+                <div class="flex items-center gap-4">
+                    <div class="p-2 bg-amber-500/20 rounded-lg">
+                        <span class="material-symbols-outlined animate-spin">sync_problem</span>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold uppercase tracking-tight">Individual Fallback Mode Active</h4>
+                        <p class="text-xs opacity-80">Batch persistence failed. The system is currently retrying records individually to isolate errors.</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-[10px] font-black uppercase px-2 py-1 rounded bg-amber-500 text-white">Degraded Mode</span>
+                </div>
+            </div>
+
             <!-- Stats Row -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm">
@@ -96,7 +112,10 @@
                         <div class="p-2 bg-rose-500/10 text-rose-500 rounded-lg">
                             <span class="material-symbols-outlined">warning</span>
                         </div>
-                        <span class="text-rose-500 text-xs font-bold" id="active-errors-tag">Active</span>
+                        <span class="flex items-center gap-1 text-rose-500 text-xs font-bold" id="active-errors-tag">
+                            <span id="dlt-pulse-dot" class="size-1.5 rounded-full bg-rose-500 hidden animate-ping"></span>
+                            Active
+                        </span>
                     </div>
                     <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">DLT Messages</p>
                     <h3 class="text-2xl font-bold mt-1" id="dlt-count" th:text="${stats.dltCount}">142</h3>
@@ -189,8 +208,9 @@
                     <table class="w-full text-left border-collapse">
                         <thead class="bg-slate-50 dark:bg-slate-800/50">
                         <tr>
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Status</th>
                             <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Topic</th>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Event ID</th>
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Event ID / Error</th>
                             <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Offset</th>
                             <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Partition</th>
                             <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Oracle ID</th>
@@ -199,7 +219,7 @@
                         </thead>
                         <tbody id="events-table-body" class="divide-y divide-slate-100 dark:divide-slate-800">
                         <tr id="empty-state" th:if="${#lists.isEmpty(recentEvents)}">
-                            <td colspan="6" class="px-6 py-12 text-center text-slate-500">
+                            <td colspan="7" class="px-6 py-12 text-center text-slate-500">
                                 <div class="flex flex-col items-center gap-2">
                                     <span class="material-symbols-outlined text-4xl opacity-20">inventory_2</span>
                                     <p class="text-sm font-medium">No events processed yet</p>
@@ -207,7 +227,10 @@
                                 </div>
                             </td>
                         </tr>
-                        <tr th:each="event : ${recentEvents}">
+                        <tr th:each="event : ${recentEvents}" class="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                            <td class="px-6 py-4">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">Success</span>
+                            </td>
                             <td class="px-6 py-4 text-sm font-medium" th:text="${event.kafkaTopic}">topic.name</td>
                             <td class="px-6 py-4 text-sm font-bold text-primary" th:text="${event.eventId}">EVT-123</td>
                             <td class="px-6 py-4 text-sm font-mono text-slate-500" th:text="${event.kafkaOffset != null ? event.kafkaOffset : '-'}">-</td>
@@ -248,6 +271,11 @@
         stompClient.subscribe('/topic/stats', function (statsMessage) {
             var stats = JSON.parse(statsMessage.body);
             updateStats(stats);
+        });
+        stompClient.subscribe('/topic/dlt', function (dltMessage) {
+            var dltEvent = JSON.parse(dltMessage.body);
+            updateDashboardWithDlt(dltEvent);
+            pulseDltCounter();
         });
     }, function(error) {
         updateWsStatus(false);
@@ -397,23 +425,82 @@
 
         events.forEach(function(event) {
             var row = document.createElement('tr');
-            row.className = 'divide-y divide-slate-100 dark:divide-slate-800 animate-pulse';
+            row.className = 'hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors animate-pulse';
             var date = new Date(event.createdAt);
             var formattedDate = date.toISOString().replace('T', ' ').substring(0, 19);
 
-            row.innerHTML = `
-                <td class="px-6 py-4 text-sm font-medium">${event.kafkaTopic || '-'}</td>
-                <td class="px-6 py-4 text-sm font-bold text-primary">${event.eventId}</td>
-                <td class="px-6 py-4 text-sm font-mono text-slate-500">${event.kafkaOffset != null ? event.kafkaOffset : '-'}</td>
-                <td class="px-6 py-4 text-sm font-medium">${event.kafkaPartition != null ? event.kafkaPartition : '-'}</td>
-                <td class="px-6 py-4 text-sm font-mono text-slate-500">${event.id}</td>
-                <td class="px-6 py-4 text-sm text-slate-500 text-right">${formattedDate}</td>
-            `;
+            const cells = [
+                { html: '<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">Success</span>', class: 'px-6 py-4' },
+                { text: event.kafkaTopic || '-', class: 'px-6 py-4 text-sm font-medium' },
+                { text: event.eventId, class: 'px-6 py-4 text-sm font-bold text-primary' },
+                { text: event.kafkaOffset != null ? event.kafkaOffset : '-', class: 'px-6 py-4 text-sm font-mono text-slate-500' },
+                { text: event.kafkaPartition != null ? event.kafkaPartition : '-', class: 'px-6 py-4 text-sm font-medium' },
+                { text: event.id, class: 'px-6 py-4 text-sm font-mono text-slate-500' },
+                { text: formattedDate, class: 'px-6 py-4 text-sm text-slate-500 text-right' }
+            ];
+
+            cells.forEach(c => {
+                const td = document.createElement('td');
+                td.className = c.class;
+                if (c.html) td.innerHTML = c.html;
+                else td.textContent = c.text;
+                row.appendChild(td);
+            });
+
             if (tableBody.firstChild) tableBody.insertBefore(row, tableBody.firstChild);
             else tableBody.appendChild(row);
             setTimeout(function() { row.classList.remove('animate-pulse'); }, 2000);
             if (tableBody.children.length > 15) tableBody.removeChild(tableBody.lastChild);
         });
+    }
+
+    function updateDashboardWithDlt(event) {
+        var tableBody = document.getElementById('events-table-body');
+        var emptyState = document.getElementById('empty-state');
+        if (emptyState) emptyState.style.display = 'none';
+
+        var row = document.createElement('tr');
+        row.className = 'bg-rose-500/5 hover:bg-rose-500/10 transition-colors animate-pulse';
+        var date = new Date(event.dhm);
+        var formattedDate = date.toISOString().replace('T', ' ').substring(0, 19);
+
+        const cells = [
+            { html: '<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-500/10 text-rose-500 border border-rose-500/20">DLT</span>', class: 'px-6 py-4' },
+            { text: event.originalTopic || '-', class: 'px-6 py-4 text-sm font-medium' },
+            { text: event.errorMessage, class: 'px-6 py-4 text-sm font-bold text-rose-500 truncate max-w-[200px]', title: event.errorMessage },
+            { text: event.originalOffset != null ? event.originalOffset : '-', class: 'px-6 py-4 text-sm font-mono text-slate-500' },
+            { text: event.originalPartition != null ? event.originalPartition : '-', class: 'px-6 py-4 text-sm font-medium' },
+            { text: event.id, class: 'px-6 py-4 text-sm font-mono text-slate-500' },
+            { text: formattedDate, class: 'px-6 py-4 text-sm text-slate-500 text-right' }
+        ];
+
+        cells.forEach(c => {
+            const td = document.createElement('td');
+            td.className = c.class;
+            if (c.html) td.innerHTML = c.html;
+            else td.textContent = c.text;
+            if (c.title) td.title = c.title;
+            row.appendChild(td);
+        });
+
+        if (tableBody.firstChild) tableBody.insertBefore(row, tableBody.firstChild);
+        else tableBody.appendChild(row);
+
+        setTimeout(function() { row.classList.remove('animate-pulse'); }, 2000);
+        if (tableBody.children.length > 15) tableBody.removeChild(tableBody.lastChild);
+    }
+
+    function pulseDltCounter() {
+        const counter = document.getElementById('dlt-count');
+        const dot = document.getElementById('dlt-pulse-dot');
+        if (counter) {
+            counter.classList.add('text-rose-500', 'scale-110', 'transition-transform');
+            if (dot) dot.classList.remove('hidden');
+            setTimeout(() => {
+                counter.classList.remove('scale-110');
+                if (dot) setTimeout(() => dot.classList.add('hidden'), 5000);
+            }, 200);
+        }
     }
 
     function clearSearch() {
