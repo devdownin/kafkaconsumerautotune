@@ -5,6 +5,7 @@ import com.vaut.entity.KEvent;
 import com.vaut.entity.DltEvent;
 import com.vaut.dto.dashboard.DashboardStatsDTO;
 import com.vaut.dto.dashboard.JvmStatsDTO;
+import com.vaut.dto.dashboard.SystemEventDTO;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -62,6 +63,15 @@ public class WebSocketService {
      */
     public void sendJvmStats(JvmStatsDTO stats) {
         messagingTemplate.convertAndSend(AppConstants.WEBSOCKET_TOPIC_METRICS, stats);
+    }
+
+    /**
+     * Broadcasts a system-wide event (notification).
+     *
+     * @param event The system event to broadcast.
+     */
+    public void sendSystemEvent(SystemEventDTO event) {
+        messagingTemplate.convertAndSend(AppConstants.WEBSOCKET_TOPIC_SYSTEM_EVENTS, event);
     }
 
     /**

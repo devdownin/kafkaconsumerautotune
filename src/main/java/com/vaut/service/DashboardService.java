@@ -31,6 +31,7 @@ import org.springframework.boot.logging.LoggerConfiguration;
 import com.vaut.config.AppConstants;
 import java.util.Optional;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.ConsumerGroupDescription;
 import org.apache.kafka.clients.admin.ListConsumerGroupOffsetsOptions;
@@ -77,6 +78,7 @@ public class DashboardService {
     private final WebSocketService webSocketService;
     private final KafkaTuningService kafkaTuningService;
     private final MetricThresholdProperties metricThresholdProperties;
+    private final CircuitBreakerRegistry circuitBreakerRegistry;
 
     private static final int THROUGHPUT_5S_SIZE = 180; // 15 minutes at 5s interval
     private static final int THROUGHPUT_1M_SIZE = 1440; // 24 hours at 1m interval
@@ -485,6 +487,7 @@ public class DashboardService {
 
         String version = buildProperties.map(BuildProperties::getVersion).orElse("1.0.0-SNAPSHOT");
         Map<String, Object> tuningParams = kafkaTuningService.getCurrentTuningParameters();
+        String cbStatus = circuitBreakerRegistry.circuitBreaker("persistence").getState().name();
 
         Long sslCertExpiry = null;
         if (sslEnabled) {
@@ -531,6 +534,7 @@ public class DashboardService {
                 .fetchMinBytes((Integer) tuningParams.get("fetchMinBytes"))
                 .fetchMaxWaitMs((Integer) tuningParams.get("fetchMaxWaitMs"))
                 .concurrency((Integer) tuningParams.get("concurrency"))
+                .circuitBreakerStatus(cbStatus)
                 .build();
     }
 }

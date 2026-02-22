@@ -4,6 +4,9 @@
     <title>Application Metrics</title>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<!-- Global Notifications -->
+<div th:replace="~{fragments/notifications :: notifications}"></div>
+
 <div class="flex h-screen overflow-hidden">
     <!-- Sidebar Navigation -->
     <div th:replace="~{fragments/sidebar :: sidebar}"></div>
@@ -339,6 +342,7 @@
     stompClient.connect({}, function (frame) {
         document.getElementById('ws-alert').classList.add('hidden');
         updateWsStatus(true);
+        initSystemNotifications(stompClient);
 
         stompClient.subscribe('/topic/metrics', function (message) {
             var stats = JSON.parse(message.body);

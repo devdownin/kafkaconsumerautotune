@@ -64,6 +64,9 @@ class DashboardServiceTest {
     @Mock
     private com.vaut.config.MetricThresholdProperties metricThresholdProperties;
 
+    @Mock
+    private io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry circuitBreakerRegistry;
+
     private DashboardService dashboardService;
 
     @org.junit.jupiter.api.BeforeEach
@@ -74,7 +77,11 @@ class DashboardServiceTest {
             "fetchMaxWaitMs", 500,
             "concurrency", 6
         ));
-        dashboardService = new DashboardService(eventRepository, dltEventRepository, entityManager, Optional.empty(), dataSource, loggingSystem, meterRegistry, Optional.of(adminClient), kafkaProperties, webSocketService, kafkaTuningService, metricThresholdProperties);
+        io.github.resilience4j.circuitbreaker.CircuitBreaker cb = mock(io.github.resilience4j.circuitbreaker.CircuitBreaker.class);
+        when(circuitBreakerRegistry.circuitBreaker("persistence")).thenReturn(cb);
+        when(cb.getState()).thenReturn(io.github.resilience4j.circuitbreaker.CircuitBreaker.State.CLOSED);
+
+        dashboardService = new DashboardService(eventRepository, dltEventRepository, entityManager, Optional.empty(), dataSource, loggingSystem, meterRegistry, Optional.of(adminClient), kafkaProperties, webSocketService, kafkaTuningService, metricThresholdProperties, circuitBreakerRegistry);
     }
 
     @Test

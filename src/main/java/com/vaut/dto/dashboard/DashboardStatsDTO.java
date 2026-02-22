@@ -100,4 +100,7 @@ public class DashboardStatsDTO {
     private Integer fetchMaxWaitMs;
     /** Current number of concurrent consumer threads. */
     private Integer concurrency;
+
+    /** Current state of the persistence circuit breaker. */
+    private String circuitBreakerStatus;
 }

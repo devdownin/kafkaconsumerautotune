@@ -1,5 +1,6 @@
 package com.vaut.service;
 
+import com.vaut.dto.dashboard.SystemEventDTO;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import jakarta.annotation.PostConstruct;
@@ -8,6 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
 
 /**
  * Service that listens to Circuit Breaker state transitions and controls the Kafka consumer.
@@ -21,6 +24,7 @@ public class CircuitBreakerStateListener {
 
     private final KafkaListenerEndpointRegistry registry;
     private final CircuitBreakerRegistry circuitBreakerRegistry;
+    private final WebSocketService webSocketService;
 
     /**
      * Registers a listener for state transition events on the 'persistence' circuit breaker.
@@ -32,6 +36,17 @@ public class CircuitBreakerStateListener {
                 CircuitBreaker.StateTransition transition = event.getStateTransition();
                 log.warn("Circuit Breaker 'persistence' transitioned from {} to {}",
                         transition.getFromState(), transition.getToState());
+
+                String state = transition.getToState().name();
+                SystemEventDTO systemEvent = SystemEventDTO.builder()
+                        .category("CIRCUIT_BREAKER")
+                        .title("Persistence Circuit Breaker")
+                        .message("State changed to " + state)
+                        .type(transition.getToState() == CircuitBreaker.State.OPEN ? "ERROR" :
+                              (transition.getToState() == CircuitBreaker.State.HALF_OPEN ? "WARNING" : "SUCCESS"))
+                        .timestamp(LocalDateTime.now())
+                        .build();
+                webSocketService.sendSystemEvent(systemEvent);
 
                 if (transition.getToState() == CircuitBreaker.State.OPEN) {
                     stopConsumer();

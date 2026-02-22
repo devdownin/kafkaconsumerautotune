@@ -1,6 +1,7 @@
 package com.vaut.service.base;
 
 import com.vaut.config.AppConstants;
+import com.vaut.dto.dashboard.SystemEventDTO;
 import com.vaut.entity.DltEvent;
 import com.vaut.repository.DltEventRepository;
 import com.vaut.service.DltService;
@@ -137,6 +138,13 @@ public abstract class AbstractBatchConsumer<T> {
                 throw e; // Re-throw to trigger Kafka retry/stop
             } catch (Exception e) {
                 log.error("Batch persistence failed, falling back to individual processing: {}", e.getMessage());
+                webSocketService.sendSystemEvent(SystemEventDTO.builder()
+                        .type("WARNING")
+                        .category("BATCH")
+                        .title("Batch Persistence Failure")
+                        .message("Falling back to individual processing for " + entities.size() + " records")
+                        .timestamp(java.time.LocalDateTime.now())
+                        .build());
                 for (T entity : entities) {
                     try {
                         List<T> persisted = saveBatch(List.of(entity));
