@@ -62,7 +62,7 @@ public class KafkaOptimizerService {
      */
     public List<KafkaPropertyOptimization> getRecentOptimizations() {
         List<KafkaPropertyOptimization> sorted = new ArrayList<>(optimizations);
-        sorted.sort((a, b) -> b.getTimestamp().compareTo(a.getTimestamp()));
+        sorted.sort((a, b) -> b.timestamp().compareTo(a.timestamp()));
         return sorted.stream().limit(10).toList();
     }
 

@@ -106,12 +106,12 @@ class DashboardServiceTest {
         DashboardStatsDTO stats = dashboardService.getStats();
 
         // Then
-        assertThat(stats.getTotalProcessed()).isEqualTo(100L);
-        assertThat(stats.getSuccessRate()).isEqualTo(95.0);
-        assertThat(stats.getDltCount()).isEqualTo(5L);
-        assertThat(stats.getSuccessCount()).isEqualTo(95L);
-        assertThat(stats.getErrorCount()).isEqualTo(3L);
-        assertThat(stats.getRetryCount()).isEqualTo(2L);
+        assertThat(stats.totalProcessed()).isEqualTo(100L);
+        assertThat(stats.successRate()).isEqualTo(95.0);
+        assertThat(stats.dltCount()).isEqualTo(5L);
+        assertThat(stats.successCount()).isEqualTo(95L);
+        assertThat(stats.errorCount()).isEqualTo(3L);
+        assertThat(stats.retryCount()).isEqualTo(2L);
     }
 
     @Test
@@ -132,7 +132,7 @@ class DashboardServiceTest {
         DashboardStatsDTO stats = dashboardService.getStats();
 
         // Then
-        assertThat(stats.getSuccessRate()).isEqualTo(100.0);
+        assertThat(stats.successRate()).isEqualTo(100.0);
     }
 
     @Test
@@ -145,7 +145,7 @@ class DashboardServiceTest {
 
         // Given
         DashboardStatsDTO statsInitial = dashboardService.getStats();
-        assertThat(statsInitial.getThroughput()).hasSize(180);
+        assertThat(statsInitial.throughput()).hasSize(180);
 
         // When - simulation of throughput updates
         for (int i = 0; i < 200; i++) {
@@ -154,6 +154,6 @@ class DashboardServiceTest {
 
         // Then
         DashboardStatsDTO statsAfter = dashboardService.getStats();
-        assertThat(statsAfter.getThroughput()).hasSize(180);
+        assertThat(statsAfter.throughput()).hasSize(180);
     }
 }

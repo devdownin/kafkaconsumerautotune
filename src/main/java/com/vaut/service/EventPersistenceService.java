@@ -3,10 +3,9 @@ package com.vaut.service;
 import com.vaut.entity.KEvent;
 import com.vaut.repository.KEventRepository;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,12 +32,8 @@ public class EventPersistenceService {
      * @return List of events that were actually saved.
      */
     @Transactional
-    @Retryable(
-        retryFor = { org.springframework.dao.TransientDataAccessException.class, org.springframework.dao.ConcurrencyFailureException.class },
-        maxAttempts = 3,
-        backoff = @Backoff(delay = 1000, multiplier = 2)
-    )
     @CircuitBreaker(name = "persistence")
+    @Retry(name = "persistence")
     public List<KEvent> saveEventsBatch(List<KEvent> events) {
         if (events == null || events.isEmpty()) {
             return List.of();

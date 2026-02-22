@@ -144,6 +144,16 @@ resilience4j:
           - org.springframework.dao.TransientDataAccessException
           - org.springframework.dao.DataAccessResourceFailureException
           - java.sql.SQLException
+  retry:
+    instances:
+      persistence:
+        maxAttempts: 3
+        waitDuration: 1s
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - org.springframework.dao.TransientDataAccessException
+          - org.springframework.dao.ConcurrencyFailureException
 
 management:
   # Exposition des endpoints Actuator pour le monitoring (Prometheus, Health, etc.)

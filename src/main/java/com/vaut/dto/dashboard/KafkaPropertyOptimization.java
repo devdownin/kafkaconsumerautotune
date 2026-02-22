@@ -1,24 +1,22 @@
 package com.vaut.dto.dashboard;
 
 import lombok.Builder;
-import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
  * Data Transfer Object representing a single Kafka property optimization event.
  * Records when and why a consumer parameter was adjusted by the auto-tuning service.
  */
-@Data
 @Builder
-public class KafkaPropertyOptimization {
+public record KafkaPropertyOptimization(
     /** The name of the Kafka property that was changed (e.g., max.poll.records). */
-    private String propertyName;
+    String propertyName,
     /** The value of the property before the optimization. */
-    private String oldValue;
+    String oldValue,
     /** The new value applied to the property. */
-    private String newValue;
+    String newValue,
     /** The reason for the adjustment (e.g., "Throughput target exceeded"). */
-    private String reason;
+    String reason,
     /** The timestamp when the optimization was applied. */
-    private LocalDateTime timestamp;
-}
+    LocalDateTime timestamp
+) {}

@@ -2,12 +2,13 @@ package com.vaut.dto.repository;
 
 /**
  * Interface projection for DLT statistics retrieved from the database.
+ * Uses wrapper types (Long, Double) to safely handle potential NULL values from SUM/AVG queries.
  */
 public interface DltStatsProjection {
-    long getTotalCount();
-    long getUnresolvedCount();
-    long getResolvedCount();
-    long getDiscardedCount();
-    long getCountLast24h();
+    Long getTotalCount();
+    Long getUnresolvedCount();
+    Long getResolvedCount();
+    Long getDiscardedCount();
+    Long getCountLast24h();
     Double getAvgResolutionTimeMinutes();
 }

@@ -41,7 +41,7 @@ public class DashboardController {
 		// Add stats for the dashboard
 		var stats = dashboardService.getStats();
 		model.addAttribute("stats", stats);
-		model.addAttribute("totalProcessed", stats.getTotalProcessed());
+		model.addAttribute("totalProcessed", stats.totalProcessed());
 		model.addAttribute("activePage", "dashboard");
 
 		return "dashboard";
