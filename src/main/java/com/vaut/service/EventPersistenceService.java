@@ -2,6 +2,7 @@ package com.vaut.service;
 
 import com.vaut.entity.KEvent;
 import com.vaut.repository.KEventRepository;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.retry.annotation.Backoff;
@@ -37,6 +38,7 @@ public class EventPersistenceService {
         maxAttempts = 3,
         backoff = @Backoff(delay = 1000, multiplier = 2)
     )
+    @CircuitBreaker(name = "persistence")
     public List<KEvent> saveEventsBatch(List<KEvent> events) {
         if (events == null || events.isEmpty()) {
             return List.of();

@@ -124,6 +124,7 @@ public abstract class AbstractBatchConsumer<T> {
 
     /**
      * Persists entities and DLT events with a fallback mechanism for resilience.
+     * Integrates with the Circuit Breaker: if the circuit is open, it avoids further processing.
      */
     private void persistBatches(List<T> entities, List<DltEvent> dltEvents, List<ConsumerRecord<String, String>> originalRecords) {
         if (!entities.isEmpty()) {
@@ -131,6 +132,9 @@ public abstract class AbstractBatchConsumer<T> {
                 List<T> persisted = saveBatch(entities);
                 meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS, "type", "success").increment(entities.size());
                 broadcastPersisted(persisted);
+            } catch (io.github.resilience4j.circuitbreaker.CallNotPermittedException e) {
+                log.error("Circuit breaker is OPEN. Database is likely unavailable. Stopping batch processing.");
+                throw e; // Re-throw to trigger Kafka retry/stop
             } catch (Exception e) {
                 log.error("Batch persistence failed, falling back to individual processing: {}", e.getMessage());
                 for (T entity : entities) {
@@ -138,13 +142,20 @@ public abstract class AbstractBatchConsumer<T> {
                         List<T> persisted = saveBatch(List.of(entity));
                         meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS, "type", "success").increment(1);
                         broadcastPersisted(persisted);
+                    } catch (io.github.resilience4j.circuitbreaker.CallNotPermittedException ex) {
+                        log.error("Circuit breaker opened during individual persistence. Stopping.");
+                        throw ex;
                     } catch (Exception ex) {
                         log.error("Failed to persist individual entity {}: {}", getEntityId(entity), ex.getMessage());
                         findOriginalRecord(originalRecords, entity).ifPresentOrElse(
                             record -> {
-                                DltEvent dltEvent = dltService.routeToDlt(record, "Persistence failed: " + ex.getMessage());
-                                List<DltEvent> saved = dltEventRepository.saveAll(List.of(dltEvent));
-                                saved.forEach(webSocketService::sendDltEvent);
+                                try {
+                                    DltEvent dltEvent = dltService.routeToDlt(record, "Persistence failed: " + ex.getMessage());
+                                    List<DltEvent> saved = dltEventRepository.saveAll(List.of(dltEvent));
+                                    saved.forEach(webSocketService::sendDltEvent);
+                                } catch (Exception dltEx) {
+                                    log.error("Critical: Could not route to DLT as database is also failing DLT persistence: {}", dltEx.getMessage());
+                                }
                             },
                             () -> log.error("Could not find original record for failed entity {}", getEntityId(entity))
                         );
