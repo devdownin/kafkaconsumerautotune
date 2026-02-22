@@ -5,6 +5,7 @@ import com.vaut.entity.KEvent;
 import com.vaut.entity.DltEvent;
 import com.vaut.dto.dashboard.DashboardStatsDTO;
 import com.vaut.dto.dashboard.JvmStatsDTO;
+import com.vaut.dto.dashboard.SystemEventDTO;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 

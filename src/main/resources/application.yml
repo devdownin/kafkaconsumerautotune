@@ -130,6 +130,31 @@ kafka:
     initial-delay: 30000
     fixed-rate: 60000
 
+resilience4j:
+  circuitbreaker:
+    instances:
+      persistence:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 50
+        recordExceptions:
+          - org.springframework.dao.TransientDataAccessException
+          - org.springframework.dao.DataAccessResourceFailureException
+          - java.sql.SQLException
+  retry:
+    instances:
+      persistence:
+        maxAttempts: 3
+        waitDuration: 1s
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - org.springframework.dao.TransientDataAccessException
+          - org.springframework.dao.ConcurrencyFailureException
+
 management:
   # Exposition des endpoints Actuator pour le monitoring (Prometheus, Health, etc.)
   endpoints:

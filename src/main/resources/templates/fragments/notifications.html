@@ -1,0 +1,84 @@
+<!-- Notifications Fragment -->
+<div th:fragment="notifications" id="toast-container" class="fixed bottom-8 right-8 z-[100] flex flex-col gap-3">
+    <script>
+        function showToast(event) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            // Define colors and icons based on type
+            let bgColor = 'bg-white dark:bg-slate-900';
+            let iconColor = 'text-primary';
+            let icon = 'info';
+
+            if (event.type === 'ERROR') {
+                iconColor = 'text-rose-500';
+                icon = 'error';
+            } else if (event.type === 'WARNING') {
+                iconColor = 'text-amber-500';
+                icon = 'warning';
+            } else if (event.type === 'SUCCESS') {
+                iconColor = 'text-emerald-500';
+                icon = 'check_circle';
+            }
+
+            toast.className = `flex items-start gap-4 p-4 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 ${bgColor} min-w-[320px] max-w-[400px] transform translate-x-full transition-transform duration-500 ease-out z-[101]`;
+
+            toast.innerHTML = `
+                <div class="p-2 rounded-lg bg-slate-50 dark:bg-slate-800 ${iconColor}">
+                    <span class="material-symbols-outlined text-xl">${icon}</span>
+                </div>
+                <div class="flex-1">
+                    <h5 class="text-sm font-bold">${event.title}</h5>
+                    <p class="text-xs text-slate-500 mt-1">${event.message}</p>
+                    <p class="text-[10px] text-slate-400 mt-2">${new Date(event.timestamp).toLocaleTimeString()}</p>
+                </div>
+                <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <span class="material-symbols-outlined text-sm">close</span>
+                </button>
+            `;
+
+            container.appendChild(toast);
+
+            // Trigger animation
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full');
+            }, 100);
+
+            // Auto-remove
+            setTimeout(() => {
+                toast.classList.add('translate-x-[150%]');
+                setTimeout(() => toast.remove(), 500);
+            }, 8000);
+        }
+
+        // Global WebSocket Listener for System Events
+        function initSystemNotifications(stompClient) {
+            stompClient.subscribe('/topic/system-events', function (message) {
+                const event = JSON.parse(message.body);
+                showToast(event);
+                updateSystemStatus(event);
+            });
+        }
+
+        function updateSystemStatus(event) {
+            if (event.category === 'CIRCUIT_BREAKER') {
+                const dot = document.getElementById('cb-status-dot');
+                const text = document.getElementById('cb-status-text');
+                const alert = document.getElementById('cb-alert');
+
+                const status = event.message.replace('State changed to ', '');
+
+                if (dot && text) {
+                    text.innerText = status;
+                    dot.className = 'size-2 rounded-full ' +
+                        (status === 'CLOSED' ? 'bg-emerald-500' : (status === 'HALF_OPEN' ? 'bg-amber-500' : 'bg-rose-500'));
+                }
+
+                if (alert) {
+                    if (status === 'OPEN') alert.classList.remove('hidden');
+                    else alert.classList.add('hidden');
+                }
+            }
+        }
+    </script>
+</div>

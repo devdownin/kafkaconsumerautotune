@@ -4,6 +4,10 @@ import com.vaut.entity.DltEvent;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import com.vaut.dto.repository.DltStatsProjection;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -35,4 +39,19 @@ public interface DltEventRepository extends JpaRepository<DltEvent, Long> {
      * @return A list of matching DltEvent objects.
      */
     List<DltEvent> findByStatus(String status);
+
+    /**
+     * Retrieves aggregated DLT statistics in a single query.
+     *
+     * @param last24h The timestamp for the last 24 hours.
+     * @return A projection containing the aggregated stats.
+     */
+    @Query("SELECT " +
+           "COUNT(e) as totalCount, " +
+           "SUM(CASE WHEN e.status = 'UNRESOLVED' THEN 1L ELSE 0L END) as unresolvedCount, " +
+           "SUM(CASE WHEN e.status = 'RESOLVED' THEN 1L ELSE 0L END) as resolvedCount, " +
+           "SUM(CASE WHEN e.status = 'DISCARDED' THEN 1L ELSE 0L END) as discardedCount, " +
+           "SUM(CASE WHEN e.dhm > :last24h THEN 1L ELSE 0L END) as countLast24h " +
+           "FROM DltEvent e")
+    DltStatsProjection getDltStats(@Param("last24h") LocalDateTime last24h);
 }

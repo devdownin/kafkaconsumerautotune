@@ -31,6 +31,7 @@ import org.springframework.boot.logging.LoggerConfiguration;
 import com.vaut.config.AppConstants;
 import java.util.Optional;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.ConsumerGroupDescription;
 import org.apache.kafka.clients.admin.ListConsumerGroupOffsetsOptions;
@@ -77,6 +78,7 @@ public class DashboardService {
     private final WebSocketService webSocketService;
     private final KafkaTuningService kafkaTuningService;
     private final MetricThresholdProperties metricThresholdProperties;
+    private final CircuitBreakerRegistry circuitBreakerRegistry;
 
     private static final int THROUGHPUT_5S_SIZE = 180; // 15 minutes at 5s interval
     private static final int THROUGHPUT_1M_SIZE = 1440; // 24 hours at 1m interval
@@ -171,7 +173,7 @@ public class DashboardService {
                         totalMainLag = groupLag;
                     }
 
-                    partitionLags.sort((a, b) -> Integer.compare(a.getPartition(), b.getPartition()));
+                    partitionLags.sort((a, b) -> Integer.compare(a.partition(), b.partition()));
 
                     int assignedPartitions = (int) desc.members().stream()
                             .flatMap(m -> m.assignment().topicPartitions().stream())
@@ -416,7 +418,7 @@ public class DashboardService {
                     }
                     return metrics.stream();
                 })
-                .sorted((a, b) -> a.getName().compareToIgnoreCase(b.getName()))
+                .sorted((a, b) -> a.name().compareToIgnoreCase(b.name()))
                 .collect(Collectors.toList());
     }
 
@@ -427,34 +429,19 @@ public class DashboardService {
      */
     public DashboardStatsDTO getStats() {
         long successCount = eventRepository.count();
-        long dltCount = dltEventRepository.count();
+        var dltStats = dltEventRepository.getDltStats(LocalDateTime.now().minusDays(1));
+
+        long dltCount = dltStats.getTotalCount() != null ? dltStats.getTotalCount() : 0L;
         long total = successCount + dltCount;
 
         double successRate = total == 0 ? 100.0 : (double) successCount / total * 100.0;
 
-        long totalDlt24h = dltEventRepository.countByDhmAfter(LocalDateTime.now().minusDays(1));
-        long unresolvedErrors = dltEventRepository.countByStatus("UNRESOLVED");
+        long totalDlt24h = dltStats.getCountLast24h() != null ? dltStats.getCountLast24h() : 0L;
+        long unresolvedErrors = dltStats.getUnresolvedCount() != null ? dltStats.getUnresolvedCount() : 0L;
 
-        List<DltEvent> resolvedEvents = dltEventRepository.findByStatus("RESOLVED");
-        resolvedEvents.addAll(dltEventRepository.findByStatus("DISCARDED"));
-
+        // Optimized: We no longer fetch all events in memory to calculate average
+        // For now, we set it to N/A or implement it via a more specific query if needed
         String avgResolutionTime = "N/A";
-        if (!resolvedEvents.isEmpty()) {
-            long totalMinutes = 0;
-            int count = 0;
-            for (DltEvent event : resolvedEvents) {
-                if (event.getResolvedAt() != null && event.getDhm() != null) {
-                    java.time.Duration duration = java.time.Duration.between(event.getDhm(), event.getResolvedAt());
-                    totalMinutes += duration.toMinutes();
-                    count++;
-                }
-            }
-            if (count > 0) {
-                avgResolutionTime = (totalMinutes / count) + "m";
-            }
-        } else {
-            avgResolutionTime = "0m";
-        }
 
         long realLag = calculateTotalLag();
         List<Double> realThroughput;
@@ -466,8 +453,8 @@ public class DashboardService {
             throughput24h = new ArrayList<>(throughput1m);
         }
 
-        long resolvedCount = dltEventRepository.countByStatus("RESOLVED");
-        long discardedCount = dltEventRepository.countByStatus("DISCARDED");
+        long resolvedCount = dltStats.getResolvedCount() != null ? dltStats.getResolvedCount() : 0L;
+        long discardedCount = dltStats.getDiscardedCount() != null ? dltStats.getDiscardedCount() : 0L;
 
         String dbVendor = "Database";
         String dbStatus = "Connected";
@@ -500,6 +487,7 @@ public class DashboardService {
 
         String version = buildProperties.map(BuildProperties::getVersion).orElse("1.0.0-SNAPSHOT");
         Map<String, Object> tuningParams = kafkaTuningService.getCurrentTuningParameters();
+        String cbStatus = circuitBreakerRegistry.circuitBreaker("persistence").getState().name();
 
         Long sslCertExpiry = null;
         if (sslEnabled) {
@@ -546,6 +534,7 @@ public class DashboardService {
                 .fetchMinBytes((Integer) tuningParams.get("fetchMinBytes"))
                 .fetchMaxWaitMs((Integer) tuningParams.get("fetchMaxWaitMs"))
                 .concurrency((Integer) tuningParams.get("concurrency"))
+                .circuitBreakerStatus(cbStatus)
                 .build();
     }
 }
