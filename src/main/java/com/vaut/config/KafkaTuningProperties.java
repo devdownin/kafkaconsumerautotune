@@ -55,6 +55,26 @@ public class KafkaTuningProperties {
     private int maxMaxPollRecords = 1000;
 
     /**
+     * Minimum allowed fetch.min.bytes.
+     */
+    private int minFetchMinBytes = 1024;
+
+    /**
+     * Maximum allowed fetch.min.bytes.
+     */
+    private int maxFetchMinBytes = 1048576; // 1MB
+
+    /**
+     * Safety factor for fetch.max.bytes relative to (max.poll.records * avg.message.size).
+     */
+    private double fetchMaxBytesSafetyFactor = 1.5;
+
+    /**
+     * Safety factor for max.poll.interval.ms relative to target batch duration.
+     */
+    private double maxPollIntervalSafetyFactor = 3.0;
+
+    /**
      * Initial delay for the tuning task in milliseconds.
      */
     private long initialDelay = 30000;

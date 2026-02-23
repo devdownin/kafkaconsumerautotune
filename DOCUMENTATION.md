@@ -1,24 +1,29 @@
 # Documentation Technique - Kafka Consumer Auto-tune
 
 ## 1. Résumé Exécutif
-Consotopic est une application Spring Boot de haute performance conçue pour consommer des messages Kafka en mode batch, les traiter, et les persister dans une base de données (Oracle/H2). L'application se distingue par son moteur d'**auto-tuning** intelligent basé sur un contrôleur PID qui ajuste dynamiquement les paramètres du consommateur Kafka pour optimiser le débit et la latence en temps réel. Elle intègre également un système robuste de gestion des erreurs via une Dead Letter Topic (DLT), un mécanisme de résilience par repli (fallback), et un tableau de bord complet de monitoring.
+Consotopic est une application Spring Boot de haute performance conçue pour consommer des messages Kafka en mode batch, les traiter, et les persister dans une base de données (Oracle/H2). L'application se distingue par son moteur d'**auto-tuning** intelligent basé sur un contrôleur PID qui ajuste dynamiquement les paramètres du consommateur Kafka pour optimiser le débit et la latence en temps réel. Elle intègre également un système robuste de gestion des erreurs via une Dead Letter Topic (DLT), un mécanisme de résilience par repli (fallback), une protection par **Circuit Breaker**, et un tableau de bord complet de monitoring.
+
+**Documents complémentaires :**
+- [Modèles C4 (Architecture)](docs/c4-models.md)
+- [Gestion des Erreurs et Résilience](docs/error-management.md)
 
 ---
 
 ## 2. Architecture Globale
-L'application suit une architecture orientée services avec les couches suivantes :
-- **Couche de Consommation** : Moteur Kafka configuré en mode batch avec gestion manuelle des acquittements (Acks).
-- **Couche de Traitement (Moteur d'Auto-tune)** : Analyseur de performance qui réajuste les paramètres Kafka.
-- **Couche de Persistance** : Utilisation de Spring Data JPA avec support de batches JDBC pour une insertion efficace.
-- **Couche de Gestion DLT** : Système de récupération et de re-traitement des messages en échec.
-- **Couche de Monitoring** : Dashboard temps réel via WebSocket, Thymeleaf et Micrometer/Prometheus.
+L'application suit une architecture orientée services et modulaire avec les couches suivantes :
+- **Couche de Consommation Générique** : Utilisation d'une classe abstraite `AbstractBatchConsumer` pour standardiser le traitement des flux Kafka.
+- **Couche de Traitement (Moteur d'Auto-tune)** : Analyseur de performance basé sur un contrôleur PID qui réajuste les paramètres Kafka.
+- **Couche de Persistance Résiliente** : Utilisation de Spring Data JPA avec protection par Circuit Breaker (Resilience4j) et support de batches JDBC.
+- **Couche de Gestion DLT** : Système de récupération, stockage en base (DltEvent) et re-traitement des messages en échec.
+- **Couche de Monitoring** : Dashboard temps réel via WebSocket (STOMP), Thymeleaf et Micrometer/Prometheus.
 
 ---
 
 ## 3. Composants Clés
 
-### 3.1 Consommation Kafka (Batch Mode)
-Le service `EventBatchConsumer` est le point d'entrée des messages.
+### 3.1 Consommation Kafka (Mode Batch et Généricité)
+L'architecture de consommation repose sur `AbstractBatchConsumer<T>`, une classe de base générique qui implémente le cycle de vie du traitement batch.
+- **Standardisation** : Gère uniformément les métriques, le routage DLT, et la logique de persistance avec fallback.
 - **Mode Batch** : Activé via `factory.setBatchListener(true)`. Permet de traiter une liste de `ConsumerRecord` en une seule transaction logique.
 - **Acquittement Manuel** : L'offset n'est commité qu'une fois le traitement et la persistance du batch terminés avec succès (`acknowledgment.acknowledge()`).
 - **Isolation** : Configuré en `read_committed` pour garantir la lecture de messages stables.
@@ -35,20 +40,26 @@ C'est le composant le plus innovant de l'application. Il surveille le débit (`m
     - Seuil de changement minimal de 10% pour éviter les micro-ajustements.
     - Temps de pause (cooldown) de 5 minutes entre deux redémarrages de consommateur pour éviter les tempêtes de rebalance.
 
-### 3.3 Résilience et Gestion des Erreurs (DltService & Fallback)
-L'application implémente une stratégie de résilience à plusieurs niveaux pour éviter le blocage du flux de données (Poison Batch).
-- **Filtrage au Traitement** : Tout message dont le parsing ou l'extraction d'ID échoue est immédiatement dirigé vers la DLT.
-- **Mécanisme de Repli (Fallback) à la Persistance** : Si la persistence d'un batch complet échoue (ex: erreur de contrainte en base), l'application bascule automatiquement en mode individuel. Chaque message est alors tenté séparément. Ceux qui échouent encore sont envoyés à la DLT, permettant au reste du batch d'être validé et au consommateur de progresser.
+### 3.3 Résilience et Gestion des Erreurs (Circuit Breaker & Fallback)
+L'application implémente une stratégie de résilience à plusieurs niveaux pour garantir la continuité du service.
+
+#### 3.3.1 Protection de la Persistance (Circuit Breaker)
+Le service `EventPersistenceService` est protégé par un **Circuit Breaker** Resilience4j (nommé `persistence`).
+- **Retry** : En cas d'erreur transitoire, une politique de retry est appliquée avant l'ouverture du circuit.
+- **Gestion d'État** : Si la base de données devient indisponible, le circuit passe à l'état `OPEN`.
+- **Pilotage du Consommateur** : Le `CircuitBreakerStateListener` écoute les changements d'état. Si le circuit est `OPEN`, il arrête automatiquement le container Kafka (`KafkaListenerEndpointRegistry`) pour éviter d'accumuler des erreurs. Le consommateur est redémarré dès que le circuit repasse en `HALF_OPEN` ou `CLOSED`.
+
+#### 3.3.2 Mécanisme de Repli (Fallback)
+Si la persistence d'un batch complet échoue (ex: erreur de contrainte sur un seul message), l'application bascule automatiquement en mode individuel :
+1. Chaque message du batch est tenté séparément.
+2. Les messages qui réussissent sont persistés.
+3. Les messages provoquant toujours une erreur (ex: "Poison Message") sont dirigés vers la DLT.
+4. Le reste du batch est ainsi validé, permettant au consommateur de progresser sans blocage.
+
+#### 3.3.3 Dead Letter Topic (DLT)
 - **Kafka DLT Topic** : Pour une traçabilité technique avec headers (`DLT_EXCEPTION_MESSAGE`, etc.).
 - **Base de données (DltEvent)** : Pour une gestion via l'interface utilisateur.
 - **Actions possibles** : Retry (re-jeu), Discard (abandon), Modification du payload avant retry.
-
-### 3.4 Dashboard et Observabilité
-Le `DashboardService` agrège des métriques provenant de :
-- **Kafka AdminClient** : Lag par partition, état des Consumer Groups.
-- **JVM** : Utilisation CPU, mémoire Heap, threads.
-- **Database** : État du pool Hikari (connexions actives/inactives).
-- **Application** : Débit (sliding window de 5s et 24h), taux de succès.
 
 ---
 
@@ -62,10 +73,11 @@ Le `DashboardService` agrège des métriques provenant de :
 | `DB_USER` / `DB_PASSWORD` | Identifiants DB | - |
 | `KAFKA_TOPIC_NAME` | Topic source | `asf.peage.backoffice.sortie.recouvrable` |
 
-### 4.2 Profils Spring
-- **dev** : Utilise une base H2 en mémoire et Kafka en clair.
-- **rec** : Active la configuration SSL pour Kafka.
-- **local-h2** : Configuration pour tests locaux sans infrastructure complexe.
+### 4.2 Paramètres de Seuil (Circuit Breaker)
+Configurables dans `application.yml` :
+- `failureRateThreshold`: 50%
+- `waitDurationInOpenState`: 10000ms
+- `permittedNumberOfCallsInHalfOpenState`: 3
 
 ---
 
@@ -76,19 +88,14 @@ Accédez au dashboard via `/dashboard`. Il affiche :
 - Les courbes de débit (Throughput).
 - Le lag Kafka en temps réel.
 - L'état de santé du système et les paramètres actuels d'auto-tune.
-
-### 5.2 Gestion des Incidents (DLT)
-Via l'onglet "DLT Management" :
-1. Identifier les messages en erreur (status `UNRESOLVED`).
-2. Analyser le message d'erreur et le payload.
-3. Choisir de "Retry" après correction du système source ou "Discard" si le message est corrompu.
+- Les notifications système via des "Toasts" (ex: changement d'état du Circuit Breaker).
 
 ---
 
 ## 6. Spécifications Techniques et Qualité
-- **Java** : 21 (Utilisation intensive des Javadoc pour chaque fonction).
+- **Java** : 21 (Utilisation des `record` pour les DTOs).
 - **Spring Boot** : 3.5.9
-- **Tests** : Suite de tests d'intégration complète couvrant les cas nominaux et d'erreur (JSON invalide, ID manquant, doublons, erreurs de persistance).
-- **Base de données** : Oracle 23c (Runtime) / H2 (Dev/Test)
-- **Monitoring** : Micrometer + Prometheus
-- **UI** : Thymeleaf + Tailwind CSS + WebSockets (STOMP)
+- **Resilience** : Resilience4j (Circuit Breaker, Retry).
+- **Tests** : Suite de tests d'intégration complète avec `@EmbeddedKafka` et tests de Circuit Breaker.
+- **Monitoring** : Micrometer + Prometheus + WebSocket (STOMP).
+- **UI** : Thymeleaf + Tailwind CSS + Prism.js (Syntax highlighting).
