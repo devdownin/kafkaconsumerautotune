@@ -7,15 +7,20 @@ public final class AppConstants {
     private AppConstants() {}
 
     /** Total count of events received from Kafka. */
-    public static final String METRIC_KAFKA_EVENTS_RECEIVED_COUNT = "myconsumer.kafka.events.received.count";
+    public static final String METRIC_KAFKA_EVENTS_RECEIVED_COUNT = "app.kafka.events.received.count";
+    public static final String METRIC_KAFKA_EVENTS_RECEIVED_COUNT_DESC = "Total count of events received from Kafka";
     /** Size (in bytes) of individual events received from Kafka. */
-    public static final String METRIC_KAFKA_EVENT_RECEIVED_SIZE = "myconsumer.kafka.event.received.size";
+    public static final String METRIC_KAFKA_EVENT_RECEIVED_SIZE = "app.kafka.event.received.size";
+    public static final String METRIC_KAFKA_EVENT_RECEIVED_SIZE_DESC = "Size (in bytes) of individual events received from Kafka";
     /** Count of errors encountered during event processing. */
-    public static final String METRIC_KAFKA_EVENTS_ERRORS = "myconsumer.kafka.events.errors";
+    public static final String METRIC_KAFKA_EVENTS_ERRORS = "app.kafka.events.errors";
+    public static final String METRIC_KAFKA_EVENTS_ERRORS8DESC = "Count of errors encountered during event processing";
     /** Count of successfully processed and persisted events. */
-    public static final String METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS = "myconsumer.kafka.events.processed";
+    public static final String METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS = "app.kafka.events.processed";
+    public static final String METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS8DESC = "Count of successfully processed and persisted events"
     /** Duration (in milliseconds) taken to process a batch of events. */
-    public static final String METRIC_KAFKA_EVENTS_BATCH_DURATION = "myconsumer.kafka.events.batch.duration";
+    public static final String METRIC_KAFKA_EVENTS_BATCH_DURATION = "app.kafka.events.batch.duration";
+    public static final String METRIC_KAFKA_EVENTS_BATCH_DURATION_DESC = "Duration (in milliseconds) taken to process a batch of events";
 
     /** WebSocket topic for broadcasting new successfully processed events. */
     public static final String WEBSOCKET_TOPIC_EVENTS = "/topic/events";
