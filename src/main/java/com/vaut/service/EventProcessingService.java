@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
 import com.vaut.config.AppConstants;
 import com.vaut.entity.KEvent;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -52,13 +54,21 @@ public class EventProcessingService {
                 eventId = result != null ? result.toString() : null;
             } catch (Exception e) {
                 log.error("Failed to extract event ID using path {} at offset {}: {}", idJsonPath, record.offset(), e.getMessage());
-                meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_ERRORS, "type", "id_extraction").increment();
+                Counter.builder(AppConstants.METRIC_KAFKA_EVENTS_ERRORS)
+                        .description(AppConstants.METRIC_KAFKA_EVENTS_ERRORS_DESC)
+                        .tag("type", "id_extraction")
+                        .register(meterRegistry)
+                        .increment();
                 return Optional.empty();
             }
 
             if (eventId == null || eventId.trim().isEmpty()) {
                 log.error("Extracted event ID is null or empty at offset {}", record.offset());
-                meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_ERRORS, "type", "missing_id").increment();
+                Counter.builder(AppConstants.METRIC_KAFKA_EVENTS_ERRORS)
+                        .description(AppConstants.METRIC_KAFKA_EVENTS_ERRORS_DESC)
+                        .tag("type", "missing_id")
+                        .register(meterRegistry)
+                        .increment();
                 return Optional.empty();
             }
 
@@ -76,7 +86,11 @@ public class EventProcessingService {
 
         } catch (Exception e) {
             log.error("Error processing message at offset {}: {}", record.offset(), e.getMessage());
-            meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_ERRORS, "type", "generic_processing").increment();
+            Counter.builder(AppConstants.METRIC_KAFKA_EVENTS_ERRORS)
+                    .description(AppConstants.METRIC_KAFKA_EVENTS_ERRORS_DESC)
+                    .tag("type", "generic_processing")
+                    .register(meterRegistry)
+                    .increment();
         }
         return Optional.empty();
     }
@@ -96,6 +110,10 @@ public class EventProcessingService {
 
     public void recordSizeMetric(ConsumerRecord<String, String> record) {
         int size = record.serializedValueSize() > -1 ? record.serializedValueSize() : (record.value() != null ? record.value().length() : 0);
-        meterRegistry.summary(AppConstants.METRIC_KAFKA_EVENT_RECEIVED_SIZE, "topic", record.topic()).record(size);
+        DistributionSummary.builder(AppConstants.METRIC_KAFKA_EVENT_RECEIVED_SIZE)
+                .description(AppConstants.METRIC_KAFKA_EVENT_RECEIVED_SIZE_DESC)
+                .tag("topic", record.topic())
+                .register(meterRegistry)
+                .record(size);
     }
 }

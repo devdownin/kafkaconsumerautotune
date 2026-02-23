@@ -6,7 +6,10 @@ import com.vaut.entity.DltEvent;
 import com.vaut.repository.DltEventRepository;
 import com.vaut.service.DltService;
 import com.vaut.service.WebSocketService;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.support.Acknowledgment;
@@ -94,7 +97,10 @@ public abstract class AbstractBatchConsumer<T> {
         long startTime = System.currentTimeMillis();
         log.info("Received batch of {} records from Kafka", records.size());
 
-        meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_RECEIVED_COUNT).increment(records.size());
+        Counter.builder(AppConstants.METRIC_KAFKA_EVENTS_RECEIVED_COUNT)
+                .description(AppConstants.METRIC_KAFKA_EVENTS_RECEIVED_COUNT_DESC)
+                .register(meterRegistry)
+                .increment(records.size());
 
         List<T> entitiesToPersist = new ArrayList<>();
         List<DltEvent> dltEventsToPersist = new ArrayList<>();
@@ -119,7 +125,10 @@ public abstract class AbstractBatchConsumer<T> {
         acknowledgment.acknowledge();
 
         long duration = System.currentTimeMillis() - startTime;
-        meterRegistry.timer(AppConstants.METRIC_KAFKA_EVENTS_BATCH_DURATION).record(duration, TimeUnit.MILLISECONDS);
+        Timer.builder(AppConstants.METRIC_KAFKA_EVENTS_BATCH_DURATION)
+                .description(AppConstants.METRIC_KAFKA_EVENTS_BATCH_DURATION_DESC)
+                .register(meterRegistry)
+                .record(duration, TimeUnit.MILLISECONDS);
         log.info("Batch of {} records processed in {}ms", records.size(), duration);
     }
 
@@ -131,7 +140,11 @@ public abstract class AbstractBatchConsumer<T> {
         if (!entities.isEmpty()) {
             try {
                 List<T> persisted = saveBatch(entities);
-                meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS, "type", "success").increment(entities.size());
+                Counter.builder(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS)
+                        .description(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS_DESC)
+                        .tag("type", "success")
+                        .register(meterRegistry)
+                        .increment(entities.size());
                 broadcastPersisted(persisted);
             } catch (io.github.resilience4j.circuitbreaker.CallNotPermittedException e) {
                 log.error("Circuit breaker is OPEN. Database is likely unavailable. Stopping batch processing.");
@@ -148,7 +161,11 @@ public abstract class AbstractBatchConsumer<T> {
                 for (T entity : entities) {
                     try {
                         List<T> persisted = saveBatch(List.of(entity));
-                        meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS, "type", "success").increment(1);
+                        Counter.builder(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS)
+                                .description(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS_DESC)
+                                .tag("type", "success")
+                                .register(meterRegistry)
+                                .increment(1);
                         broadcastPersisted(persisted);
                     } catch (io.github.resilience4j.circuitbreaker.CallNotPermittedException ex) {
                         log.error("Circuit breaker opened during individual persistence. Stopping.");
@@ -196,6 +213,10 @@ public abstract class AbstractBatchConsumer<T> {
 
     private void recordSizeMetric(ConsumerRecord<String, String> record) {
         int size = record.serializedValueSize() > -1 ? record.serializedValueSize() : (record.value() != null ? record.value().length() : 0);
-        meterRegistry.summary(AppConstants.METRIC_KAFKA_EVENT_RECEIVED_SIZE, "topic", record.topic()).record(size);
+        DistributionSummary.builder(AppConstants.METRIC_KAFKA_EVENT_RECEIVED_SIZE)
+                .description(AppConstants.METRIC_KAFKA_EVENT_RECEIVED_SIZE_DESC)
+                .tag("topic", record.topic())
+                .register(meterRegistry)
+                .record(size);
     }
 }
