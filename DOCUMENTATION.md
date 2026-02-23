@@ -90,6 +90,8 @@ Accédez au dashboard via `/dashboard`. Il affiche :
 - L'état de santé du système et les paramètres actuels d'auto-tune.
 - Les notifications système via des "Toasts" (ex: changement d'état du Circuit Breaker).
 
+L'onglet **Kafka Optimizer** (`/optimizer`) permet de suivre l'historique des changements appliqués par le moteur d'auto-tune et affiche en temps réel les valeurs actuelles de tous les paramètres optimisables (`max.poll.records`, `fetch.min.bytes`, `fetch.max.wait.ms`, `fetch.max.bytes`, `max.poll.interval.ms` et `concurrency`).
+
 ---
 
 ## 6. Spécifications Techniques et Qualité

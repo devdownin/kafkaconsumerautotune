@@ -73,6 +73,7 @@ Container_Boundary(app, "Application Spring Boot") {
     Component(persistenceService, "EventPersistenceService", "Spring Data JPA", "Gère la persistance sécurisée par Circuit Breaker et Retry.")
     Component(cbStateListener, "CircuitBreakerStateListener", "Resilience4j Listener", "Pilote le cycle de vie du consommateur Kafka selon l'état du Circuit Breaker.")
     Component(dltService, "DltService", "Service", "Gère le routage vers la Dead Letter Topic et la base DltEvent.")
+    Component(optimizerService, "KafkaOptimizerService", "Service", "Maintient l'historique des optimisations de paramètres.")
     Component(dashboardService, "DashboardService", "Service", "Agrège les métriques de la JVM, Kafka et de l'application.")
     Component(wsService, "WebSocketService", "Spring WebSocket", "Diffuse les mises à jour temps réel (métriques, événements, état CB).")
     Component(repos, "JPA Repositories", "Spring Data", "Couche d'accès aux données.")
@@ -88,6 +89,7 @@ Rel(persistenceService, repos, "Utilise pour accès DB")
 Rel(repos, database, "JDBC")
 
 Rel(tuningService, batchConsumer, "Monitore et ajuste les paramètres de polling")
+Rel(tuningService, optimizerService, "Enregistre l'historique des changements")
 Rel(cbStateListener, batchConsumer, "Arrête/Démarre le container (via KafkaListenerEndpointRegistry)")
 Rel(persistenceService, cbStateListener, "Déclenche des changements d'état (Circuit OPEN/CLOSED)")
 

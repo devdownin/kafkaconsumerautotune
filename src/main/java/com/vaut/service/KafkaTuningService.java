@@ -42,6 +42,7 @@ public class KafkaTuningService {
     private final MeterRegistry meterRegistry;
     private final Optional<AdminClient> adminClient;
     private final KafkaTuningProperties tuningProperties;
+    private final KafkaOptimizerService optimizerService;
 
     @Value("${kafka.topic.name}")
     private String topicName;
@@ -116,6 +117,8 @@ public class KafkaTuningService {
             if (shouldUpdate(currentMaxPollRecords, nextMaxPoll)) {
                 log.info("AUTO-TUNE [PID]: Adjusting max.poll.records {} -> {} (Error: {})",
                         currentMaxPollRecords, nextMaxPoll, String.format("%.4f", error));
+                optimizerService.addOptimization(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, String.valueOf(currentMaxPollRecords), String.valueOf(nextMaxPoll),
+                        String.format("PID optimization: error=%.4f, throughput=%.2f msg/s", error, throughput));
                 currentMaxPollRecords = nextMaxPoll;
                 newConfigs.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, currentMaxPollRecords);
                 needsRestart = true;
@@ -131,6 +134,8 @@ public class KafkaTuningService {
 
             if (shouldUpdate(currentFetchMaxWaitMs, nextWait)) {
                 log.info("AUTO-TUNE: Adjusting fetch.max.wait.ms {} -> {}ms", currentFetchMaxWaitMs, nextWait);
+                optimizerService.addOptimization(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, String.valueOf(currentFetchMaxWaitMs), String.valueOf(nextWait),
+                        String.format("Optimizing wait time based on throughput (%.2f msg/s)", throughput));
                 currentFetchMaxWaitMs = nextWait;
                 newConfigs.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, currentFetchMaxWaitMs);
                 needsRestart = true;
@@ -143,6 +148,8 @@ public class KafkaTuningService {
 
             if (shouldUpdate(currentFetchMinBytes, nextFetchMinBytes)) {
                 log.info("AUTO-TUNE: Adjusting fetch.min.bytes {} -> {} bytes", currentFetchMinBytes, nextFetchMinBytes);
+                optimizerService.addOptimization(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, String.valueOf(currentFetchMinBytes), String.valueOf(nextFetchMinBytes),
+                        String.format("Optimizing fetch efficiency for %.2f msg/s", throughput));
                 currentFetchMinBytes = nextFetchMinBytes;
                 newConfigs.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, currentFetchMinBytes);
                 needsRestart = true;
@@ -154,6 +161,8 @@ public class KafkaTuningService {
 
             if (shouldUpdate(currentFetchMaxBytes, nextFetchMaxBytes)) {
                 log.info("AUTO-TUNE: Adjusting fetch.max.bytes & max.partition.fetch.bytes {} -> {} bytes", currentFetchMaxBytes, nextFetchMaxBytes);
+                optimizerService.addOptimization(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, String.valueOf(currentFetchMaxBytes), String.valueOf(nextFetchMaxBytes),
+                        String.format("Scaling fetch size for max.poll.records=%d and avgMsgSize=%.2f", currentMaxPollRecords, avgMsgSize));
                 currentFetchMaxBytes = nextFetchMaxBytes;
                 newConfigs.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, currentFetchMaxBytes);
                 newConfigs.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, currentFetchMaxBytes);
@@ -166,6 +175,8 @@ public class KafkaTuningService {
 
             if (shouldUpdate(currentMaxPollIntervalMs, nextMaxPollInterval)) {
                 log.info("AUTO-TUNE: Adjusting max.poll.interval.ms {} -> {}ms", currentMaxPollIntervalMs, nextMaxPollInterval);
+                optimizerService.addOptimization(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, String.valueOf(currentMaxPollIntervalMs), String.valueOf(nextMaxPollInterval),
+                        String.format("Extending poll interval safety for target batch duration of %.0fms", tuningProperties.getTargetBatchDurationMs()));
                 currentMaxPollIntervalMs = nextMaxPollInterval;
                 newConfigs.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, currentMaxPollIntervalMs);
                 needsRestart = true;
@@ -179,6 +190,8 @@ public class KafkaTuningService {
                     int currentConcurrency = concurrentContainer.getConcurrency();
                     if (currentConcurrency != partitionCount) {
                         log.info("AUTO-TUNE: Adjusting concurrency {} -> {} (Topic partitions)", currentConcurrency, partitionCount);
+                        optimizerService.addOptimization("concurrency", String.valueOf(currentConcurrency), String.valueOf(partitionCount),
+                                "Matching concurrency with topic partition count");
                         concurrentContainer.setConcurrency(partitionCount);
                         needsRestart = true;
                     }

@@ -91,6 +91,10 @@ public record DashboardStatsDTO(
     Integer fetchMinBytes,
     /** Current fetch.max.wait.ms Kafka consumer parameter. */
     Integer fetchMaxWaitMs,
+    /** Current fetch.max.bytes Kafka consumer parameter. */
+    Integer fetchMaxBytes,
+    /** Current max.poll.interval.ms Kafka consumer parameter. */
+    Integer maxPollIntervalMs,
     /** Current number of concurrent consumer threads. */
     Integer concurrency,
 

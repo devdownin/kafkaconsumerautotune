@@ -34,6 +34,34 @@
 
         <!-- Content -->
         <div class="flex-1 overflow-y-auto p-8 space-y-6">
+            <!-- Current Optimized Values -->
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">max.poll.records</p>
+                    <p class="text-xl font-bold text-primary" th:text="${stats.maxPollRecords}">100</p>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">fetch.min.bytes</p>
+                    <p class="text-xl font-bold text-primary" th:text="${stats.fetchMinBytes}">10240</p>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">fetch.max.wait.ms</p>
+                    <p class="text-xl font-bold text-primary" th:text="${stats.fetchMaxWaitMs}">500</p>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">fetch.max.bytes</p>
+                    <p class="text-xl font-bold text-primary" th:text="${stats.fetchMaxBytes}">52428800</p>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">max.poll.interval.ms</p>
+                    <p class="text-xl font-bold text-primary" th:text="${stats.maxPollIntervalMs}">300000</p>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">concurrency</p>
+                    <p class="text-xl font-bold text-primary" th:text="${stats.concurrency}">6</p>
+                </div>
+            </div>
+
             <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
                 <div class="p-6 border-b border-slate-200 dark:border-slate-800">
                     <h4 class="text-base font-bold">Recent Property Optimizations</h4>
