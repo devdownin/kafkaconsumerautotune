@@ -533,6 +533,8 @@ public class DashboardService {
                 .maxPollRecords((Integer) tuningParams.get("maxPollRecords"))
                 .fetchMinBytes((Integer) tuningParams.get("fetchMinBytes"))
                 .fetchMaxWaitMs((Integer) tuningParams.get("fetchMaxWaitMs"))
+                .fetchMaxBytes((Integer) tuningParams.get("fetchMaxBytes"))
+                .maxPollIntervalMs((Integer) tuningParams.get("maxPollIntervalMs"))
                 .concurrency((Integer) tuningParams.get("concurrency"))
                 .circuitBreakerStatus(cbStatus)
                 .build();

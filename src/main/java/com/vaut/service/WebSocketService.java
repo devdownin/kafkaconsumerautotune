@@ -30,6 +30,15 @@ public class WebSocketService {
     }
 
     /**
+     * Broadcasts a system event notification.
+     *
+     * @param systemEvent The system event notification to broadcast.
+     */
+    public void sendSystemEvent(SystemEventDTO systemEvent) {
+        messagingTemplate.convertAndSend(AppConstants.WEBSOCKET_TOPIC_SYSTEM_EVENTS, systemEvent);
+    }
+
+    /**
      * Broadcasts a list of newly processed events.
      *
      * @param events The list of processed KEvent objects.
