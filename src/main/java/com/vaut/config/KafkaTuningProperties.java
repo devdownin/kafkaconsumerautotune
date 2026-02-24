@@ -83,4 +83,24 @@ public class KafkaTuningProperties {
      * Fixed rate for the tuning task in milliseconds.
      */
     private long fixedRate = 60000;
+
+    /**
+     * CPU usage threshold (0.0 to 1.0) above which concurrency should be decreased.
+     */
+    private double cpuThresholdHigh = 0.8;
+
+    /**
+     * CPU usage threshold (0.0 to 1.0) below which concurrency can be increased if there is lag.
+     */
+    private double cpuThresholdLow = 0.4;
+
+    /**
+     * Minimum number of threads for Kafka consumption.
+     */
+    private int minConcurrency = 1;
+
+    /**
+     * Lag threshold above which we consider increasing concurrency (if CPU allows).
+     */
+    private long lagThresholdForScaling = 500;
 }
