@@ -2,6 +2,7 @@ package com.vaut;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
@@ -10,6 +11,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * This application is a high-performance Kafka consumer with auto-tuning capabilities,
  * a monitoring dashboard, and Dead Letter Topic (DLT) management.
  */
+@EnableCaching
 @EnableRetry
 @EnableScheduling
 @SpringBootApplication

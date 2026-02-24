@@ -8,6 +8,7 @@ import com.vaut.repository.DltEventRepository;
 import com.vaut.entity.DltEvent;
 import com.vaut.repository.KEventRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -89,6 +90,10 @@ public class DashboardService {
     private long lastProcessedCount = 0;
     private int minuteCounter = 0;
     private double minuteAccumulator = 0;
+
+    private String cachedDbVendor;
+    private String cachedDbSchema;
+    private String cachedDbDriver;
 
     // Cache for Kafka Lag to avoid over-polling AdminClient
     private final AtomicLong cachedTotalLag = new AtomicLong(0);
@@ -424,9 +429,11 @@ public class DashboardService {
 
     /**
      * Aggregates all application statistics for the main dashboard view.
+     * Results are cached for 5 seconds to improve performance.
      *
      * @return A DashboardStatsDTO object.
      */
+    @Cacheable(value = "stats", sync = true)
     public DashboardStatsDTO getStats() {
         long successCount = eventRepository.count();
         var dltStats = dltEventRepository.getDltStats(LocalDateTime.now().minusDays(1));
@@ -456,21 +463,28 @@ public class DashboardService {
         long resolvedCount = dltStats.getResolvedCount() != null ? dltStats.getResolvedCount() : 0L;
         long discardedCount = dltStats.getDiscardedCount() != null ? dltStats.getDiscardedCount() : 0L;
 
-        String dbVendor = "Database";
         String dbStatus = "Connected";
-        String dbSchema = "N/A";
-        String dbDriver = "N/A";
         int activeConnections = 0;
         int idleConnections = 0;
         int totalConnections = 0;
         int maxPoolSize = 0;
 
-        try (Connection connection = dataSource.getConnection()) {
-            DatabaseMetaData metaData = connection.getMetaData();
-            dbVendor = metaData.getDatabaseProductName();
-            dbSchema = metaData.getUserName();
-            dbDriver = metaData.getDriverName();
+        if (cachedDbVendor == null) {
+            try (Connection connection = dataSource.getConnection()) {
+                DatabaseMetaData metaData = connection.getMetaData();
+                cachedDbVendor = metaData.getDatabaseProductName();
+                cachedDbSchema = metaData.getUserName();
+                cachedDbDriver = metaData.getDriverName();
+            } catch (Exception e) {
+                // Temporary failure to get metadata, don't cache yet
+            }
+        }
 
+        String dbVendor = cachedDbVendor != null ? cachedDbVendor : "Database";
+        String dbSchema = cachedDbSchema != null ? cachedDbSchema : "N/A";
+        String dbDriver = cachedDbDriver != null ? cachedDbDriver : "N/A";
+
+        try {
             String validationQuery = dbVendor.toLowerCase().contains("oracle") ? "SELECT 1 FROM DUAL" : "SELECT 1";
             Query query = entityManager.createNativeQuery(validationQuery);
             query.getSingleResult();
