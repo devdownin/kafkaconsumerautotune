@@ -76,6 +76,9 @@ app:
   edition: PARTAGE Edition
   metrics:
     thresholds:
+      "kafka.lag":
+        warning: 1000
+        critical: 5000
       "kafka.events.received.count":
         warning: 100000
         critical: 500000
