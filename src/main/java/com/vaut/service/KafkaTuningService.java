@@ -4,11 +4,11 @@ import com.vaut.config.AppConstants;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
@@ -16,6 +16,8 @@ import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.lang.management.ManagementFactory;
+import com.sun.management.OperatingSystemMXBean;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -24,8 +26,9 @@ import java.util.concurrent.TimeUnit;
 import com.vaut.config.KafkaTuningProperties;
 
 /**
- * Service that automatically tunes Kafka consumer parameters based on observed performance.
- * It monitors throughput and batch processing time to adjust max.poll.records.
+ * Service that automatically tunes Kafka consumer parameters based on observed performance and system load.
+ * It monitors throughput and batch processing time to adjust max.poll.records,
+ * and dynamically adjusts concurrency based on CPU load and consumer lag.
  *
  * Includes safety mechanisms to avoid frequent rebalances:
  * - Minimum interval between restarts.
@@ -34,7 +37,6 @@ import com.vaut.config.KafkaTuningProperties;
  */
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class KafkaTuningService {
 
     private final DefaultKafkaConsumerFactory<String, String> consumerFactory;
@@ -43,6 +45,23 @@ public class KafkaTuningService {
     private final Optional<AdminClient> adminClient;
     private final KafkaTuningProperties tuningProperties;
     private final KafkaOptimizerService optimizerService;
+    private final DashboardService dashboardService;
+
+    public KafkaTuningService(DefaultKafkaConsumerFactory<String, String> consumerFactory,
+                              KafkaListenerEndpointRegistry registry,
+                              MeterRegistry meterRegistry,
+                              Optional<AdminClient> adminClient,
+                              KafkaTuningProperties tuningProperties,
+                              KafkaOptimizerService optimizerService,
+                              @Lazy DashboardService dashboardService) {
+        this.consumerFactory = consumerFactory;
+        this.registry = registry;
+        this.meterRegistry = meterRegistry;
+        this.adminClient = adminClient;
+        this.tuningProperties = tuningProperties;
+        this.optimizerService = optimizerService;
+        this.dashboardService = dashboardService;
+    }
 
     @Value("${kafka.topic.name}")
     private String topicName;
@@ -64,8 +83,8 @@ public class KafkaTuningService {
 
     /**
      * Periodic task to analyze metrics and adjust Kafka parameters if necessary.
-     * It uses a PID controller to target an optimal batch duration and synchronizes
-     * concurrency with the number of topic partitions.
+     * It uses a PID controller to target an optimal batch duration and dynamically adjusts
+     * concurrency based on system load and lag.
      */
     @Scheduled(fixedRateString = "${kafka.tuning.fixed-rate:60000}", initialDelayString = "${kafka.tuning.initial-delay:30000}")
     public void tune() {
@@ -182,17 +201,42 @@ public class KafkaTuningService {
                 needsRestart = true;
             }
 
-            // 6. Adjust Concurrency based on Partition Count
+            // 6. Adjust Concurrency based on System Load and Lag
             Integer partitionCount = getPartitionCount();
             if (partitionCount != null) {
                 MessageListenerContainer container = registry.getListenerContainer("eventBatchConsumer");
                 if (container instanceof ConcurrentMessageListenerContainer<?, ?> concurrentContainer) {
                     int currentConcurrency = concurrentContainer.getConcurrency();
-                    if (currentConcurrency != partitionCount) {
-                        log.info("AUTO-TUNE: Adjusting concurrency {} -> {} (Topic partitions)", currentConcurrency, partitionCount);
-                        optimizerService.addOptimization("concurrency", String.valueOf(currentConcurrency), String.valueOf(partitionCount),
-                                "Matching concurrency with topic partition count");
-                        concurrentContainer.setConcurrency(partitionCount);
+                    int nextConcurrency = currentConcurrency;
+
+                    OperatingSystemMXBean osBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+                    double systemCpuLoad = osBean.getCpuLoad();
+                    long lag = dashboardService.calculateTotalLag();
+
+                    if (systemCpuLoad > tuningProperties.getCpuThresholdHigh()) {
+                        nextConcurrency = Math.max(tuningProperties.getMinConcurrency(), currentConcurrency - 1);
+                        if (nextConcurrency < currentConcurrency) {
+                            log.info("AUTO-TUNE: High system load detected ({}), decreasing concurrency {} -> {}",
+                                    String.format("%.2f", systemCpuLoad), currentConcurrency, nextConcurrency);
+                            optimizerService.addOptimization("concurrency", String.valueOf(currentConcurrency), String.valueOf(nextConcurrency),
+                                    String.format("High system load (%.2f) detected", systemCpuLoad));
+                        }
+                    } else if (systemCpuLoad >= 0 && systemCpuLoad < tuningProperties.getCpuThresholdLow() && lag > tuningProperties.getLagThresholdForScaling()) {
+                        nextConcurrency = Math.min(partitionCount, currentConcurrency + 1);
+                        if (nextConcurrency > currentConcurrency) {
+                            log.info("AUTO-TUNE: Low system load ({}) and lag ({}) detected, increasing concurrency {} -> {}",
+                                    String.format("%.2f", systemCpuLoad), lag, currentConcurrency, nextConcurrency);
+                            optimizerService.addOptimization("concurrency", String.valueOf(currentConcurrency), String.valueOf(nextConcurrency),
+                                    String.format("Low load (%.2f) and high lag (%d) detected", systemCpuLoad, lag));
+                        }
+                    } else if (currentConcurrency > partitionCount) {
+                        // Safety: never exceed partition count
+                        nextConcurrency = partitionCount;
+                        log.info("AUTO-TUNE: Concurrency exceeds partition count, resetting to {}", partitionCount);
+                    }
+
+                    if (nextConcurrency != currentConcurrency) {
+                        concurrentContainer.setConcurrency(nextConcurrency);
                         needsRestart = true;
                     }
                 }
