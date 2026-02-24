@@ -233,9 +233,10 @@
                                    class="pl-9 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-xs focus:ring-2 focus:ring-primary w-64">
                         </div>
                         <select id="metric-filter" class="bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-xs focus:ring-2 focus:ring-primary py-2 px-3">
-                            <option value="all">All Metrics</option>
-                            <option value="app">App Specific</option>
+                            <option value="app" selected>App Specific</option>
+                            <option value="kafka">Kafka Metrics</option>
                             <option value="jvm">JVM / System</option>
+                            <option value="all">All Metrics</option>
                         </select>
                     </div>
                 </div>
@@ -526,6 +527,7 @@
 
                 if (filterValue === 'app') matchesFilter = isApp;
                 if (filterValue === 'jvm') matchesFilter = !isApp;
+                if (filterValue === 'kafka') matchesFilter = name.includes('kafka');
 
                 if (matchesSearch && matchesFilter) {
                     row.style.display = 'table-row';
@@ -544,6 +546,7 @@
         if (searchInput && filterSelect) {
             searchInput.addEventListener('input', filterTable);
             filterSelect.addEventListener('change', filterTable);
+            filterTable(); // Initial filter
         }
     }
 

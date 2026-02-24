@@ -14,10 +14,10 @@ public final class AppConstants {
     public static final String METRIC_KAFKA_EVENT_RECEIVED_SIZE_DESC = "Size (in bytes) of individual events received from Kafka";
     /** Count of errors encountered during event processing. */
     public static final String METRIC_KAFKA_EVENTS_ERRORS = "app.kafka.events.errors";
-    public static final String METRIC_KAFKA_EVENTS_ERRORS8DESC = "Count of errors encountered during event processing";
+    public static final String METRIC_KAFKA_EVENTS_ERRORS_DESC = "Count of errors encountered during event processing";
     /** Count of successfully processed and persisted events. */
     public static final String METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS = "app.kafka.events.processed";
-    public static final String METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS8DESC = "Count of successfully processed and persisted events"
+    public static final String METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS_DESC = "Count of successfully processed and persisted events";
     /** Duration (in milliseconds) taken to process a batch of events. */
     public static final String METRIC_KAFKA_EVENTS_BATCH_DURATION = "app.kafka.events.batch.duration";
     public static final String METRIC_KAFKA_EVENTS_BATCH_DURATION_DESC = "Duration (in milliseconds) taken to process a batch of events";
