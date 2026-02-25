@@ -133,6 +133,19 @@ public class DashboardController {
 	}
 
 	/**
+	 * Renders the system architecture documentation view.
+	 *
+	 * @param model The UI model.
+	 * @return The name of the architecture Thymeleaf template.
+	 */
+	@GetMapping("/architecture")
+	public String architecture(Model model) {
+		model.addAttribute("stats", dashboardService.getStats());
+		model.addAttribute("activePage", "architecture");
+		return "architecture";
+	}
+
+	/**
 	 * Endpoint to update the log level of a specific logger.
 	 *
 	 * @param loggerName The name of the logger to update.
