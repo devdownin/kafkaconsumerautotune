@@ -159,6 +159,9 @@ resilience4j:
           - org.springframework.dao.ConcurrencyFailureException
 
 management:
+  tracing:
+    sampling:
+      probability: 1.0
   # Exposition des endpoints Actuator pour le monitoring (Prometheus, Health, etc.)
   endpoints:
     web:
