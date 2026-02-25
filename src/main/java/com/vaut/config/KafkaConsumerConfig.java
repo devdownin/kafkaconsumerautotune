@@ -198,6 +198,7 @@ public class KafkaConsumerConfig {
      factory.setConsumerFactory(consumerFactory);
      factory.setConcurrency(6); // Adjust based on the number of partitions
      factory.setBatchListener(true); // BATCH MODE ENABLED
+     factory.getContainerProperties().setObservationEnabled(true);
 
      // Manual acknowledgment mode to ensure at-least-once delivery
      factory.getContainerProperties().setAckMode(AckMode.MANUAL);

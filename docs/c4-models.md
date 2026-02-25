@@ -1,6 +1,8 @@
 # Modèles C4 - Consotopic
 
-Ce document présente l'architecture de l'application Consotopic en suivant le modèle C4 (Context, Container, Component).
+Ce document présente l'architecture de l'application Consotopic en suivant le modèle C4 (Context, Container, Component) au format **PlantUML**.
+
+Une version au format **Mermaid** est également disponible : [c4-mermaid.md](c4-mermaid.md).
 
 ## 1. Niveau 1 : Diagramme de Contexte (System Context)
 
