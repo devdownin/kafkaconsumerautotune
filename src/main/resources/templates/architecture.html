@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html class="dark" lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head('System Architecture')}">
+    <title>System Architecture</title>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<!-- Global Notifications -->
+<div th:replace="~{fragments/notifications :: notifications}"></div>
+
+<div class="flex h-screen overflow-hidden">
+    <!-- Sidebar Navigation -->
+    <div th:replace="~{fragments/sidebar :: sidebar}"></div>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <!-- Top Navbar -->
+        <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
+            <div class="flex items-center gap-4">
+                <h2 class="text-lg font-bold">System Architecture</h2>
+                <span class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-500 text-[10px] font-bold uppercase tracking-wider">
+                    <span class="material-symbols-outlined text-[10px]">menu_book</span>
+                    Documentation
+                </span>
+            </div>
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-2">
+                    <button id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500">
+                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden">dark_mode</span>
+                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden">light_mode</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto p-8 space-y-12">
+            <!-- Level 1: Context -->
+            <section class="space-y-4">
+                <div class="flex items-center gap-3">
+                    <div class="size-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center font-bold">1</div>
+                    <h3 class="text-xl font-bold">Level 1: System Context Diagram</h3>
+                </div>
+                <p class="text-slate-500 dark:text-slate-400 max-w-4xl">
+                    This diagram shows the Consotopic system in its global environment, its interactions with users and external systems.
+                </p>
+                <div class="architecture-image-container bg-slate-950 rounded-xl p-8 border border-slate-800 shadow-2xl overflow-hidden">
+                    <img th:src="@{/C4-N1.svg}" alt="C4 Level 1 - System Context" class="w-full h-auto">
+                </div>
+            </section>
+
+            <hr class="border-slate-200 dark:border-slate-800">
+
+            <!-- Level 2: Container -->
+            <section class="space-y-4">
+                <div class="flex items-center gap-3">
+                    <div class="size-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center font-bold">2</div>
+                    <h3 class="text-xl font-bold">Level 2: Container Diagram</h3>
+                </div>
+                <p class="text-slate-500 dark:text-slate-400 max-w-4xl">
+                    This diagram decomposes the Consotopic system into logical containers (applications, databases, etc.).
+                </p>
+                <div class="architecture-image-container bg-slate-950 rounded-xl p-8 border border-slate-800 shadow-2xl overflow-hidden">
+                    <img th:src="@{/C4-N2.svg}" alt="C4 Level 2 - Container" class="w-full h-auto">
+                </div>
+            </section>
+
+            <hr class="border-slate-200 dark:border-slate-800">
+
+            <!-- Level 3: Component -->
+            <section class="space-y-4">
+                <div class="flex items-center gap-3">
+                    <div class="size-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center font-bold">3</div>
+                    <h3 class="text-xl font-bold">Level 3: Component Diagram</h3>
+                </div>
+                <p class="text-slate-500 dark:text-slate-400 max-w-4xl">
+                    This diagram details the internal components of the Spring Boot application.
+                </p>
+                <div class="architecture-image-container bg-slate-950 rounded-xl p-8 border border-slate-800 shadow-2xl overflow-hidden">
+                    <img th:src="@{/C4-N3.svg}" alt="C4 Level 3 - Component" class="w-full h-auto">
+                </div>
+            </section>
+        </div>
+
+        <!-- Footer Status Bar -->
+        <div th:replace="~{fragments/sidebar :: footer-status}"></div>
+    </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+<script>
+    var socket = new SockJS('/ws');
+    var stompClient = Stomp.over(socket);
+    stompClient.debug = null;
+
+    stompClient.connect({}, function (frame) {
+        updateWsStatus(true);
+        initSystemNotifications(stompClient);
+    }, function() {
+        updateWsStatus(false);
+    });
+
+    function updateWsStatus(connected) {
+        const dot = document.getElementById('ws-status-dot');
+        const text = document.getElementById('ws-status-text');
+        if (!dot || !text) return;
+
+        if (connected) {
+            dot.className = 'size-2 rounded-full bg-emerald-500';
+            text.innerText = 'WS: Connected';
+        } else {
+            dot.className = 'size-2 rounded-full bg-rose-500 animate-pulse';
+            text.innerText = 'WS: Disconnected';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initThemeToggle();
+    });
+
+    function initThemeToggle() {
+        var themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+        var themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+
+        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            themeToggleLightIcon.classList.remove('hidden');
+        } else {
+            themeToggleDarkIcon.classList.remove('hidden');
+        }
+
+        var themeToggleBtn = document.getElementById('theme-toggle');
+
+        themeToggleBtn.addEventListener('click', function() {
+            themeToggleDarkIcon.classList.toggle('hidden');
+            themeToggleLightIcon.classList.toggle('hidden');
+
+            if (localStorage.getItem('color-theme')) {
+                if (localStorage.getItem('color-theme') === 'light') {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('color-theme', 'dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('color-theme', 'light');
+                }
+            } else {
+                if (document.documentElement.classList.contains('dark')) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('color-theme', 'light');
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('color-theme', 'dark');
+                }
+            }
+        });
+    }
+</script>
+</body>
+</html>

@@ -47,6 +47,13 @@
                 <span th:class="${'text-sm ' + (activePage == 'settings' ? 'font-semibold' : 'font-medium')}">Settings</span>
             </a>
         </div>
+        <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+            <p class="px-3 text-[10px] font-bold text-slate-400 uppercase mb-2">Documentation</p>
+            <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'architecture' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/architecture}">
+                <span class="material-symbols-outlined">architecture</span>
+                <span th:class="${'text-sm ' + (activePage == 'architecture' ? 'font-semibold' : 'font-medium')}">System Architecture</span>
+            </a>
+        </div>
     </nav>
     <div class="p-4 border-t border-slate-200 dark:border-slate-800">
         <div class="flex items-center gap-3 p-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
