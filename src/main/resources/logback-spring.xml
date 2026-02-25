@@ -74,7 +74,7 @@
     <!-- Profile: dev and local-h2 use standard human-readable logs -->
     <springProfile name="dev, local-h2">
         <root level="INFO">
-            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="JSON_CONSOLE"/>
         </root>
     </springProfile>
 
