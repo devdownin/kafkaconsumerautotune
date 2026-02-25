@@ -4,7 +4,8 @@
 Consotopic est une application Spring Boot de haute performance conçue pour consommer des messages Kafka en mode batch, les traiter, et les persister dans une base de données (Oracle/H2). L'application se distingue par son moteur d'**auto-tuning** intelligent basé sur un contrôleur PID qui ajuste dynamiquement les paramètres du consommateur Kafka pour optimiser le débit et la latence en temps réel. Elle intègre également un système robuste de gestion des erreurs via une Dead Letter Topic (DLT), un mécanisme de résilience par repli (fallback), une protection par **Circuit Breaker**, et un tableau de bord complet de monitoring.
 
 **Documents complémentaires :**
-- [Modèles C4 (Architecture)](docs/c4-models.md)
+- [Modèles C4 (Architecture - PlantUML)](docs/c4-models.md)
+- [Modèles C4 (Architecture - Mermaid)](docs/c4-mermaid.md)
 - [Gestion des Erreurs et Résilience](docs/error-management.md)
 - [Observabilité (Logging & Tracing)](docs/observability.md)
 
