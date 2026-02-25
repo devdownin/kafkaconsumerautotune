@@ -54,7 +54,12 @@ public class LoggingMdcFilter implements Filter {
         try {
             chain.doFilter(request, response);
         } finally {
-            MDC.clear();
+            MDC.remove(MDC_CORRELATION_ID);
+            MDC.remove(MDC_AUTHENTICATION);
+            MDC.remove(MDC_RGPD);
+            MDC.remove(MDC_EVENT_CATEGORY);
+            MDC.remove(MDC_EVENT_TYPE);
+            MDC.remove(MDC_EVENT_OUTCOME);
         }
     }
 

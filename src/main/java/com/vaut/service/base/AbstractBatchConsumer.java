@@ -139,7 +139,11 @@ public abstract class AbstractBatchConsumer<T> {
             log.error("Critical error in batch consumption: {}", e.getMessage());
             throw e;
         } finally {
-            MDC.clear();
+            MDC.remove("correlationId");
+            MDC.remove("rgpd");
+            MDC.remove("eventCategory");
+            MDC.remove("eventType");
+            MDC.remove("eventOutcome");
         }
     }
 
