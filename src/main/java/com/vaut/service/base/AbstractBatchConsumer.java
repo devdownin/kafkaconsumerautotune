@@ -110,6 +110,10 @@ public abstract class AbstractBatchConsumer<T> {
             List<DltEvent> dltEventsToPersist = new ArrayList<>();
 
             for (ConsumerRecord<String, String> record : records) {
+                MDC.put("kafkaTopic", record.topic());
+                MDC.put("kafkaPartition", String.valueOf(record.partition()));
+                MDC.put("kafkaOffset", String.valueOf(record.offset()));
+
                 try {
                     recordSizeMetric(record);
 
@@ -119,11 +123,14 @@ public abstract class AbstractBatchConsumer<T> {
                     );
                 } catch (Exception e) {
                     MDC.put("eventOutcome", "failure");
-                    log.error("Unexpected error processing record at partition {} offset {}: {}",
-                            record.partition(), record.offset(), e.getMessage());
+                    log.error("Unexpected error processing record: {}", e.getMessage());
                     dltEventsToPersist.add(dltService.routeToDlt(record, "Unexpected error: " + e.getMessage()));
                     // Reset outcome for next logs if needed, but here we continue the loop
                     MDC.put("eventOutcome", "success");
+                } finally {
+                    MDC.remove("kafkaTopic");
+                    MDC.remove("kafkaPartition");
+                    MDC.remove("kafkaOffset");
                 }
             }
 
@@ -171,6 +178,10 @@ public abstract class AbstractBatchConsumer<T> {
                         .timestamp(java.time.LocalDateTime.now())
                         .build());
                 for (T entity : entities) {
+                    MDC.put("kafkaTopic", getEntityTopic(entity));
+                    MDC.put("kafkaPartition", String.valueOf(getEntityPartition(entity)));
+                    MDC.put("kafkaOffset", String.valueOf(getEntityOffset(entity)));
+
                     try {
                         List<T> persisted = saveBatch(List.of(entity));
                         meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS, "type", "success").increment(1);
@@ -195,6 +206,10 @@ public abstract class AbstractBatchConsumer<T> {
                             () -> log.error("Could not find original record for failed entity {}", getEntityId(entity))
                         );
                         MDC.put("eventOutcome", "success"); // Reset for next entity
+                    } finally {
+                        MDC.remove("kafkaTopic");
+                        MDC.remove("kafkaPartition");
+                        MDC.remove("kafkaOffset");
                     }
                 }
             }

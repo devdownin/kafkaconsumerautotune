@@ -29,7 +29,18 @@
                             "category": "%mdc{eventCategory:-web}",
                             "kind": "event",
                             "outcome": "%mdc{eventOutcome:-success}",
-                            "type": "%mdc{eventType:-access}"
+                            "type": "%mdc{eventType:-access}",
+                            "http": {
+                              "method": "%mdc{httpMethod}"
+                            },
+                            "url": {
+                              "path": "%mdc{urlPath}"
+                            },
+                            "kafka": {
+                              "topic": "%mdc{kafkaTopic}",
+                              "partition": "%mdc{kafkaPartition}",
+                              "offset": "%mdc{kafkaOffset}"
+                            }
                           },
                           "correlation": {
                             "id": "%mdc{correlationId}",
@@ -40,7 +51,7 @@
                             "level": "%level",
                             "logger": "%logger",
                             "rgpd": "%mdc{rgpd:-false}",
-                            "authentication": "%mdc{authentication}"
+                            "authentication": "%mdc{authentication:-none}"
                           },
                           "message": "%message",
                           "organization": {
@@ -63,7 +74,7 @@
     <!-- Profile: dev and local-h2 use standard human-readable logs -->
     <springProfile name="dev, local-h2">
         <root level="INFO">
-            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="JSON_CONSOLE"/>
         </root>
     </springProfile>
 

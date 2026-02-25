@@ -27,6 +27,8 @@ public class LoggingMdcFilter implements Filter {
     private static final String MDC_EVENT_CATEGORY = "eventCategory";
     private static final String MDC_EVENT_TYPE = "eventType";
     private static final String MDC_EVENT_OUTCOME = "eventOutcome";
+    private static final String MDC_HTTP_METHOD = "httpMethod";
+    private static final String MDC_URL_PATH = "urlPath";
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -49,6 +51,8 @@ public class LoggingMdcFilter implements Filter {
             MDC.put(MDC_EVENT_CATEGORY, "web");
             MDC.put(MDC_EVENT_TYPE, "access");
             MDC.put(MDC_EVENT_OUTCOME, "success");
+            MDC.put(MDC_HTTP_METHOD, httpServletRequest.getMethod());
+            MDC.put(MDC_URL_PATH, httpServletRequest.getRequestURI());
         }
 
         try {
@@ -60,6 +64,8 @@ public class LoggingMdcFilter implements Filter {
             MDC.remove(MDC_EVENT_CATEGORY);
             MDC.remove(MDC_EVENT_TYPE);
             MDC.remove(MDC_EVENT_OUTCOME);
+            MDC.remove(MDC_HTTP_METHOD);
+            MDC.remove(MDC_URL_PATH);
         }
     }
 
