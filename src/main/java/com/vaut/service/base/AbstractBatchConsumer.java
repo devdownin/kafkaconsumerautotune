@@ -9,11 +9,13 @@ import com.vaut.service.WebSocketService;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.slf4j.MDC;
 import org.springframework.kafka.support.Acknowledgment;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -91,36 +93,54 @@ public abstract class AbstractBatchConsumer<T> {
      * Handles the batch processing lifecycle.
      */
     protected void consume(List<ConsumerRecord<String, String>> records, Acknowledgment acknowledgment) {
-        long startTime = System.currentTimeMillis();
-        log.info("Received batch of {} records from Kafka", records.size());
+        // Populate MDC for Kafka processing
+        MDC.put("correlationId", UUID.randomUUID().toString());
+        MDC.put("rgpd", "false");
+        MDC.put("eventCategory", "kafka");
+        MDC.put("eventType", "process");
+        MDC.put("eventOutcome", "success");
 
-        meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_RECEIVED_COUNT).increment(records.size());
+        try {
+            long startTime = System.currentTimeMillis();
+            log.info("Received batch of {} records from Kafka", records.size());
 
-        List<T> entitiesToPersist = new ArrayList<>();
-        List<DltEvent> dltEventsToPersist = new ArrayList<>();
+            meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_RECEIVED_COUNT).increment(records.size());
 
-        for (ConsumerRecord<String, String> record : records) {
-            try {
-                recordSizeMetric(record);
+            List<T> entitiesToPersist = new ArrayList<>();
+            List<DltEvent> dltEventsToPersist = new ArrayList<>();
 
-                processRecord(record).ifPresentOrElse(
-                    entitiesToPersist::add,
-                    () -> dltEventsToPersist.add(dltService.routeToDlt(record, "Processing failed (Check logs)"))
-                );
-            } catch (Exception e) {
-                log.error("Unexpected error processing record at partition {} offset {}: {}",
-                        record.partition(), record.offset(), e.getMessage());
-                dltEventsToPersist.add(dltService.routeToDlt(record, "Unexpected error: " + e.getMessage()));
+            for (ConsumerRecord<String, String> record : records) {
+                try {
+                    recordSizeMetric(record);
+
+                    processRecord(record).ifPresentOrElse(
+                        entitiesToPersist::add,
+                        () -> dltEventsToPersist.add(dltService.routeToDlt(record, "Processing failed (Check logs)"))
+                    );
+                } catch (Exception e) {
+                    MDC.put("eventOutcome", "failure");
+                    log.error("Unexpected error processing record at partition {} offset {}: {}",
+                            record.partition(), record.offset(), e.getMessage());
+                    dltEventsToPersist.add(dltService.routeToDlt(record, "Unexpected error: " + e.getMessage()));
+                    // Reset outcome for next logs if needed, but here we continue the loop
+                    MDC.put("eventOutcome", "success");
+                }
             }
+
+            persistBatches(entitiesToPersist, dltEventsToPersist, records);
+
+            acknowledgment.acknowledge();
+
+            long duration = System.currentTimeMillis() - startTime;
+            meterRegistry.timer(AppConstants.METRIC_KAFKA_EVENTS_BATCH_DURATION).record(duration, TimeUnit.MILLISECONDS);
+            log.info("Batch of {} records processed in {}ms", records.size(), duration);
+        } catch (Exception e) {
+            MDC.put("eventOutcome", "failure");
+            log.error("Critical error in batch consumption: {}", e.getMessage());
+            throw e;
+        } finally {
+            MDC.clear();
         }
-
-        persistBatches(entitiesToPersist, dltEventsToPersist, records);
-
-        acknowledgment.acknowledge();
-
-        long duration = System.currentTimeMillis() - startTime;
-        meterRegistry.timer(AppConstants.METRIC_KAFKA_EVENTS_BATCH_DURATION).record(duration, TimeUnit.MILLISECONDS);
-        log.info("Batch of {} records processed in {}ms", records.size(), duration);
     }
 
     /**
@@ -134,6 +154,7 @@ public abstract class AbstractBatchConsumer<T> {
                 meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS, "type", "success").increment(entities.size());
                 broadcastPersisted(persisted);
             } catch (io.github.resilience4j.circuitbreaker.CallNotPermittedException e) {
+                MDC.put("eventOutcome", "failure");
                 log.error("Circuit breaker is OPEN. Database is likely unavailable. Stopping batch processing.");
                 throw e; // Re-throw to trigger Kafka retry/stop
             } catch (Exception e) {
@@ -151,9 +172,11 @@ public abstract class AbstractBatchConsumer<T> {
                         meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS, "type", "success").increment(1);
                         broadcastPersisted(persisted);
                     } catch (io.github.resilience4j.circuitbreaker.CallNotPermittedException ex) {
+                        MDC.put("eventOutcome", "failure");
                         log.error("Circuit breaker opened during individual persistence. Stopping.");
                         throw ex;
                     } catch (Exception ex) {
+                        MDC.put("eventOutcome", "failure");
                         log.error("Failed to persist individual entity {}: {}", getEntityId(entity), ex.getMessage());
                         findOriginalRecord(originalRecords, entity).ifPresentOrElse(
                             record -> {
@@ -167,6 +190,7 @@ public abstract class AbstractBatchConsumer<T> {
                             },
                             () -> log.error("Could not find original record for failed entity {}", getEntityId(entity))
                         );
+                        MDC.put("eventOutcome", "success"); // Reset for next entity
                     }
                 }
             }
@@ -177,7 +201,9 @@ public abstract class AbstractBatchConsumer<T> {
                 List<DltEvent> saved = dltEventRepository.saveAll(dltEvents);
                 saved.forEach(webSocketService::sendDltEvent);
             } catch (Exception e) {
+                MDC.put("eventOutcome", "failure");
                 log.error("Failed to persist DLT events batch: {}", e.getMessage());
+                MDC.put("eventOutcome", "success");
             }
         }
     }
