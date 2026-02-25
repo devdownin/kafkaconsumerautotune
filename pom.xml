@@ -15,7 +15,7 @@
 
     <groupId>com.example</groupId>
     <artifactId>kafka-consumer-demo</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <name>Kafka Consumer autotune</name>
     <description>High-performance Kafka consumer with Spring Boot</description>
 
