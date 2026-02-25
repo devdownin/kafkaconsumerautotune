@@ -244,6 +244,10 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+
+<!-- Common Scripts Fragment -->
+<div th:replace="~{fragments/scripts :: common-scripts}"></div>
+
 <script th:inline="javascript">
     var lastEvent = /*[[${lastEvent}]]*/ null;
     var recentEvents = /*[[${recentEvents}]]*/ [];
@@ -265,6 +269,7 @@
         var socket = new SockJS('/ws');
         var stompClient = Stomp.over(socket);
         stompClient.connect({}, function (frame) {
+            updateWsStatus(true);
             stompClient.subscribe('/topic/events', function (eventMessage) {
                 var events = JSON.parse(eventMessage.body);
                 if (events.length > 0) {
@@ -304,6 +309,8 @@
                     }
                 }
             });
+        }, function() {
+            updateWsStatus(false);
         });
     });
 
@@ -498,24 +505,6 @@
         setTimeout(() => { toast.classList.add('opacity-0', 'translate-y-4'); setTimeout(() => toast.remove(), 300); }, 3000);
     }
 
-    function initThemeToggle() {
-        var btn = document.getElementById('theme-toggle');
-        var darkIcon = document.getElementById('theme-toggle-dark-icon');
-        var lightIcon = document.getElementById('theme-toggle-light-icon');
-        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            lightIcon.classList.remove('hidden'); document.documentElement.classList.add('dark');
-        } else {
-            darkIcon.classList.remove('hidden'); document.documentElement.classList.remove('dark');
-        }
-        btn.addEventListener('click', function() {
-            darkIcon.classList.toggle('hidden'); lightIcon.classList.toggle('hidden');
-            if (document.documentElement.classList.contains('dark')) {
-                document.documentElement.classList.remove('dark'); localStorage.setItem('color-theme', 'light');
-            } else {
-                document.documentElement.classList.add('dark'); localStorage.setItem('color-theme', 'dark');
-            }
-        });
-    }
 </script>
 </body>
 </html>
