@@ -74,6 +74,9 @@ spring:
 # Configuration de l'application (UI & Business)
 app:
   edition: PARTAGE Edition
+  service:
+    id: USR-SVC-001
+    version: 1.0.0
   metrics:
     thresholds:
       "kafka.lag":
@@ -159,6 +162,15 @@ resilience4j:
           - org.springframework.dao.ConcurrencyFailureException
 
 management:
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${MANAGEMENT_OTLP_TRACING_ENDPOINT:http://localhost:4318/v1/traces}
+    metrics:
+      export:
+        url: ${MANAGEMENT_OTLP_METRICS_EXPORT_URL:http://localhost:4318/v1/metrics}
   # Exposition des endpoints Actuator pour le monitoring (Prometheus, Health, etc.)
   endpoints:
     web:
