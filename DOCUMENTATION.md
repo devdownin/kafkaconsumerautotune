@@ -6,6 +6,7 @@ Consotopic est une application Spring Boot de haute performance conçue pour con
 **Documents complémentaires :**
 - [Modèles C4 (Architecture)](docs/c4-models.md)
 - [Gestion des Erreurs et Résilience](docs/error-management.md)
+- [Observabilité (Logging & Tracing)](docs/observability.md)
 
 ---
 
@@ -15,7 +16,7 @@ L'application suit une architecture orientée services et modulaire avec les cou
 - **Couche de Traitement (Moteur d'Auto-tune)** : Analyseur de performance basé sur un contrôleur PID qui réajuste les paramètres Kafka.
 - **Couche de Persistance Résiliente** : Utilisation de Spring Data JPA avec protection par Circuit Breaker (Resilience4j) et support de batches JDBC.
 - **Couche de Gestion DLT** : Système de récupération, stockage en base (DltEvent) et re-traitement des messages en échec.
-- **Couche de Monitoring** : Dashboard temps réel via WebSocket (STOMP), Thymeleaf et Micrometer/Prometheus.
+- **Couche d'Observabilité** : Logging JSON ELK, Tracing distribué via OpenTelemetry, et Dashboard temps réel (WebSocket).
 
 ---
 
@@ -72,6 +73,8 @@ Si la persistence d'un batch complet échoue (ex: erreur de contrainte sur un se
 | `DB_HOST` | Host de la base Oracle | `localhost` |
 | `DB_USER` / `DB_PASSWORD` | Identifiants DB | - |
 | `KAFKA_TOPIC_NAME` | Topic source | `asf.peage.backoffice.sortie.recouvrable` |
+| `MANAGEMENT_OTLP_TRACING_ENDPOINT` | Endpoint OTLP pour les traces | `http://otel-collector:4318/v1/traces` |
+| `MANAGEMENT_OTLP_METRICS_EXPORT_URL` | Endpoint OTLP pour les métriques | `http://otel-collector:4318/v1/metrics` |
 
 ### 4.2 Paramètres de Seuil (Circuit Breaker)
 Configurables dans `application.yml` :
