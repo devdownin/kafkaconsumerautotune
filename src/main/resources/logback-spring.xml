@@ -10,14 +10,64 @@
         </encoder>
     </appender>
 
-    <!-- JSON Console Appender for production/cloud environments -->
+    <springProperty scope="context" name="appName" source="spring.application.name"/>
+    <springProperty scope="context" name="serviceId" source="app.service.id"/>
+    <springProperty scope="context" name="serviceVersion" source="app.service.version"/>
+
+    <!-- JSON Console Appender for production/cloud environments (ELK format) -->
     <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-            <fieldNames>
-                <timestamp>timestamp</timestamp>
-                <version>[ignore]</version>
-                <levelValue>[ignore]</levelValue>
-            </fieldNames>
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp>
+                    <fieldName>@timestamp</fieldName>
+                    <timeZone>UTC</timeZone>
+                </timestamp>
+                <pattern>
+                    <pattern>
+                        {
+                          "event": {
+                            "category": "%mdc{eventCategory:-web}",
+                            "kind": "event",
+                            "outcome": "%mdc{eventOutcome:-success}",
+                            "type": "%mdc{eventType:-access}",
+                            "http": {
+                              "method": "%mdc{httpMethod}"
+                            },
+                            "url": {
+                              "path": "%mdc{urlPath}"
+                            },
+                            "kafka": {
+                              "topic": "%mdc{kafkaTopic}",
+                              "partition": "%mdc{kafkaPartition}",
+                              "offset": "%mdc{kafkaOffset}"
+                            }
+                          },
+                          "correlation": {
+                            "id": "%mdc{correlationId}",
+                            "traceId": "%mdc{traceId}",
+                            "spanId": "%mdc{spanId}"
+                          },
+                          "log": {
+                            "level": "%level",
+                            "logger": "%logger",
+                            "rgpd": "%mdc{rgpd:-false}",
+                            "authentication": "%mdc{authentication:-none}"
+                          },
+                          "message": "%message",
+                          "organization": {
+                            "service": {
+                              "id": "${serviceId:-none}",
+                              "application": "${appName:-kafka-consumer-batch-service}",
+                              "version": "${serviceVersion:-unknown}"
+                            }
+                          }
+                        }
+                    </pattern>
+                </pattern>
+                <stackTrace>
+                    <fieldName>stack_trace</fieldName>
+                </stackTrace>
+            </providers>
         </encoder>
     </appender>
 
