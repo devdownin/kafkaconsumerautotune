@@ -1,9 +1,9 @@
 services:
   kafka:
     image: apache/kafka:latest
-    container_name: kafka-test
+    container_name: kafka
     ports:
-      - "9093:9093"
+      - "9093:9092"
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -42,7 +42,7 @@ services:
           connections:
             docker-kafka-server:
               properties:
-                bootstrap.servers: "kafka:9092"
+                bootstrap.servers: "kafka:9093"
     ports:
       - "8081:8080"
     links:
