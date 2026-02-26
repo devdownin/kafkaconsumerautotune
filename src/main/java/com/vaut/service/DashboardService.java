@@ -84,15 +84,17 @@ public class DashboardService {
 
     private static final int THROUGHPUT_5S_SIZE = 180; // 15 minutes at 5s interval
     private static final int THROUGHPUT_1M_SIZE = 1440; // 24 hours at 1m interval
-    private final List<Double> throughput5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0.0));
+    private final List<Double> successThroughput5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0.0));
     private final List<Double> errorThroughput5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0.0));
+    private final List<Double> retryThroughput5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0.0));
     private final List<Long> lagHistory5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0L));
     private final List<Long> timestamps5s = new ArrayList<>();
     private final List<Double> throughput1m = new ArrayList<>(Collections.nCopies(THROUGHPUT_1M_SIZE, 0.0));
     private final Map<String, List<Double>> metricsHistory = new java.util.concurrent.ConcurrentHashMap<>();
     private static final int MAX_HISTORY_POINTS = 20;
-    private long lastProcessedCount = 0;
+    private long lastSuccessCount = 0;
     private long lastErrorCount = 0;
+    private long lastRetryCount = 0;
     private int minuteCounter = 0;
     private double minuteAccumulator = 0;
 
@@ -130,7 +132,7 @@ public class DashboardService {
     @PostConstruct
     public void init() {
         long now = System.currentTimeMillis();
-        synchronized (throughput5s) {
+        synchronized (successThroughput5s) {
             for (int i = THROUGHPUT_5S_SIZE - 1; i >= 0; i--) {
                 timestamps5s.add(now - (i * 5000L));
             }
@@ -281,41 +283,51 @@ public class DashboardService {
      */
     @Scheduled(fixedRate = 5000)
     public void updateThroughputHistory() {
-        double currentProcessed = Optional.ofNullable(meterRegistry.find(AppConstants.METRIC_KAFKA_EVENTS_RECEIVED_COUNT).counter())
+        double currentSuccess = Optional.ofNullable(meterRegistry.find(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS).counter())
                 .map(counter -> counter.count())
                 .orElse(0.0);
         double currentErrors = Optional.ofNullable(meterRegistry.find(AppConstants.METRIC_KAFKA_EVENTS_ERRORS).counter())
                 .map(counter -> counter.count())
                 .orElse(0.0);
+        double currentRetries = Optional.ofNullable(meterRegistry.find(AppConstants.METRIC_KAFKA_EVENTS_RETRIED).counter())
+                .map(counter -> counter.count())
+                .orElse(0.0);
 
-        long delta = (long) (currentProcessed - lastProcessedCount);
-        if (delta < 0) delta = 0;
-        lastProcessedCount = (long) currentProcessed;
-        double msgPerSec = delta / 5.0;
+        long successDelta = (long) (currentSuccess - lastSuccessCount);
+        if (successDelta < 0) successDelta = 0;
+        lastSuccessCount = (long) currentSuccess;
+        double successMsgPerSec = successDelta / 5.0;
 
         long errorDelta = (long) (currentErrors - lastErrorCount);
         if (errorDelta < 0) errorDelta = 0;
         lastErrorCount = (long) currentErrors;
         double errorMsgPerSec = errorDelta / 5.0;
 
+        long retryDelta = (long) (currentRetries - lastRetryCount);
+        if (retryDelta < 0) retryDelta = 0;
+        lastRetryCount = (long) currentRetries;
+        double retryMsgPerSec = retryDelta / 5.0;
+
         long currentLag = calculateTotalLag();
         long now = System.currentTimeMillis();
 
-        synchronized (throughput5s) {
-            throughput5s.add(msgPerSec);
+        synchronized (successThroughput5s) {
+            successThroughput5s.add(successMsgPerSec);
             errorThroughput5s.add(errorMsgPerSec);
+            retryThroughput5s.add(retryMsgPerSec);
             lagHistory5s.add(currentLag);
             timestamps5s.add(now);
 
-            if (throughput5s.size() > THROUGHPUT_5S_SIZE) {
-                throughput5s.remove(0);
+            if (successThroughput5s.size() > THROUGHPUT_5S_SIZE) {
+                successThroughput5s.remove(0);
                 errorThroughput5s.remove(0);
+                retryThroughput5s.remove(0);
                 lagHistory5s.remove(0);
                 timestamps5s.remove(0);
             }
         }
 
-        minuteAccumulator += msgPerSec;
+        minuteAccumulator += successMsgPerSec + errorMsgPerSec;
         minuteCounter++;
         if (minuteCounter >= 12) {
             double avgMsgPerSec = minuteAccumulator / 12.0;
@@ -483,14 +495,16 @@ public class DashboardService {
         String avgResolutionTime = "N/A";
 
         long realLag = calculateTotalLag();
-        List<Double> realThroughput;
+        List<Double> successThroughput;
         List<Double> errorThroughput;
+        List<Double> retryThroughput;
         List<Long> lagHistory;
         List<Long> timestamps;
         List<Double> throughput24h;
-        synchronized (throughput5s) {
-            realThroughput = new ArrayList<>(throughput5s);
+        synchronized (successThroughput5s) {
+            successThroughput = new ArrayList<>(successThroughput5s);
             errorThroughput = new ArrayList<>(errorThroughput5s);
+            retryThroughput = new ArrayList<>(retryThroughput5s);
             lagHistory = new ArrayList<>(lagHistory5s);
             timestamps = new ArrayList<>(timestamps5s);
         }
@@ -557,8 +571,9 @@ public class DashboardService {
                 .successCount(successCount)
                 .errorCount(unresolvedErrors)
                 .retryCount(resolvedCount + discardedCount)
-                .throughput(realThroughput)
+                .successThroughput(successThroughput)
                 .errorThroughput(errorThroughput)
+                .retryThroughput(retryThroughput)
                 .lagHistory(lagHistory)
                 .timestamps(timestamps)
                 .throughput24h(throughput24h)

@@ -18,6 +18,9 @@ public final class AppConstants {
     /** Count of successfully processed and persisted events. */
     public static final String METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS = "app.kafka.events.processed";
     public static final String METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS_DESC = "Count of successfully processed and persisted events";
+    /** Count of events that have been retried from the DLT. */
+    public static final String METRIC_KAFKA_EVENTS_RETRIED = "app.kafka.events.retried";
+    public static final String METRIC_KAFKA_EVENTS_RETRIED_DESC = "Count of events that have been retried from the DLT";
     /** Duration (in milliseconds) taken to process a batch of events. */
     public static final String METRIC_KAFKA_EVENTS_BATCH_DURATION = "app.kafka.events.batch.duration";
     public static final String METRIC_KAFKA_EVENTS_BATCH_DURATION_DESC = "Duration (in milliseconds) taken to process a batch of events";

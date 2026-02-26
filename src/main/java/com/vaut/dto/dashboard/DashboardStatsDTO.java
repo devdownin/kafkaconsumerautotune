@@ -19,10 +19,12 @@ public record DashboardStatsDTO(
     /** Current Kafka consumer lag (sum of lags for all partitions). */
     long consumerLag,
 
-    /** Recent throughput history (e.g., last hour, sampled periodically). */
-    List<Double> throughput,
+    /** Recent success throughput history (e.g., last hour, sampled periodically). */
+    List<Double> successThroughput,
     /** Error throughput history. */
     List<Double> errorThroughput,
+    /** Retry throughput history. */
+    List<Double> retryThroughput,
     /** Consumer lag history. */
     List<Long> lagHistory,
     /** Timestamps for the history points. */
