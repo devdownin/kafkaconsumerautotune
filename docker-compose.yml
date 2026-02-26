@@ -33,23 +33,6 @@ services:
         condition: service_healthy
     entrypoint: [ "bash", "-c", "echo Waiting for Kafka to be ready... && kafka-topics --bootstrap-server kafka:9092 --list && kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --partitions 6 --replication-factor 1 --topic asf.peage.backoffice.sortie.recouvrable && kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --partitions 6 --replication-factor 1 --topic events.DLT" ]
 
-  akhq:
-    image: tchiotludo/akhq
-    container_name: akhq
-    environment:
-      AKHQ_CONFIGURATION: |
-        akhq:
-          connections:
-            docker-kafka-server:
-              properties:
-                bootstrap.servers: "kafka:9093"
-    ports:
-      - "8081:8080"
-    links:
-      - kafka
-    depends_on:
-      kafka:
-        condition: service_healthy
 
   oracle:
     image: container-registry.oracle.com/database/express:latest
@@ -79,16 +62,6 @@ services:
       - prometheus_data:/prometheus
     extra_hosts:
       - "host.docker.internal:host-gateway"
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    ports:
-      - "3000:3000"
-    volumes:
-      - grafana_data:/var/lib/grafana
-    depends_on:
-      - prometheus
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
