@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html class="dark" lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head('Simulation')}">
+    <title>Simulation Simulator</title>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<div th:replace="~{fragments/notifications :: notifications}"></div>
+
+<div class="flex h-screen overflow-hidden">
+    <div th:replace="~{fragments/sidebar :: sidebar}"></div>
+
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
+            <div class="flex items-center gap-4">
+                <h2 class="text-lg font-bold">Traffic Simulator</h2>
+                <span id="sim-badge" class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+                    <span id="sim-dot" class="size-1.5 rounded-full bg-slate-500"></span>
+                    <span id="sim-status-text">Idle</span>
+                </span>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-8 space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Configuration Card -->
+                <div class="lg:col-span-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                    <h4 class="text-base font-bold mb-4">Simulation Parameters</h4>
+                    <form id="simulation-form" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 uppercase mb-1">Total Messages</label>
+                            <input type="number" id="totalMessages" name="totalMessages" value="1000" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm py-2 px-3 focus:ring-1 focus:ring-primary" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 uppercase mb-1">Business Error % (Missing ID)</label>
+                            <input type="number" id="errorPercentage" name="errorPercentage" value="5" min="0" max="100" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm py-2 px-3 focus:ring-1 focus:ring-primary" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 uppercase mb-1">Malformed JSON %</label>
+                            <input type="number" id="malformedJsonPercentage" name="malformedJsonPercentage" value="2" min="0" max="100" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm py-2 px-3 focus:ring-1 focus:ring-primary" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 uppercase mb-1">Delay between messages (ms)</label>
+                            <input type="number" id="delayBetweenMessagesMs" name="delayBetweenMessagesMs" value="10" min="0" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm py-2 px-3 focus:ring-1 focus:ring-primary" />
+                        </div>
+                        <div class="pt-4 flex gap-2">
+                            <button type="button" id="start-btn" onclick="startSimulation()" class="flex-1 bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                <span class="material-symbols-outlined">play_arrow</span>
+                                Start
+                            </button>
+                            <button type="button" id="stop-btn" onclick="stopSimulation()" class="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50" disabled>
+                                <span class="material-symbols-outlined">stop</span>
+                                Stop
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Status Card -->
+                <div class="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                    <h4 class="text-base font-bold mb-4">Live Progress</h4>
+                    <div class="space-y-6">
+                        <div>
+                            <div class="flex justify-between items-end mb-2">
+                                <span class="text-xs font-medium text-slate-500 uppercase">Global Completion</span>
+                                <span id="progress-text" class="text-sm font-bold">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-100 dark:bg-slate-800 h-3 rounded-full overflow-hidden">
+                                <div id="progress-bar" class="bg-primary h-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-4">
+                            <div class="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-lg">
+                                <p class="text-[10px] font-bold text-emerald-500 uppercase mb-1">Valid Sent</p>
+                                <h3 id="stat-valid" class="text-2xl font-bold">0</h3>
+                            </div>
+                            <div class="p-4 bg-amber-500/5 border border-amber-500/10 rounded-lg">
+                                <p class="text-[10px] font-bold text-amber-500 uppercase mb-1">Business Errors</p>
+                                <h3 id="stat-error" class="text-2xl font-bold">0</h3>
+                            </div>
+                            <div class="p-4 bg-rose-500/5 border border-rose-500/10 rounded-lg">
+                                <p class="text-[10px] font-bold text-rose-500 uppercase mb-1">Malformed</p>
+                                <h3 id="stat-malformed" class="text-2xl font-bold">0</h3>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-center pt-4 border-t border-slate-100 dark:border-slate-800">
+                            <div class="text-sm">
+                                <span class="text-slate-500">Processed:</span>
+                                <span id="stat-processed" class="font-bold ml-1">0</span> / <span id="stat-total" class="font-bold">0</span>
+                            </div>
+                            <div class="text-sm">
+                                <span class="text-slate-500">Elapsed:</span>
+                                <span id="stat-elapsed" class="font-bold ml-1">0s</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div th:replace="~{fragments/sidebar :: footer-status}"></div>
+    </main>
+</div>
+
+<div th:replace="~{fragments/scripts :: common-scripts}"></div>
+
+<script th:inline="javascript">
+    let pollInterval;
+    let startTime = 0;
+
+    function startSimulation() {
+        const data = {
+            totalMessages: parseInt(document.getElementById('totalMessages').value),
+            errorPercentage: parseInt(document.getElementById('errorPercentage').value),
+            malformedJsonPercentage: parseInt(document.getElementById('malformedJsonPercentage').value),
+            delayBetweenMessagesMs: parseInt(document.getElementById('delayBetweenMessagesMs').value)
+        };
+
+        fetch('/api/simulation/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        }).then(res => {
+            if (res.ok) {
+                document.getElementById('start-btn').disabled = true;
+                document.getElementById('stop-btn').disabled = false;
+                startPolling();
+            }
+        });
+    }
+
+    function stopSimulation() {
+        fetch('/api/simulation/stop', { method: 'POST' })
+            .then(() => {
+                document.getElementById('stop-btn').disabled = true;
+            });
+    }
+
+    function startPolling() {
+        if (pollInterval) clearInterval(pollInterval);
+        pollInterval = setInterval(updateStatus, 1000);
+        updateStatus();
+    }
+
+    function updateStatus() {
+        fetch('/api/simulation/status')
+            .then(res => res.json())
+            .then(status => {
+                document.getElementById('stat-processed').textContent = status.processedMessages;
+                document.getElementById('stat-total').textContent = status.totalMessages;
+                document.getElementById('stat-valid').textContent = status.sentValid;
+                document.getElementById('stat-error').textContent = status.sentError;
+                document.getElementById('stat-malformed').textContent = status.sentMalformed;
+
+                const progress = status.totalMessages > 0 ? (status.processedMessages / status.totalMessages * 100) : 0;
+                document.getElementById('progress-bar').style.width = progress + '%';
+                document.getElementById('progress-text').textContent = Math.round(progress) + '%';
+
+                if (status.running) {
+                    document.getElementById('sim-badge').className = 'flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase tracking-wider';
+                    document.getElementById('sim-dot').className = 'size-1.5 rounded-full bg-emerald-500 animate-pulse';
+                    document.getElementById('sim-status-text').textContent = 'Running';
+                    document.getElementById('start-btn').disabled = true;
+                    document.getElementById('stop-btn').disabled = false;
+
+                    const elapsed = Math.round((Date.now() - status.startTime) / 1000);
+                    document.getElementById('stat-elapsed').textContent = elapsed + 's';
+                } else {
+                    document.getElementById('sim-badge').className = 'flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-500 text-[10px] font-bold uppercase tracking-wider';
+                    document.getElementById('sim-dot').className = 'size-1.5 rounded-full bg-slate-50';
+                    document.getElementById('sim-status-text').textContent = 'Idle';
+                    document.getElementById('start-btn').disabled = false;
+                    document.getElementById('stop-btn').disabled = true;
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                }
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initThemeToggle();
+        updateStatus();
+        // If it was already running, start polling
+        fetch('/api/simulation/status')
+            .then(res => res.json())
+            .then(status => {
+                if (status.running) startPolling();
+            });
+    });
+</script>
+</body>
+</html>

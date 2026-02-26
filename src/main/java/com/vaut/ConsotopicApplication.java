@@ -14,6 +14,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableCaching
 @EnableRetry
 @EnableScheduling
+@org.springframework.scheduling.annotation.EnableAsync
 @SpringBootApplication
 public class ConsotopicApplication {
 
