@@ -28,6 +28,10 @@
             <span class="material-symbols-outlined">error_outline</span>
             <span th:class="${'text-sm ' + (activePage == 'dlt' ? 'font-semibold' : 'font-medium')}">DLT Management</span>
         </a>
+        <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'simulation' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/simulation}">
+            <span class="material-symbols-outlined">rocket_launch</span>
+            <span th:class="${'text-sm ' + (activePage == 'simulation' ? 'font-semibold' : 'font-medium')}">Traffic Simulator</span>
+        </a>
         <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'metrics' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/metrics}">
             <span class="material-symbols-outlined">monitoring</span>
             <span th:class="${'text-sm ' + (activePage == 'metrics' ? 'font-semibold' : 'font-medium')}">Application Metrics</span>
