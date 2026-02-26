@@ -1,15 +1,19 @@
 package com.vaut.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.vaut.config.AppConstants;
 import com.vaut.dto.simulation.SimulationRequestDTO;
 import com.vaut.dto.simulation.SimulationStatusDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
@@ -58,6 +62,10 @@ public class SimulationService {
             return;
         }
 
+        MDC.put(AppConstants.MDC_EVENT_CATEGORY, "simulation");
+        MDC.put(AppConstants.MDC_EVENT_TYPE, "produce");
+        MDC.put(AppConstants.MDC_EVENT_OUTCOME, "success");
+
         this.totalMessages.set(request.getTotalMessages());
         this.processedCount.set(0);
         this.sentValidCount.set(0);
@@ -73,6 +81,11 @@ public class SimulationService {
                 int chance = random.nextInt(100);
                 String payload;
                 String key = UUID.randomUUID().toString();
+                String correlationId = UUID.randomUUID().toString();
+
+                MDC.put(AppConstants.MDC_CORRELATION_ID, correlationId);
+                MDC.put(AppConstants.MDC_KAFKA_KEY, key);
+                MDC.put(AppConstants.MDC_KAFKA_TOPIC, topicName);
 
                 if (chance < request.getMalformedJsonPercentage()) {
                     payload = "MALFORMED_JSON_CONTENT_{" + key + "}";
@@ -93,21 +106,33 @@ public class SimulationService {
                     sentValidCount.incrementAndGet();
                 }
 
-                kafkaTemplate.send(topicName, key, payload);
+                ProducerRecord<String, String> record = new ProducerRecord<>(topicName, key, payload);
+                record.headers().add(AppConstants.HEADER_CORRELATION_ID, correlationId.getBytes(StandardCharsets.UTF_8));
+
+                kafkaTemplate.send(record);
+                log.info("Simulated message sent with correlationId: {}", correlationId);
+
                 processedCount.incrementAndGet();
 
                 if (request.getDelayBetweenMessagesMs() > 0) {
                     Thread.sleep(request.getDelayBetweenMessagesMs());
                 }
+
+                MDC.remove(AppConstants.MDC_CORRELATION_ID);
+                MDC.remove(AppConstants.MDC_KAFKA_KEY);
+                MDC.remove(AppConstants.MDC_KAFKA_TOPIC);
             }
         } catch (InterruptedException e) {
+            MDC.put(AppConstants.MDC_EVENT_OUTCOME, "failure");
             log.error("Simulation interrupted", e);
             Thread.currentThread().interrupt();
         } catch (Exception e) {
+            MDC.put(AppConstants.MDC_EVENT_OUTCOME, "failure");
             log.error("Error during simulation", e);
         } finally {
             running.set(false);
             log.info("Simulation finished: {}/{}", processedCount.get(), totalMessages);
+            MDC.clear();
         }
     }
 }

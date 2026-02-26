@@ -9,9 +9,11 @@ import com.vaut.service.WebSocketService;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.header.Header;
 import org.slf4j.MDC;
 import org.springframework.kafka.support.Acknowledgment;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -93,12 +95,12 @@ public abstract class AbstractBatchConsumer<T> {
      * Handles the batch processing lifecycle.
      */
     protected void consume(List<ConsumerRecord<String, String>> records, Acknowledgment acknowledgment) {
-        // Populate MDC for Kafka processing
-        MDC.put("correlationId", UUID.randomUUID().toString());
-        MDC.put("rgpd", "false");
-        MDC.put("eventCategory", "kafka");
-        MDC.put("eventType", "process");
-        MDC.put("eventOutcome", "success");
+        // Default MDC for the batch
+        MDC.put(AppConstants.MDC_CORRELATION_ID, UUID.randomUUID().toString());
+        MDC.put(AppConstants.MDC_RGPD, "false");
+        MDC.put(AppConstants.MDC_EVENT_CATEGORY, "kafka");
+        MDC.put(AppConstants.MDC_EVENT_TYPE, "process");
+        MDC.put(AppConstants.MDC_EVENT_OUTCOME, "success");
 
         try {
             long startTime = System.currentTimeMillis();
@@ -110,9 +112,15 @@ public abstract class AbstractBatchConsumer<T> {
             List<DltEvent> dltEventsToPersist = new ArrayList<>();
 
             for (ConsumerRecord<String, String> record : records) {
-                MDC.put("kafkaTopic", record.topic());
-                MDC.put("kafkaPartition", String.valueOf(record.partition()));
-                MDC.put("kafkaOffset", String.valueOf(record.offset()));
+                // Extract correlation ID from headers if available
+                String correlationId = extractHeader(record, AppConstants.HEADER_CORRELATION_ID)
+                        .orElse(UUID.randomUUID().toString());
+
+                MDC.put(AppConstants.MDC_CORRELATION_ID, correlationId);
+                MDC.put(AppConstants.MDC_KAFKA_TOPIC, record.topic());
+                MDC.put(AppConstants.MDC_KAFKA_PARTITION, String.valueOf(record.partition()));
+                MDC.put(AppConstants.MDC_KAFKA_OFFSET, String.valueOf(record.offset()));
+                MDC.put(AppConstants.MDC_KAFKA_KEY, record.key());
 
                 try {
                     recordSizeMetric(record);
@@ -122,15 +130,19 @@ public abstract class AbstractBatchConsumer<T> {
                         () -> dltEventsToPersist.add(dltService.routeToDlt(record, "Processing failed (Check logs)"))
                     );
                 } catch (Exception e) {
-                    MDC.put("eventOutcome", "failure");
+                    MDC.put(AppConstants.MDC_EVENT_OUTCOME, "failure");
                     log.error("Unexpected error processing record: {}", e.getMessage());
                     dltEventsToPersist.add(dltService.routeToDlt(record, "Unexpected error: " + e.getMessage()));
                     // Reset outcome for next logs if needed, but here we continue the loop
-                    MDC.put("eventOutcome", "success");
+                    MDC.put(AppConstants.MDC_EVENT_OUTCOME, "success");
                 } finally {
-                    MDC.remove("kafkaTopic");
-                    MDC.remove("kafkaPartition");
-                    MDC.remove("kafkaOffset");
+                    // We don't remove correlationId here to keep it for the persistBatches if it's individual fallback
+                    // but we will reset it at the start of next iteration anyway.
+                    MDC.remove(AppConstants.MDC_KAFKA_TOPIC);
+                    MDC.remove(AppConstants.MDC_KAFKA_PARTITION);
+                    MDC.remove(AppConstants.MDC_KAFKA_OFFSET);
+                    MDC.remove(AppConstants.MDC_KAFKA_KEY);
+                    MDC.remove(AppConstants.MDC_EVENT_ID);
                 }
             }
 
@@ -142,16 +154,20 @@ public abstract class AbstractBatchConsumer<T> {
             meterRegistry.timer(AppConstants.METRIC_KAFKA_EVENTS_BATCH_DURATION).record(duration, TimeUnit.MILLISECONDS);
             log.info("Batch of {} records processed in {}ms", records.size(), duration);
         } catch (Exception e) {
-            MDC.put("eventOutcome", "failure");
+            MDC.put(AppConstants.MDC_EVENT_OUTCOME, "failure");
             log.error("Critical error in batch consumption: {}", e.getMessage());
             throw e;
         } finally {
-            MDC.remove("correlationId");
-            MDC.remove("rgpd");
-            MDC.remove("eventCategory");
-            MDC.remove("eventType");
-            MDC.remove("eventOutcome");
+            MDC.clear();
         }
+    }
+
+    private Optional<String> extractHeader(ConsumerRecord<String, String> record, String headerName) {
+        Header header = record.headers().lastHeader(headerName);
+        if (header != null && header.value() != null) {
+            return Optional.of(new String(header.value(), StandardCharsets.UTF_8));
+        }
+        return Optional.empty();
     }
 
     /**
@@ -165,7 +181,7 @@ public abstract class AbstractBatchConsumer<T> {
                 meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS, "type", "success").increment(entities.size());
                 broadcastPersisted(persisted);
             } catch (io.github.resilience4j.circuitbreaker.CallNotPermittedException e) {
-                MDC.put("eventOutcome", "failure");
+                MDC.put(AppConstants.MDC_EVENT_OUTCOME, "failure");
                 log.error("Circuit breaker is OPEN. Database is likely unavailable. Stopping batch processing.");
                 throw e; // Re-throw to trigger Kafka retry/stop
             } catch (Exception e) {
@@ -178,20 +194,20 @@ public abstract class AbstractBatchConsumer<T> {
                         .timestamp(java.time.LocalDateTime.now())
                         .build());
                 for (T entity : entities) {
-                    MDC.put("kafkaTopic", getEntityTopic(entity));
-                    MDC.put("kafkaPartition", String.valueOf(getEntityPartition(entity)));
-                    MDC.put("kafkaOffset", String.valueOf(getEntityOffset(entity)));
+                    MDC.put(AppConstants.MDC_KAFKA_TOPIC, getEntityTopic(entity));
+                    MDC.put(AppConstants.MDC_KAFKA_PARTITION, String.valueOf(getEntityPartition(entity)));
+                    MDC.put(AppConstants.MDC_KAFKA_OFFSET, String.valueOf(getEntityOffset(entity)));
 
                     try {
                         List<T> persisted = saveBatch(List.of(entity));
                         meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS, "type", "success").increment(1);
                         broadcastPersisted(persisted);
                     } catch (io.github.resilience4j.circuitbreaker.CallNotPermittedException ex) {
-                        MDC.put("eventOutcome", "failure");
+                        MDC.put(AppConstants.MDC_EVENT_OUTCOME, "failure");
                         log.error("Circuit breaker opened during individual persistence. Stopping.");
                         throw ex;
                     } catch (Exception ex) {
-                        MDC.put("eventOutcome", "failure");
+                        MDC.put(AppConstants.MDC_EVENT_OUTCOME, "failure");
                         log.error("Failed to persist individual entity {}: {}", getEntityId(entity), ex.getMessage());
                         findOriginalRecord(originalRecords, entity).ifPresentOrElse(
                             record -> {
@@ -205,11 +221,11 @@ public abstract class AbstractBatchConsumer<T> {
                             },
                             () -> log.error("Could not find original record for failed entity {}", getEntityId(entity))
                         );
-                        MDC.put("eventOutcome", "success"); // Reset for next entity
+                        MDC.put(AppConstants.MDC_EVENT_OUTCOME, "success"); // Reset for next entity
                     } finally {
-                        MDC.remove("kafkaTopic");
-                        MDC.remove("kafkaPartition");
-                        MDC.remove("kafkaOffset");
+                        MDC.remove(AppConstants.MDC_KAFKA_TOPIC);
+                        MDC.remove(AppConstants.MDC_KAFKA_PARTITION);
+                        MDC.remove(AppConstants.MDC_KAFKA_OFFSET);
                     }
                 }
             }
@@ -220,9 +236,9 @@ public abstract class AbstractBatchConsumer<T> {
                 List<DltEvent> saved = dltEventRepository.saveAll(dltEvents);
                 saved.forEach(webSocketService::sendDltEvent);
             } catch (Exception e) {
-                MDC.put("eventOutcome", "failure");
+                MDC.put(AppConstants.MDC_EVENT_OUTCOME, "failure");
                 log.error("Failed to persist DLT events batch: {}", e.getMessage());
-                MDC.put("eventOutcome", "success");
+                MDC.put(AppConstants.MDC_EVENT_OUTCOME, "success");
             }
         }
     }

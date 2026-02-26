@@ -39,7 +39,9 @@
                             "kafka": {
                               "topic": "%mdc{kafkaTopic}",
                               "partition": "%mdc{kafkaPartition}",
-                              "offset": "%mdc{kafkaOffset}"
+                              "offset": "%mdc{kafkaOffset}",
+                              "key": "%mdc{kafkaKey}",
+                              "eventId": "%mdc{eventId}"
                             }
                           },
                           "correlation": {
