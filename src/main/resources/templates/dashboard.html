@@ -256,8 +256,7 @@
 <div th:replace="~{fragments/scripts :: common-scripts}"></div>
 
 <script th:inline="javascript">
-    var initialStats = /*[[${stats}]]*/ {};
-    var currentStats = initialStats;
+    var currentStats = /*[[${stats}]]*/ {};
 
     // WebSocket Setup
     var socket = new SockJS('/ws');
@@ -289,41 +288,95 @@
     var currentDuration = '15m';
 
     function initCharts() {
-        const initialData = currentDuration === '24h' ? initialStats.throughput24h : initialStats.throughput;
+        const is24h = currentDuration === '24h';
+        const stats = currentStats;
+
+        const totalData = is24h ? stats.throughput24h || [] : (stats.throughput || []).map((v, i) => [stats.timestamps[i], v]);
+        const errorData = is24h ? [] : (stats.errorThroughput || []).map((v, i) => [stats.timestamps[i], v]);
+        const lagData = is24h ? [] : (stats.lagHistory || []).map((v, i) => [stats.timestamps[i], v]);
 
         var throughputOptions = {
-            series: [{
-                name: 'Msg/s',
-                data: initialData || []
-            }],
+            series: [
+                { name: 'Total (Msg/s)', type: 'area', data: totalData },
+                { name: 'Errors (Err/s)', type: 'line', data: errorData },
+                { name: 'Lag (Messages)', type: 'line', data: lagData }
+            ],
             chart: {
                 height: 300,
-                type: 'area',
+                type: 'line',
+                stacked: false,
                 toolbar: { show: false },
                 animations: { enabled: true, easing: 'linear', dynamicAnimation: { speed: 1000 } }
             },
             dataLabels: { enabled: false },
-            stroke: { curve: 'smooth', width: 3, colors: ['#135bec'] },
+            stroke: {
+                curve: 'smooth',
+                width: [4, 2, 2],
+                dashArray: [0, 5, 0]
+            },
+            colors: ['#135bec', '#f43f5e', '#f59e0b'],
             fill: {
-                type: 'gradient',
+                type: ['gradient', 'solid', 'solid'],
                 gradient: { shadeIntensity: 1, opacityFrom: 0.45, opacityTo: 0.05 }
             },
             grid: { borderColor: '#1e293b', strokeDashArray: 4 },
-            xaxis: { labels: { show: false } },
-            yaxis: {
+            xaxis: {
+                type: 'datetime',
                 labels: {
-                    style: { colors: '#94a3b8' },
-                    formatter: function(val) { return val.toFixed(1); }
-                }
+                    show: true,
+                    style: { colors: '#94a3b8', fontSize: '10px' },
+                    datetimeUTC: false,
+                    format: 'HH:mm:ss'
+                },
+                axisBorder: { show: false },
+                axisTicks: { show: false }
             },
-            tooltip: { theme: 'dark' }
+            yaxis: [
+                {
+                    seriesName: 'Total (Msg/s)',
+                    min: 0,
+                    forceNiceScale: true,
+                    title: { text: 'Throughput (Msg/s)', style: { color: '#135bec', fontWeight: 600 } },
+                    labels: {
+                        style: { colors: '#94a3b8' },
+                        formatter: function(val) { return val.toFixed(1); }
+                    }
+                },
+                {
+                    seriesName: 'Total (Msg/s)',
+                    show: false,
+                    min: 0
+                },
+                {
+                    opposite: true,
+                    seriesName: 'Lag (Messages)',
+                    min: 0,
+                    forceNiceScale: true,
+                    title: { text: 'Consumer Lag', style: { color: '#f59e0b', fontWeight: 600 } },
+                    labels: {
+                        style: { colors: '#94a3b8' },
+                        formatter: function(val) { return Math.round(val).toLocaleString(); }
+                    }
+                }
+            ],
+            tooltip: {
+                theme: 'dark',
+                x: { format: 'HH:mm:ss' }
+            },
+            legend: {
+                show: true,
+                position: 'top',
+                horizontalAlign: 'right',
+                labels: { colors: '#94a3b8' },
+                itemMargin: { horizontal: 10, vertical: 5 }
+            }
         };
 
         throughputChart = new ApexCharts(document.querySelector("#throughput-chart"), throughputOptions);
         throughputChart.render();
 
         var donutOptions = {
-            series: [initialStats.successCount || 0, initialStats.errorCount || 0, initialStats.retryCount || 0],
+            series: [currentStats.successCount || 0, currentStats.errorCount || 0, currentStats.retryCount || 0],
             chart: { type: 'donut', height: 250 },
             labels: ['Success', 'DLT / Errors', 'Retries'],
             colors: ['#135bec', '#f43f5e', '#f59e0b'],
@@ -335,7 +388,7 @@
                             show: true,
                             name: { show: true, color: '#94a3b8' },
                             value: { show: true, color: '#f8fafc' },
-                            total: { show: true, label: 'Success Rate', formatter: function() { return (initialStats.successRate || 0).toFixed(2) + '%' } }
+                            total: { show: true, label: 'Success Rate', formatter: function() { return (currentStats.successRate || 0).toFixed(2) + '%' } }
                         }
                     }
                 }
@@ -358,22 +411,41 @@
     function updateThroughputDuration(duration) {
         currentDuration = duration;
         if (throughputChart) {
-            const data = duration === '24h' ? initialStats.throughput24h : initialStats.throughput;
-            throughputChart.updateSeries([{ data: data }]);
+            const is24h = duration === '24h';
+            const stats = currentStats;
+
+            const totalData = is24h ? stats.throughput24h || [] : (stats.throughput || []).map((v, i) => [stats.timestamps[i], v]);
+            const errorData = is24h ? [] : (stats.errorThroughput || []).map((v, i) => [stats.timestamps[i], v]);
+            const lagData = is24h ? [] : (stats.lagHistory || []).map((v, i) => [stats.timestamps[i], v]);
+
+            throughputChart.updateSeries([
+                { name: 'Total (Msg/s)', data: totalData },
+                { name: 'Errors (Err/s)', data: errorData },
+                { name: 'Lag (Messages)', data: lagData }
+            ]);
         }
     }
 
 
     function updateStats(stats) {
-        initialStats = stats;
+        currentStats = stats;
         document.getElementById('total-processed-count').innerText = stats.totalProcessed.toLocaleString('en-US');
         document.getElementById('success-rate').innerText = stats.successRate.toFixed(2) + '%';
         document.getElementById('success-rate-bar').style.width = stats.successRate + '%';
         document.getElementById('dlt-count').innerText = stats.dltCount;
         document.getElementById('consumer-lag').innerText = stats.consumerLag.toLocaleString('en-US');
+
         if (throughputChart) {
-            const data = currentDuration === '24h' ? stats.throughput24h : stats.throughput;
-            throughputChart.updateSeries([{ data: data }]);
+            const is24h = currentDuration === '24h';
+            const totalData = is24h ? stats.throughput24h || [] : (stats.throughput || []).map((v, i) => [stats.timestamps[i], v]);
+            const errorData = is24h ? [] : (stats.errorThroughput || []).map((v, i) => [stats.timestamps[i], v]);
+            const lagData = is24h ? [] : (stats.lagHistory || []).map((v, i) => [stats.timestamps[i], v]);
+
+            throughputChart.updateSeries([
+                { name: 'Total (Msg/s)', data: totalData },
+                { name: 'Errors (Err/s)', data: errorData },
+                { name: 'Lag (Messages)', data: lagData }
+            ]);
         }
         if (donutChart) {
             donutChart.updateSeries([stats.successCount, stats.errorCount, stats.retryCount]);

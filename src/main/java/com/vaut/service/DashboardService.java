@@ -41,6 +41,7 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.scheduling.annotation.Scheduled;
+import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Map;
@@ -84,10 +85,14 @@ public class DashboardService {
     private static final int THROUGHPUT_5S_SIZE = 180; // 15 minutes at 5s interval
     private static final int THROUGHPUT_1M_SIZE = 1440; // 24 hours at 1m interval
     private final List<Double> throughput5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0.0));
+    private final List<Double> errorThroughput5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0.0));
+    private final List<Long> lagHistory5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0L));
+    private final List<Long> timestamps5s = new ArrayList<>();
     private final List<Double> throughput1m = new ArrayList<>(Collections.nCopies(THROUGHPUT_1M_SIZE, 0.0));
     private final Map<String, List<Double>> metricsHistory = new java.util.concurrent.ConcurrentHashMap<>();
     private static final int MAX_HISTORY_POINTS = 20;
     private long lastProcessedCount = 0;
+    private long lastErrorCount = 0;
     private int minuteCounter = 0;
     private double minuteAccumulator = 0;
 
@@ -121,6 +126,16 @@ public class DashboardService {
 
     @Value("${app.event.id-json-path:$.idPassage}")
     private String idJsonPath;
+
+    @PostConstruct
+    public void init() {
+        long now = System.currentTimeMillis();
+        synchronized (throughput5s) {
+            for (int i = THROUGHPUT_5S_SIZE - 1; i >= 0; i--) {
+                timestamps5s.add(now - (i * 5000L));
+            }
+        }
+    }
 
     /**
      * Periodically refreshes Kafka-related metrics such as consumer group status and lag.
@@ -269,17 +284,34 @@ public class DashboardService {
         double currentProcessed = Optional.ofNullable(meterRegistry.find(AppConstants.METRIC_KAFKA_EVENTS_RECEIVED_COUNT).counter())
                 .map(counter -> counter.count())
                 .orElse(0.0);
+        double currentErrors = Optional.ofNullable(meterRegistry.find(AppConstants.METRIC_KAFKA_EVENTS_ERRORS).counter())
+                .map(counter -> counter.count())
+                .orElse(0.0);
 
         long delta = (long) (currentProcessed - lastProcessedCount);
-        if (delta < 0) delta = 0; 
-
+        if (delta < 0) delta = 0;
         lastProcessedCount = (long) currentProcessed;
         double msgPerSec = delta / 5.0;
 
+        long errorDelta = (long) (currentErrors - lastErrorCount);
+        if (errorDelta < 0) errorDelta = 0;
+        lastErrorCount = (long) currentErrors;
+        double errorMsgPerSec = errorDelta / 5.0;
+
+        long currentLag = calculateTotalLag();
+        long now = System.currentTimeMillis();
+
         synchronized (throughput5s) {
             throughput5s.add(msgPerSec);
+            errorThroughput5s.add(errorMsgPerSec);
+            lagHistory5s.add(currentLag);
+            timestamps5s.add(now);
+
             if (throughput5s.size() > THROUGHPUT_5S_SIZE) {
                 throughput5s.remove(0);
+                errorThroughput5s.remove(0);
+                lagHistory5s.remove(0);
+                timestamps5s.remove(0);
             }
         }
 
@@ -452,9 +484,15 @@ public class DashboardService {
 
         long realLag = calculateTotalLag();
         List<Double> realThroughput;
+        List<Double> errorThroughput;
+        List<Long> lagHistory;
+        List<Long> timestamps;
         List<Double> throughput24h;
         synchronized (throughput5s) {
             realThroughput = new ArrayList<>(throughput5s);
+            errorThroughput = new ArrayList<>(errorThroughput5s);
+            lagHistory = new ArrayList<>(lagHistory5s);
+            timestamps = new ArrayList<>(timestamps5s);
         }
         synchronized (throughput1m) {
             throughput24h = new ArrayList<>(throughput1m);
@@ -520,6 +558,9 @@ public class DashboardService {
                 .errorCount(unresolvedErrors)
                 .retryCount(resolvedCount + discardedCount)
                 .throughput(realThroughput)
+                .errorThroughput(errorThroughput)
+                .lagHistory(lagHistory)
+                .timestamps(timestamps)
                 .throughput24h(throughput24h)
                 .kafkaClusterName(bootstrapServers)
                 .totalDlt24h(totalDlt24h)
