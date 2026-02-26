@@ -21,6 +21,12 @@ public record DashboardStatsDTO(
 
     /** Recent throughput history (e.g., last hour, sampled periodically). */
     List<Double> throughput,
+    /** Error throughput history. */
+    List<Double> errorThroughput,
+    /** Consumer lag history. */
+    List<Long> lagHistory,
+    /** Timestamps for the history points. */
+    List<Long> timestamps,
     /** Throughput history for the last 24 hours. */
     List<Double> throughput24h,
 
