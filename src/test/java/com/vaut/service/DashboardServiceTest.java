@@ -145,7 +145,7 @@ class DashboardServiceTest {
 
         // Given
         DashboardStatsDTO statsInitial = dashboardService.getStats();
-        assertThat(statsInitial.successThroughput()).hasSize(180);
+        assertThat(statsInitial.successThroughput()).hasSize(120);
 
         // When - simulation of throughput updates
         for (int i = 0; i < 200; i++) {
@@ -154,6 +154,6 @@ class DashboardServiceTest {
 
         // Then
         DashboardStatsDTO statsAfter = dashboardService.getStats();
-        assertThat(statsAfter.successThroughput()).hasSize(180);
+        assertThat(statsAfter.successThroughput()).hasSize(120);
     }
 }

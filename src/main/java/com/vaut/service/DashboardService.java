@@ -82,7 +82,7 @@ public class DashboardService {
     private final MetricThresholdProperties metricThresholdProperties;
     private final CircuitBreakerRegistry circuitBreakerRegistry;
 
-    private static final int THROUGHPUT_5S_SIZE = 180; // 15 minutes at 5s interval
+    private static final int THROUGHPUT_5S_SIZE = 120; // 10 minutes at 5s interval
     private static final int THROUGHPUT_1M_SIZE = 1440; // 24 hours at 1m interval
     private final List<Double> successThroughput5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0.0));
     private final List<Double> errorThroughput5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0.0));
