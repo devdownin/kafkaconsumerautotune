@@ -26,14 +26,22 @@ import java.util.concurrent.TimeUnit;
 import com.vaut.config.KafkaTuningProperties;
 
 /**
- * Service that automatically tunes Kafka consumer parameters based on observed performance and system load.
- * It monitors throughput and batch processing time to adjust max.poll.records,
- * and dynamically adjusts concurrency based on CPU load and consumer lag.
+ * Service dedicated to the "Auto-Tuning" of Kafka consumer parameters using a closed-loop control system.
  *
- * Includes safety mechanisms to avoid frequent rebalances:
- * - Minimum interval between restarts.
- * - Minimum threshold for parameter changes.
- * - Only tunes when active traffic is detected.
+ * <p>The core of this service is a <b>PID Controller</b> (Proportional-Integral-Derivative) that aims to maintain
+ * a stable batch processing duration. By adjusting {@code max.poll.records}, the service ensures that the
+ * consumer is neither under-utilized nor overwhelmed, regardless of variations in message complexity or
+ * database performance.</p>
+ *
+ * <p>Key optimizations performed:</p>
+ * <ul>
+ *     <li><b>Max Poll Records:</b> Adjusted via PID to reach the {@code targetBatchDurationMs}.</li>
+ *     <li><b>Fetch Parameters:</b> {@code fetch.min.bytes} and {@code fetch.max.wait.ms} are tuned to optimize network throughput.</li>
+ *     <li><b>Concurrency:</b> The number of consumer threads is dynamically scaled based on CPU load and Kafka lag.</li>
+ * </ul>
+ *
+ * <p>Safety first: To avoid "rebalance storms", a cooldown period and a minimum change threshold are enforced
+ * before any parameter change triggers a consumer restart.</p>
  */
 @Service
 @Slf4j
@@ -82,9 +90,17 @@ public class KafkaTuningService {
     private int currentMaxPollIntervalMs = -1;
 
     /**
-     * Periodic task to analyze metrics and adjust Kafka parameters if necessary.
-     * It uses a PID controller to target an optimal batch duration and dynamically adjusts
-     * concurrency based on system load and lag.
+     * The heart of the auto-tuning logic. Runs periodically to evaluate system performance.
+     *
+     * <p>The tuning logic follows these steps:</p>
+     * <ol>
+     *     <li>Calculate current throughput (msg/s) and average batch duration.</li>
+     *     <li>Compute the <b>Error</b>: {@code (Target - Actual) / Target}.</li>
+     *     <li>Update the PID state and calculate the new {@code max.poll.records}.</li>
+     *     <li>Tune network fetch parameters based on observed throughput and message size.</li>
+     *     <li>Evaluate if concurrency should be changed based on CPU usage and consumer lag.</li>
+     *     <li>If changes are significant and the cooldown period has passed, restart the consumer container.</li>
+     * </ol>
      */
     @Scheduled(fixedRateString = "${kafka.tuning.fixed-rate:60000}", initialDelayString = "${kafka.tuning.initial-delay:30000}")
     public void tune() {

@@ -16,8 +16,15 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Service responsible for persisting generalized Kafka events to the database.
- * Handles idempotency by checking for existing event IDs before saving.
+ * Service responsible for the reliable persistence of {@link KEvent} entities.
+ *
+ * <p>This service is fortified with multiple resilience patterns:</p>
+ * <ul>
+ *     <li><b>Idempotency:</b> Automatically detects and skips duplicate events based on their unique business ID.</li>
+ *     <li><b>Circuit Breaker:</b> Stops calls to the database if the failure rate is too high, protecting the infrastructure.</li>
+ *     <li><b>Retry:</b> Automatically retries transient failures (e.g., temporary lock issues) before giving up.</li>
+ *     <li><b>Transactional:</b> Ensures that a batch of new events is saved atomically.</li>
+ * </ul>
  */
 @Service
 @RequiredArgsConstructor
