@@ -17,55 +17,45 @@ import java.util.UUID;
 @Order(1)
 public class LoggingMdcFilter implements Filter {
 
-    private static final String CORRELATION_ID_HEADER = "X-Correlation-Id";
     private static final String AUTH_HEADER = "Authorization";
     private static final String RGPD_HEADER = "X-RGPD";
-
-    private static final String MDC_CORRELATION_ID = "correlationId";
-    private static final String MDC_AUTHENTICATION = "authentication";
-    private static final String MDC_RGPD = "rgpd";
-    private static final String MDC_EVENT_CATEGORY = "eventCategory";
-    private static final String MDC_EVENT_TYPE = "eventType";
-    private static final String MDC_EVENT_OUTCOME = "eventOutcome";
-    private static final String MDC_HTTP_METHOD = "httpMethod";
-    private static final String MDC_URL_PATH = "urlPath";
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
         if (request instanceof HttpServletRequest httpServletRequest) {
-            String correlationId = httpServletRequest.getHeader(CORRELATION_ID_HEADER);
+            String correlationId = httpServletRequest.getHeader(AppConstants.HEADER_CORRELATION_ID);
             if (correlationId == null || correlationId.isEmpty()) {
                 correlationId = UUID.randomUUID().toString();
             }
             String authHeader = httpServletRequest.getHeader(AUTH_HEADER);
             String rgpd = httpServletRequest.getHeader(RGPD_HEADER);
 
-            MDC.put(MDC_CORRELATION_ID, correlationId);
+            MDC.put(AppConstants.MDC_CORRELATION_ID, correlationId);
             if (authHeader != null) {
-                MDC.put(MDC_AUTHENTICATION, maskAuth(authHeader));
+                MDC.put(AppConstants.MDC_AUTHENTICATION, maskAuth(authHeader));
             }
-            MDC.put(MDC_RGPD, rgpd != null ? rgpd : "false");
+            MDC.put(AppConstants.MDC_RGPD, rgpd != null ? rgpd : "false");
 
             // Default event metadata for web requests
-            MDC.put(MDC_EVENT_CATEGORY, "web");
-            MDC.put(MDC_EVENT_TYPE, "access");
-            MDC.put(MDC_EVENT_OUTCOME, "success");
-            MDC.put(MDC_HTTP_METHOD, httpServletRequest.getMethod());
-            MDC.put(MDC_URL_PATH, httpServletRequest.getRequestURI());
+            MDC.put(AppConstants.MDC_EVENT_CATEGORY, "web");
+            MDC.put(AppConstants.MDC_EVENT_TYPE, "access");
+            MDC.put(AppConstants.MDC_EVENT_OUTCOME, "success");
+            MDC.put(AppConstants.MDC_HTTP_METHOD, httpServletRequest.getMethod());
+            MDC.put(AppConstants.MDC_URL_PATH, httpServletRequest.getRequestURI());
         }
 
         try {
             chain.doFilter(request, response);
         } finally {
-            MDC.remove(MDC_CORRELATION_ID);
-            MDC.remove(MDC_AUTHENTICATION);
-            MDC.remove(MDC_RGPD);
-            MDC.remove(MDC_EVENT_CATEGORY);
-            MDC.remove(MDC_EVENT_TYPE);
-            MDC.remove(MDC_EVENT_OUTCOME);
-            MDC.remove(MDC_HTTP_METHOD);
-            MDC.remove(MDC_URL_PATH);
+            MDC.remove(AppConstants.MDC_CORRELATION_ID);
+            MDC.remove(AppConstants.MDC_AUTHENTICATION);
+            MDC.remove(AppConstants.MDC_RGPD);
+            MDC.remove(AppConstants.MDC_EVENT_CATEGORY);
+            MDC.remove(AppConstants.MDC_EVENT_TYPE);
+            MDC.remove(AppConstants.MDC_EVENT_OUTCOME);
+            MDC.remove(AppConstants.MDC_HTTP_METHOD);
+            MDC.remove(AppConstants.MDC_URL_PATH);
         }
     }
 

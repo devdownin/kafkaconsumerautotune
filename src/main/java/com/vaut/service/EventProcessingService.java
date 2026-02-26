@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -61,6 +62,8 @@ public class EventProcessingService {
                 meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_ERRORS, "type", "missing_id").increment();
                 return Optional.empty();
             }
+
+            MDC.put(AppConstants.MDC_EVENT_ID, eventId);
 
             KEvent event = KEvent.builder()
                     .eventId(eventId)

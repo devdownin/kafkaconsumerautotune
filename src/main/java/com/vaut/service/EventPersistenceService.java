@@ -1,11 +1,13 @@
 package com.vaut.service;
 
+import com.vaut.config.AppConstants;
 import com.vaut.entity.KEvent;
 import com.vaut.repository.KEventRepository;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,7 +52,9 @@ public class EventPersistenceService {
                 .filter(event -> {
                     boolean exists = existingIds.contains(event.getEventId());
                     if (exists) {
+                        MDC.put(AppConstants.MDC_EVENT_ID, event.getEventId());
                         log.warn("KEvent with eventId {} already exists, skipping", event.getEventId());
+                        MDC.remove(AppConstants.MDC_EVENT_ID);
                     }
                     return !exists;
                 })
