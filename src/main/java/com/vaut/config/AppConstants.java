@@ -52,6 +52,8 @@ public final class AppConstants {
     public static final String MDC_EVENT_ID = "eventId";
     public static final String MDC_RGPD = "rgpd";
     public static final String MDC_AUTHENTICATION = "authentication";
+    public static final String MDC_CLIENT_IP = "clientIp";
+    public static final String MDC_USER_AGENT = "userAgent";
 
     // Headers
     public static final String HEADER_CORRELATION_ID = "X-Correlation-Id";
