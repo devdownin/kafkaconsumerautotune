@@ -2,8 +2,10 @@ package com.vaut.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.vaut.config.AppConstants;
 import com.vaut.entity.DltEvent;
 import com.vaut.repository.DltEventRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -33,6 +35,7 @@ public class DltService {
     private final DltEventRepository dltEventRepository;
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
+    private final MeterRegistry meterRegistry;
 
     @Value("${kafka.topic.dlt}")
     private String dltTopicName;
@@ -115,6 +118,7 @@ public class DltService {
                 ProducerRecord<String, String> record = new ProducerRecord<>(event.getOriginalTopic(), event.getPayload());
                 restoreHeaders(record, event.getHeaders());
                 kafkaTemplate.send(record);
+                meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_RETRIED).increment();
 
                 event.setStatus("RESOLVED");
                 event.setResolvedAt(LocalDateTime.now());
@@ -196,6 +200,7 @@ public class DltService {
                 ProducerRecord<String, String> record = new ProducerRecord<>(event.getOriginalTopic(), modifiedPayload);
                 restoreHeaders(record, event.getHeaders());
                 kafkaTemplate.send(record);
+                meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_RETRIED).increment();
 
                 event.setStatus("RESOLVED");
                 event.setPayload(modifiedPayload); // Update with the fixed payload
