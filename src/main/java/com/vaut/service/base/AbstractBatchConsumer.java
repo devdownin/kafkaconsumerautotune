@@ -104,6 +104,7 @@ public abstract class AbstractBatchConsumer<T> {
 
         try {
             long startTime = System.currentTimeMillis();
+            MDC.put(AppConstants.MDC_EVENT_OUTCOME, "success");
             log.info("Received batch of {} records from Kafka", records.size());
 
             meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_RECEIVED_COUNT).increment(records.size());
@@ -127,15 +128,17 @@ public abstract class AbstractBatchConsumer<T> {
 
                     processRecord(record).ifPresentOrElse(
                         entitiesToPersist::add,
-                        () -> dltEventsToPersist.add(dltService.routeToDlt(record, "Processing failed (Check logs)"))
+                        () -> {
+                            MDC.put(AppConstants.MDC_EVENT_OUTCOME, "failure");
+                            dltEventsToPersist.add(dltService.routeToDlt(record, "Processing failed (Check logs)"));
+                        }
                     );
                 } catch (Exception e) {
                     MDC.put(AppConstants.MDC_EVENT_OUTCOME, "failure");
                     log.error("Unexpected error processing record: {}", e.getMessage());
                     dltEventsToPersist.add(dltService.routeToDlt(record, "Unexpected error: " + e.getMessage()));
-                    // Reset outcome for next logs if needed, but here we continue the loop
-                    MDC.put(AppConstants.MDC_EVENT_OUTCOME, "success");
                 } finally {
+                    MDC.put(AppConstants.MDC_EVENT_OUTCOME, "success");
                     // We don't remove correlationId here to keep it for the persistBatches if it's individual fallback
                     // but we will reset it at the start of next iteration anyway.
                     MDC.remove(AppConstants.MDC_KAFKA_TOPIC);
@@ -158,6 +161,7 @@ public abstract class AbstractBatchConsumer<T> {
             log.error("Critical error in batch consumption: {}", e.getMessage());
             throw e;
         } finally {
+            MDC.remove(AppConstants.MDC_EVENT_OUTCOME);
             MDC.clear();
         }
     }
@@ -185,7 +189,9 @@ public abstract class AbstractBatchConsumer<T> {
                 log.error("Circuit breaker is OPEN. Database is likely unavailable. Stopping batch processing.");
                 throw e; // Re-throw to trigger Kafka retry/stop
             } catch (Exception e) {
+                MDC.put(AppConstants.MDC_EVENT_OUTCOME, "failure");
                 log.error("Batch persistence failed, falling back to individual processing: {}", e.getMessage());
+                MDC.put(AppConstants.MDC_EVENT_OUTCOME, "success");
                 webSocketService.sendSystemEvent(SystemEventDTO.builder()
                         .type("WARNING")
                         .category("BATCH")

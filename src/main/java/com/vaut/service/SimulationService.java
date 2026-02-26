@@ -110,6 +110,7 @@ public class SimulationService {
                 record.headers().add(AppConstants.HEADER_CORRELATION_ID, correlationId.getBytes(StandardCharsets.UTF_8));
 
                 kafkaTemplate.send(record);
+                MDC.put(AppConstants.MDC_EVENT_OUTCOME, "success");
                 log.info("Simulated message sent with correlationId: {}", correlationId);
 
                 processedCount.incrementAndGet();

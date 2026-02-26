@@ -19,6 +19,7 @@ public class LoggingMdcFilter implements Filter {
 
     private static final String AUTH_HEADER = "Authorization";
     private static final String RGPD_HEADER = "X-RGPD";
+    private static final String USER_AGENT_HEADER = "User-Agent";
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -30,12 +31,18 @@ public class LoggingMdcFilter implements Filter {
             }
             String authHeader = httpServletRequest.getHeader(AUTH_HEADER);
             String rgpd = httpServletRequest.getHeader(RGPD_HEADER);
+            String userAgent = httpServletRequest.getHeader(USER_AGENT_HEADER);
+            String clientIp = httpServletRequest.getRemoteAddr();
 
             MDC.put(AppConstants.MDC_CORRELATION_ID, correlationId);
             if (authHeader != null) {
                 MDC.put(AppConstants.MDC_AUTHENTICATION, maskAuth(authHeader));
             }
             MDC.put(AppConstants.MDC_RGPD, rgpd != null ? rgpd : "false");
+            if (userAgent != null) {
+                MDC.put(AppConstants.MDC_USER_AGENT, userAgent);
+            }
+            MDC.put(AppConstants.MDC_CLIENT_IP, clientIp);
 
             // Default event metadata for web requests
             MDC.put(AppConstants.MDC_EVENT_CATEGORY, "web");
@@ -51,6 +58,8 @@ public class LoggingMdcFilter implements Filter {
             MDC.remove(AppConstants.MDC_CORRELATION_ID);
             MDC.remove(AppConstants.MDC_AUTHENTICATION);
             MDC.remove(AppConstants.MDC_RGPD);
+            MDC.remove(AppConstants.MDC_USER_AGENT);
+            MDC.remove(AppConstants.MDC_CLIENT_IP);
             MDC.remove(AppConstants.MDC_EVENT_CATEGORY);
             MDC.remove(AppConstants.MDC_EVENT_TYPE);
             MDC.remove(AppConstants.MDC_EVENT_OUTCOME);

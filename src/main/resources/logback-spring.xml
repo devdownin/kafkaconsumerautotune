@@ -37,17 +37,32 @@
                               "path": "%mdc{urlPath}"
                             },
                             "kafka": {
-                              "topic": "%mdc{kafkaTopic}",
-                              "partition": "%mdc{kafkaPartition}",
-                              "offset": "%mdc{kafkaOffset}",
-                              "key": "%mdc{kafkaKey}",
-                              "eventId": "%mdc{eventId}"
+                              "topic": "%mdc{kafkaTopic:-}",
+                              "partition": "%mdc{kafkaPartition:-}",
+                              "offset": "%mdc{kafkaOffset:-}",
+                              "key": "%mdc{kafkaKey:-}",
+                              "eventId": "%mdc{eventId:-}"
+                            }
+                          },
+                          "client": {
+                            "ip": "%mdc{clientIp:-}",
+                            "user_agent": {
+                              "original": "%mdc{userAgent:-}"
                             }
                           },
                           "correlation": {
-                            "id": "%mdc{correlationId}",
-                            "traceId": "%mdc{traceId}",
-                            "spanId": "%mdc{spanId}"
+                            "id": "%mdc{correlationId:-}",
+                            "traceId": "%mdc{traceId:-}",
+                            "spanId": "%mdc{spanId:-}"
+                          },
+                          "host": {
+                            "hostname": "${HOSTNAME:-unknown}"
+                          },
+                          "process": {
+                            "pid": "${PID}",
+                            "thread": {
+                              "name": "%thread"
+                            }
                           },
                           "log": {
                             "level": "%level",
@@ -56,11 +71,12 @@
                             "authentication": "%mdc{authentication:-none}"
                           },
                           "message": "%message",
-                          "organization": {
-                            "service": {
-                              "id": "${serviceId:-none}",
-                              "application": "${appName:-kafka-consumer-batch-service}",
-                              "version": "${serviceVersion:-unknown}"
+                          "service": {
+                            "id": "${serviceId:-none}",
+                            "name": "${appName:-kafka-consumer-batch-service}",
+                            "version": "${serviceVersion:-unknown}",
+                            "node": {
+                              "name": "${HOSTNAME:-unknown}"
                             }
                           }
                         }
