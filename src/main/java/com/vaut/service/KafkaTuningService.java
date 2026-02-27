@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.lang.management.ManagementFactory;
 import com.sun.management.OperatingSystemMXBean;
+import com.sun.management.ThreadMXBean;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -69,6 +70,12 @@ public class KafkaTuningService {
         this.tuningProperties = tuningProperties;
         this.optimizerService = optimizerService;
         this.dashboardService = dashboardService;
+
+        // Register gauge for smoothed batch duration
+        meterRegistry.gauge(AppConstants.METRIC_KAFKA_TUNING_BATCH_DURATION_SMOOTHED,
+                io.micrometer.core.instrument.Tags.of("description", AppConstants.METRIC_KAFKA_TUNING_BATCH_DURATION_SMOOTHED_DESC),
+                this,
+                svc -> svc.smoothedBatchDuration > 0 ? svc.smoothedBatchDuration : 0);
     }
 
     @Value("${kafka.topic.name}")
@@ -81,6 +88,7 @@ public class KafkaTuningService {
     // PID Controller State
     private double integral = 0;
     private double previousError = 0;
+    private double smoothedBatchDuration = -1;
 
     // Current tuned values
     private int currentMaxPollRecords = -1;
@@ -126,11 +134,20 @@ public class KafkaTuningService {
             double avgBatchDuration = getAvgBatchDuration();
             double avgMsgSize = getAvgMsgSize();
 
-            log.info("Kafka Tuning [PID] - Throughput: {} msg/s, Avg Duration: {}ms, Target: {}ms, Avg Msg Size: {} bytes, Current MaxPoll: {}",
-                    String.format("%.2f", throughput), String.format("%.2f", avgBatchDuration), tuningProperties.getTargetBatchDurationMs(), String.format("%.2f", avgMsgSize), currentMaxPollRecords);
+            // Apply EMA smoothing to batch duration
+            if (smoothedBatchDuration == -1) {
+                smoothedBatchDuration = avgBatchDuration;
+            } else {
+                smoothedBatchDuration = (tuningProperties.getEmaAlpha() * avgBatchDuration) + ((1 - tuningProperties.getEmaAlpha()) * smoothedBatchDuration);
+            }
+
+            log.info("Kafka Tuning [PID] - Throughput: {} msg/s, Avg Duration: {}ms (Smoothed: {}ms), Target: {}ms, Avg Msg Size: {} bytes, Current MaxPoll: {}",
+                    String.format("%.2f", throughput), String.format("%.2f", avgBatchDuration), String.format("%.2f", smoothedBatchDuration),
+                    tuningProperties.getTargetBatchDurationMs(), String.format("%.2f", avgMsgSize), currentMaxPollRecords);
 
             // Error: positive if faster than target (can increase batch), negative if slower (must decrease batch)
-            double error = (tuningProperties.getTargetBatchDurationMs() - avgBatchDuration) / tuningProperties.getTargetBatchDurationMs();
+            // Use smoothed duration to avoid overreaction to transient spikes
+            double error = (tuningProperties.getTargetBatchDurationMs() - smoothedBatchDuration) / tuningProperties.getTargetBatchDurationMs();
 
             // Update PID state
             integral += error;
@@ -204,7 +221,27 @@ public class KafkaTuningService {
                 needsRestart = true;
             }
 
-            // 5. Adjust max.poll.interval.ms based on target duration
+            // 5. Throttling based on system health (Memory/CPU)
+            OperatingSystemMXBean osBeanForHealth = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+            double currentCpuLoad = osBeanForHealth.getCpuLoad();
+            double memoryUsage = (double) (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / Runtime.getRuntime().maxMemory();
+
+            if (currentCpuLoad > 0.9 || memoryUsage > 0.9) {
+                int throttledMaxPoll = (int) (currentMaxPollRecords * 0.7);
+                throttledMaxPoll = Math.max(tuningProperties.getMinMaxPollRecords(), throttledMaxPoll);
+                if (throttledMaxPoll < currentMaxPollRecords) {
+                    log.warn("CRITICAL SYSTEM LOAD (CPU: {}%, MEM: {}%). Throttling max.poll.records {} -> {}",
+                            String.format("%.1f", currentCpuLoad * 100), String.format("%.1f", memoryUsage * 100),
+                            currentMaxPollRecords, throttledMaxPoll);
+                    optimizerService.addOptimization(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, String.valueOf(currentMaxPollRecords), String.valueOf(throttledMaxPoll),
+                            String.format("Emergency throttling: CPU=%.2f, MEM=%.2f", currentCpuLoad, memoryUsage));
+                    currentMaxPollRecords = throttledMaxPoll;
+                    newConfigs.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, currentMaxPollRecords);
+                    needsRestart = true;
+                }
+            }
+
+            // 6. Adjust max.poll.interval.ms based on target duration
             int nextMaxPollInterval = (int) (tuningProperties.getTargetBatchDurationMs() * tuningProperties.getMaxPollIntervalSafetyFactor());
             nextMaxPollInterval = Math.max(nextMaxPollInterval, 30000); // Minimum 30s
 
@@ -217,7 +254,7 @@ public class KafkaTuningService {
                 needsRestart = true;
             }
 
-            // 6. Adjust Concurrency based on System Load and Lag
+            // 7. Adjust Concurrency based on System Load and Lag
             Integer partitionCount = getPartitionCount();
             if (partitionCount != null) {
                 MessageListenerContainer container = registry.getListenerContainer("eventBatchConsumer");

@@ -1,0 +1,40 @@
+groups:
+  - name: kafka-alerts
+    rules:
+      - alert: HighKafkaLag
+        expr: sum(kafka_lag_total) > 1000
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Kafka consumer lag detected"
+          description: "Total lag is {{ $value }} on topic {{ $labels.topic }} for over 1 minute."
+
+      - alert: CriticalKafkaLag
+        expr: sum(kafka_lag_total) > 5000
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical Kafka consumer lag detected"
+          description: "Total lag is {{ $value }} on topic {{ $labels.topic }} for over 1 minute."
+
+  - name: app-alerts
+    rules:
+      - alert: HighErrorRate
+        expr: rate(kafka_events_processed_success_total{type="failure"}[5m]) / rate(kafka_events_processed_success_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is above 5% ({{ $value | printf \"%.2f\" }}%) for over 2 minutes."
+
+      - alert: LongBatchDuration
+        expr: kafka_events_batch_duration_seconds_sum / kafka_events_batch_duration_seconds_count > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Long batch duration detected"
+          description: "Average batch duration is over 5 seconds ({{ $value | printf \"%.2f\" }}s) for over 5 minutes."
