@@ -6,7 +6,7 @@ Une version au format **Mermaid** est également disponible : [c4-mermaid.md](c4
 
 ## 1. Niveau 1 : Diagramme de Contexte (System Context)
 
-Ce diagramme montre le système Consotopic dans son environnement global, ses interactions avec les utilisateurs et les systèmes externes.
+Ce diagramme montre le système Consotopic dans son environnement global.
 
 ```puml
 @startuml C4_Elements
@@ -15,14 +15,16 @@ Ce diagramme montre le système Consotopic dans son environnement global, ses in
 LAYOUT_WITH_LEGEND()
 
 Person(user, "Utilisateur / Opérateur", "Surveille les performances et gère les erreurs via le dashboard.")
-System(consotopic, "Consotopic", "Application de consommation Kafka haute performance avec auto-tuning et résilience.")
+System(consotopic, "Consotopic", "Application de consommation Kafka haute performance avec auto-tuning intelligent et résilience avancée.")
 
 System_Ext(kafka, "Kafka", "Flux de messages d'entrée (Message Broker).")
 System_Ext(database, "Base de données", "Stockage persistant des événements et erreurs DLT (Oracle/H2).")
+System_Ext(otel_stack, "Observability Stack", "Pile complète (Loki, Prometheus, Jaeger) pour la supervision, le log centralisé et le tracing.")
 
 Rel(user, consotopic, "Surveille et gère", "HTTPS/WebSocket")
 Rel(consotopic, kafka, "Consomme des messages", "Kafka Protocol")
 Rel(consotopic, database, "Persiste les données", "JDBC")
+Rel(consotopic, otel_stack, "Exporte logs, métriques et traces", "OTLP / File-Scraping")
 @enduml
 ```
 
@@ -30,7 +32,7 @@ Rel(consotopic, database, "Persiste les données", "JDBC")
 
 ## 2. Niveau 2 : Diagramme de Conteneur (Container)
 
-Ce diagramme décompose le système Consotopic en conteneurs logiques (applications, bases de données, etc.).
+Ce diagramme décompose le système et détaille la pile d'observabilité intégrée.
 
 ```puml
 @startuml C4_Containers
@@ -42,16 +44,31 @@ Person(user, "Utilisateur / Opérateur", "Surveille les performances et gère le
 
 System_Boundary(consotopic_boundary, "Système Consotopic") {
     Container(ui, "Interface Web", "Thymeleaf, Tailwind CSS, ApexCharts", "Fournit le dashboard et les outils de gestion DLT.")
-    Container(app, "Application Spring Boot", "Java 21, Spring Boot 3.5", "Gère la logique de consommation, l'auto-tuning, la résilience et la persistance.")
+    Container(app, "Application Spring Boot", "Java 21, Spring Boot 3.5", "Gère la logique de consommation, l'auto-tuning (PID+EMA), la résilience et l'export télémétrique.")
 }
 
-ContainerDb_Ext(database, "Base de données", "Relational (Oracle/H2)", "Stocke les événements persistés et les messages en erreur (DLT).")
-Container_Ext(kafka, "Kafka Broker", "Message Broker", "Source des flux d'événements à haute fréquence.")
+System_Boundary(observability_boundary, "Pile d'Observabilité") {
+    Container(collector, "OTel Collector", "OTLP", "Collecte et redirige les traces et métriques.")
+    Container(prometheus, "Prometheus", "Metrics Store", "Stockage des métriques avec support des Exemplars.")
+    Container(loki, "Grafana Loki", "Log Store", "Centralisation et indexation des logs JSON.")
+    Container(promtail, "Promtail", "Log Agent", "Scrappe les fichiers de logs de l'application.")
+    Container(jaeger, "Jaeger", "Tracing UI", "Visualisation des traces distribuées.")
+}
+
+ContainerDb_Ext(database, "Base de données", "Relational (Oracle/H2)", "Stocke les événements persistés et les messages DLT.")
+Container_Ext(kafka, "Kafka Broker", "Message Broker", "Source des flux d'événements.")
 
 Rel(user, ui, "Interagit avec", "HTTPS")
+Rel(user, observability_boundary, "Consulte les dashboards et logs", "HTTPS (Grafana)")
 Rel(ui, app, "Appels API & Flux temps réel", "HTTPS/WebSocket")
 Rel(app, database, "Lit/Écrit dans", "JDBC")
 Rel(app, kafka, "Consomme de", "Kafka Protocol")
+
+Rel(app, collector, "Exporte traces & métriques", "OTLP/HTTP")
+Rel(app, promtail, "Écrit les logs JSON", "File system")
+Rel(promtail, loki, "Pousse les logs", "HTTP")
+Rel(collector, prometheus, "Pousse les métriques", "Prometheus Remote Write")
+Rel(collector, jaeger, "Pousse les traces", "OTLP/gRPC")
 @enduml
 ```
 
@@ -69,16 +86,15 @@ LAYOUT_WITH_LEGEND()
 
 Container_Boundary(app, "Application Spring Boot") {
     Component(controllers, "REST Controllers", "Spring MVC", "Gère les requêtes du dashboard et les actions DLT (Retry/Discard).")
-    Component(batchConsumer, "EventBatchConsumer", "Spring Kafka", "Implémentation concrète de AbstractBatchConsumer pour les événements.")
-    Component(abstractConsumer, "AbstractBatchConsumer", "Base Class", "Gère le cycle de vie du batch, les métriques et le fallback de persistance.")
-    Component(tuningService, "KafkaTuningService", "PID Controller", "Ajuste dynamiquement max.poll.records et d'autres paramètres.")
+    Component(batchConsumer, "EventBatchConsumer", "Spring Kafka", "Implémentation concrète de AbstractBatchConsumer.")
+    Component(abstractConsumer, "AbstractBatchConsumer", "Base Class", "Gère le cycle de vie du batch, les métriques, le MDC et le fallback de persistance.")
+    Component(tuningService, "KafkaTuningService", "PID Controller + EMA", "Ajuste dynamiquement le polling avec lissage EMA et throttling de santé.")
     Component(persistenceService, "EventPersistenceService", "Spring Data JPA", "Gère la persistance sécurisée par Circuit Breaker et Retry.")
-    Component(cbStateListener, "CircuitBreakerStateListener", "Resilience4j Listener", "Pilote le cycle de vie du consommateur Kafka selon l'état du Circuit Breaker.")
-    Component(dltService, "DltService", "Service", "Gère le routage vers la Dead Letter Topic et la base DltEvent.")
-    Component(optimizerService, "KafkaOptimizerService", "Service", "Maintient l'historique des optimisations de paramètres.")
-    Component(dashboardService, "DashboardService", "Service", "Agrège les métriques de la JVM, Kafka et de l'application.")
-    Component(wsService, "WebSocketService", "Spring WebSocket", "Diffuse les mises à jour temps réel (métriques, événements, état CB).")
-    Component(repos, "JPA Repositories", "Spring Data", "Couche d'accès aux données.")
+    Component(cbStateListener, "CircuitBreakerStateListener", "Resilience4j Listener", "Pilote le cycle de vie du consommateur Kafka selon l'état du CB.")
+    Component(dltService, "DltService", "Service", "Gère le routage vers la DLT (Kafka + Base).")
+    Component(dashboardService, "DashboardService", "Service", "Agrège les métriques JVM, Kafka et Application.")
+    Component(wsService, "WebSocketService", "Spring WebSocket", "Diffuse les mises à jour temps réel.")
+    Component(mdcFilter, "LoggingMdcFilter", "Servlet Filter", "Prépare le contexte MDC (correlationId, auth) pour les logs.")
 }
 
 ContainerDb_Ext(database, "Base de données", "JDBC", "Stockage.")
@@ -87,19 +103,16 @@ Container_Ext(kafka, "Kafka Broker", "Kafka Protocol", "Source de données.")
 Rel(batchConsumer, abstractConsumer, "Hérite de")
 Rel(abstractConsumer, persistenceService, "Appelle pour persistance batch/individuelle")
 Rel(abstractConsumer, dltService, "Route les messages en erreur")
-Rel(persistenceService, repos, "Utilise pour accès DB")
-Rel(repos, database, "JDBC")
+Rel(persistenceService, database, "JDBC")
 
 Rel(tuningService, batchConsumer, "Monitore et ajuste les paramètres de polling")
-Rel(tuningService, optimizerService, "Enregistre l'historique des changements")
-Rel(cbStateListener, batchConsumer, "Arrête/Démarre le container (via KafkaListenerEndpointRegistry)")
-Rel(persistenceService, cbStateListener, "Déclenche des changements d'état (Circuit OPEN/CLOSED)")
+Rel(cbStateListener, batchConsumer, "Arrête/Démarre le container")
+Rel(persistenceService, cbStateListener, "Déclenche des changements d'état")
 
+Rel(mdcFilter, controllers, "Injecte les métadonnées de log")
 Rel(controllers, dashboardService, "Récupère les données de monitoring")
-Rel(dashboardService, repos, "Agrège les données métier")
 Rel(dashboardService, wsService, "Envoie les mises à jour")
 Rel(abstractConsumer, wsService, "Notifie les nouveaux événements")
-Rel(cbStateListener, wsService, "Notifie les changements d'état système")
 
 Rel(batchConsumer, kafka, "Consomme", "Kafka Protocol")
 @enduml
