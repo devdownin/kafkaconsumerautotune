@@ -103,4 +103,10 @@ public class KafkaTuningProperties {
      * Lag threshold above which we consider increasing concurrency (if CPU allows).
      */
     private long lagThresholdForScaling = 500;
+
+    /**
+     * Smoothing factor for Exponential Moving Average (EMA) of batch duration.
+     * Value between 0 and 1. Lower values mean more smoothing.
+     */
+    private double emaAlpha = 0.2;
 }

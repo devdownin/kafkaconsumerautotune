@@ -2,6 +2,8 @@ package com.vaut.service.base;
 
 import com.vaut.config.AppConstants;
 import com.vaut.dto.dashboard.SystemEventDTO;
+import com.vaut.exception.PermanentException;
+import com.vaut.exception.TransientException;
 import com.vaut.entity.DltEvent;
 import com.vaut.repository.DltEventRepository;
 import com.vaut.service.DltService;
@@ -144,6 +146,14 @@ public abstract class AbstractBatchConsumer<T> {
                             dltEventsToPersist.add(dltService.routeToDlt(record, "Processing failed (Check logs)"));
                         }
                     );
+                } catch (PermanentException e) {
+                    MDC.put(AppConstants.MDC_EVENT_OUTCOME, "failure");
+                    log.error("Permanent error processing record (Routing to DLT): {}", e.getMessage());
+                    dltEventsToPersist.add(dltService.routeToDlt(record, "Permanent error: " + e.getMessage()));
+                } catch (TransientException e) {
+                    MDC.put(AppConstants.MDC_EVENT_OUTCOME, "failure");
+                    log.warn("Transient error processing record (Rethrowing for Kafka retry): {}", e.getMessage());
+                    throw e; // Rethrow to trigger Kafka retry
                 } catch (Exception e) {
                     MDC.put(AppConstants.MDC_EVENT_OUTCOME, "failure");
                     log.error("Unexpected error processing record: {}", e.getMessage());
