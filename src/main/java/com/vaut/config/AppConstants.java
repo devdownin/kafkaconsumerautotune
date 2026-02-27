@@ -24,6 +24,9 @@ public final class AppConstants {
     /** Duration (in milliseconds) taken to process a batch of events. */
     public static final String METRIC_KAFKA_EVENTS_BATCH_DURATION = "app.kafka.events.batch.duration";
     public static final String METRIC_KAFKA_EVENTS_BATCH_DURATION_DESC = "Duration (in milliseconds) taken to process a batch of events";
+    /** Smoothed average duration (EMA) of batch processing. */
+    public static final String METRIC_KAFKA_TUNING_BATCH_DURATION_SMOOTHED = "app.kafka.tuning.batch.duration.smoothed";
+    public static final String METRIC_KAFKA_TUNING_BATCH_DURATION_SMOOTHED_DESC = "Smoothed average duration (EMA) of batch processing";
 
     /** WebSocket topic for broadcasting new successfully processed events. */
     public static final String WEBSOCKET_TOPIC_EVENTS = "/topic/events";

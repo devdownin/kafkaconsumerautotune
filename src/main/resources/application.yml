@@ -136,6 +136,9 @@ kafka:
     initial-delay: 30000
     fixed-rate: 60000
 
+    # Facteur de lissage (EMA) pour la durée de batch (0.2 = lissage fort, 0.8 = lissage faible)
+    ema-alpha: 0.2
+
 resilience4j:
   circuitbreaker:
     instances:
@@ -162,6 +165,11 @@ resilience4j:
           - org.springframework.dao.ConcurrencyFailureException
 
 management:
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        kafka.events.batch.duration: true
   tracing:
     sampling:
       probability: 1.0
