@@ -4,7 +4,20 @@ Ce document détaille les recommandations pour améliorer la qualité du code, l
 
 ## 1. Qualité du Code
 
-### 1.1 Documentation API
+### 1.1 Lissage de l'Auto-Tune
+Le redémarrage du consommateur (`stop()` / `start()`) est coûteux car il provoque un rebalance.
+**Suggestion :**
+- Utiliser un filtre passe-bas sur les variations de débit pour éviter les réactions trop brusques du contrôleur PID.
+- Explorer les nouvelles APIs Kafka qui permettent de modifier certains paramètres (comme `max.poll.records`) sans redémarrage complet du container si possible (via `updateConfigs` sur la factory mais nécessite souvent un restart du container Spring Kafka pour application réelle sur le thread de polling).
+
+## 2. Qualité du Code
+
+### 2.1 Externalisation de la Configuration
+Les constantes du PID étaient initialement en dur. (Corrigé partiellement par l'introduction de `KafkaTuningProperties`).
+**Suggestion :**
+- Continuer à déplacer toute la logique de "magic numbers" vers le `application.yml`.
+
+### 2.2 Documentation API
 **Suggestion :**
 - Intégrer **SpringDoc OpenAPI** pour générer une documentation Swagger interactive pour les contrôleurs REST (`DashboardController`, `KEventController`).
 
