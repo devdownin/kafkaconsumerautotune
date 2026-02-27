@@ -120,8 +120,6 @@ public abstract class AbstractBatchConsumer<T> {
             MDC.put(AppConstants.MDC_EVENT_OUTCOME, "success");
             log.info("Received batch of {} records from Kafka", records.size());
 
-            meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_RECEIVED_COUNT).increment(records.size());
-
             List<T> entitiesToPersist = new ArrayList<>();
             List<DltEvent> dltEventsToPersist = new ArrayList<>();
 
@@ -137,8 +135,6 @@ public abstract class AbstractBatchConsumer<T> {
                 MDC.put(AppConstants.MDC_KAFKA_KEY, record.key());
 
                 try {
-                    recordSizeMetric(record);
-
                     processRecord(record).ifPresentOrElse(
                         entitiesToPersist::add,
                         () -> {
@@ -173,6 +169,12 @@ public abstract class AbstractBatchConsumer<T> {
             persistBatches(entitiesToPersist, dltEventsToPersist, records);
 
             acknowledgment.acknowledge();
+
+            // Record metrics only after successful processing and acknowledgment to avoid overcounting on retries
+            meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_RECEIVED_COUNT).increment(records.size());
+            for (ConsumerRecord<String, String> record : records) {
+                recordSizeMetric(record);
+            }
 
             long duration = System.currentTimeMillis() - startTime;
             meterRegistry.timer(AppConstants.METRIC_KAFKA_EVENTS_BATCH_DURATION).record(duration, TimeUnit.MILLISECONDS);
@@ -214,7 +216,7 @@ public abstract class AbstractBatchConsumer<T> {
         if (!entities.isEmpty()) {
             try {
                 List<T> persisted = saveBatch(entities);
-                meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS, "type", "success").increment(entities.size());
+                meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS, "type", "success").increment(persisted.size());
                 broadcastPersisted(persisted);
             } catch (io.github.resilience4j.circuitbreaker.CallNotPermittedException e) {
                 MDC.put(AppConstants.MDC_EVENT_OUTCOME, "failure");
@@ -238,7 +240,7 @@ public abstract class AbstractBatchConsumer<T> {
 
                     try {
                         List<T> persisted = saveBatch(List.of(entity));
-                        meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS, "type", "success").increment(1);
+                        meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS, "type", "success").increment(persisted.size());
                         broadcastPersisted(persisted);
                     } catch (io.github.resilience4j.circuitbreaker.CallNotPermittedException ex) {
                         MDC.put(AppConstants.MDC_EVENT_OUTCOME, "failure");

@@ -139,7 +139,7 @@ class DashboardServiceTest {
     void shouldMaintainThroughputHistorySize() {
         io.micrometer.core.instrument.search.Search mockSearch = mock(io.micrometer.core.instrument.search.Search.class);
         when(meterRegistry.find(anyString())).thenReturn(mockSearch);
-        when(mockSearch.counter()).thenReturn(mock(io.micrometer.core.instrument.Counter.class));
+        when(mockSearch.counters()).thenReturn(java.util.Collections.emptyList());
         DltStatsProjection dltStats = mock(DltStatsProjection.class);
         when(dltEventRepository.getDltStats(any())).thenReturn(dltStats);
 

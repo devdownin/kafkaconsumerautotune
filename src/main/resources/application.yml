@@ -82,7 +82,7 @@ app:
       "kafka.lag":
         warning: 1000
         critical: 5000
-      "kafka.events.received.count":
+      "app.kafka.events.received.count":
         warning: 100000
         critical: 500000
       "jvm.memory.used":
