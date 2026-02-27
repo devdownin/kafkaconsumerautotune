@@ -283,15 +283,15 @@ public class DashboardService {
      */
     @Scheduled(fixedRate = 5000)
     public void updateThroughputHistory() {
-        double currentSuccess = Optional.ofNullable(meterRegistry.find(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS).counter())
-                .map(counter -> counter.count())
-                .orElse(0.0);
-        double currentErrors = Optional.ofNullable(meterRegistry.find(AppConstants.METRIC_KAFKA_EVENTS_ERRORS).counter())
-                .map(counter -> counter.count())
-                .orElse(0.0);
-        double currentRetries = Optional.ofNullable(meterRegistry.find(AppConstants.METRIC_KAFKA_EVENTS_RETRIED).counter())
-                .map(counter -> counter.count())
-                .orElse(0.0);
+        double currentSuccess = meterRegistry.find(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS).counters().stream()
+                .mapToDouble(io.micrometer.core.instrument.Counter::count)
+                .sum();
+        double currentErrors = meterRegistry.find(AppConstants.METRIC_KAFKA_EVENTS_ERRORS).counters().stream()
+                .mapToDouble(io.micrometer.core.instrument.Counter::count)
+                .sum();
+        double currentRetries = meterRegistry.find(AppConstants.METRIC_KAFKA_EVENTS_RETRIED).counters().stream()
+                .mapToDouble(io.micrometer.core.instrument.Counter::count)
+                .sum();
 
         long successDelta = (long) (currentSuccess - lastSuccessCount);
         if (successDelta < 0) successDelta = 0;
@@ -429,7 +429,14 @@ public class DashboardService {
 
                     for (Measurement measurement : measurements) {
                         String suffix = measurement.getStatistic().name().toLowerCase();
-                        String fullName = name + (measurements.size() > 1 ? "." + suffix : "");
+                        Map<String, String> tags = meter.getId().getTags().stream()
+                                .collect(Collectors.toMap(io.micrometer.core.instrument.Tag::getKey, io.micrometer.core.instrument.Tag::getValue));
+
+                        String tagString = tags.isEmpty() ? "" : ":" + tags.entrySet().stream()
+                                .map(e -> e.getKey() + "=" + e.getValue())
+                                .collect(Collectors.joining(","));
+
+                        String fullName = name + (measurements.size() > 1 ? "." + suffix : "") + tagString;
                         double currentValue = measurement.getValue();
 
                         List<Double> history = new ArrayList<>(metricsHistory.getOrDefault(fullName, Collections.emptyList()));
@@ -463,6 +470,7 @@ public class DashboardService {
                                 .history(history)
                                 .trend(trend)
                                 .status(status)
+                                .tags(tags)
                                 .build());
                     }
                     return metrics.stream();

@@ -25,5 +25,7 @@ public record MetricDTO(
     /** The detected trend of the metric (UP, DOWN, STABLE). */
     String trend,
     /** The current status of the metric based on predefined thresholds (NORMAL, WARNING, CRITICAL). */
-    String status
+    String status,
+    /** The tags associated with this metric. */
+    java.util.Map<String, String> tags
 ) {}
