@@ -21,10 +21,21 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Abstract base class for Kafka batch consumers.
- * Provides the core logic for batch processing, persistence with fallback, DLT routing, and metrics.
+ * Abstract base class for high-performance Kafka batch consumers with built-in resilience.
  *
- * @param <T> The type of the entity produced by the consumer.
+ * <p>This class implements the "Template Method" pattern to standardize the batch consumption
+ * lifecycle while allowing concrete implementations to define specific parsing and persistence logic.</p>
+ *
+ * <h3>Key Features:</h3>
+ * <ul>
+ *     <li><b>Batch Efficiency:</b> Processes groups of messages in a single transaction.</li>
+ *     <li><b>Individual Fallback:</b> If a batch persistence fails, it automatically switches to
+ *     one-by-one processing to isolate "poison messages" and allow healthy ones to proceed.</li>
+ *     <li><b>Observability:</b> Automatic MDC management (correlation IDs, Kafka coordinates) and Micrometer metrics.</li>
+ *     <li><b>Circuit Breaker Integration:</b> Cooperates with Resilience4j to stop consumption if downstream systems are failing.</li>
+ * </ul>
+ *
+ * @param <T> The type of the business entity produced by the consumer.
  */
 @Slf4j
 public abstract class AbstractBatchConsumer<T> {
@@ -175,8 +186,19 @@ public abstract class AbstractBatchConsumer<T> {
     }
 
     /**
-     * Persists entities and DLT events with a fallback mechanism for resilience.
-     * Integrates with the Circuit Breaker: if the circuit is open, it avoids further processing.
+     * Handles the complex task of persisting both valid entities and DLT events.
+     *
+     * <p>The logic follows a multi-level fallback strategy:</p>
+     * <ol>
+     *     <li><b>Batch Attempt:</b> Try to save all valid entities in one go.</li>
+     *     <li><b>Circuit Breaker Check:</b> If the DB is down (Circuit Open), stop immediately and let Kafka retry later.</li>
+     *     <li><b>Individual Fallback:</b> If batch save fails (e.g. data error), try each entity one by one.
+     *         Successful entities are committed; failed ones are routed to DLT.</li>
+     * </ol>
+     *
+     * @param entities Entities that were successfully parsed and are ready for DB.
+     * @param dltEvents Events that failed parsing and should be sent to DLT.
+     * @param originalRecords The raw Kafka records (needed for DLT routing in case of persistence failure).
      */
     private void persistBatches(List<T> entities, List<DltEvent> dltEvents, List<ConsumerRecord<String, String>> originalRecords) {
         if (!entities.isEmpty()) {

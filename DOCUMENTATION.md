@@ -12,16 +12,48 @@ Consotopic est une application Spring Boot de haute performance conçue pour con
 ---
 
 ## 2. Architecture Globale
-L'application suit une architecture orientée services et modulaire avec les couches suivantes :
-- **Couche de Consommation Générique** : Utilisation d'une classe abstraite `AbstractBatchConsumer` pour standardiser le traitement des flux Kafka.
-- **Couche de Traitement (Moteur d'Auto-tune)** : Analyseur de performance basé sur un contrôleur PID qui réajuste les paramètres Kafka.
-- **Couche de Persistance Résiliente** : Utilisation de Spring Data JPA avec protection par Circuit Breaker (Resilience4j) et support de batches JDBC.
-- **Couche de Gestion DLT** : Système de récupération, stockage en base (DltEvent) et re-traitement des messages en échec.
-- **Couche d'Observabilité** : Logging JSON ELK, Tracing distribué via OpenTelemetry, et Dashboard temps réel (WebSocket).
+
+L'application suit une architecture orientée services et modulaire. Voici comment les données circulent dans le système :
+
+```mermaid
+graph TD
+    K[Kafka Topic] -->|1. Batch de Records| C[AbstractBatchConsumer]
+    C -->|2. Transformation| P[EventProcessingService]
+    P -->|3. Validation| C
+    C -->|4. Persistance Batch| S[EventPersistenceService]
+    S -->|5. Circuit Breaker| DB[(Base de données)]
+
+    subgraph "Boucle d'Auto-Tuning"
+        M[Micrometer Metrics] --- T[KafkaTuningService]
+        T -->|Ajustement| C
+    end
+
+    subgraph "Gestion des Erreurs"
+        C -->|Fallback| DLT[DltService]
+        DLT -->|Stockage| DB
+    end
+```
 
 ---
 
-## 3. Composants Clés
+## 3. Concepts Fondamentaux et Fonctionnement
+
+### 3.1 Pourquoi le "Batching" ?
+Plutôt que de traiter les messages un par un (ce qui est lent à cause des allers-retours avec la base de données), Consotopic travaille par **lots**.
+- On ouvre une transaction.
+- On insère 100 messages.
+- On valide la transaction.
+C'est 10 à 50 fois plus rapide que l'approche individuelle.
+
+### 3.2 Le Cycle de Vie d'un Message
+1. **Consommation** : Récupération d'un lot depuis Kafka.
+2. **Parsing** : Extraction des données (ID, Payload). Si le message est illisible, il est marqué "en erreur".
+3. **Persistance** : Tentative d'écriture massive en base de données.
+4. **Acquittement (ACK)** : Si tout est bon, on dit à Kafka : "C'est bon, tu peux passer à la suite".
+
+---
+
+## 4. Composants Clés en Détail
 
 ### 3.1 Consommation Kafka (Mode Batch et Généricité)
 L'architecture de consommation repose sur `AbstractBatchConsumer<T>`, une classe de base générique qui implémente le cycle de vie du traitement batch.
@@ -51,12 +83,17 @@ Le service `EventPersistenceService` est protégé par un **Circuit Breaker** Re
 - **Gestion d'État** : Si la base de données devient indisponible, le circuit passe à l'état `OPEN`.
 - **Pilotage du Consommateur** : Le `CircuitBreakerStateListener` écoute les changements d'état. Si le circuit est `OPEN`, il arrête automatiquement le container Kafka (`KafkaListenerEndpointRegistry`) pour éviter d'accumuler des erreurs. Le consommateur est redémarré dès que le circuit repasse en `HALF_OPEN` ou `CLOSED`.
 
-#### 3.3.2 Mécanisme de Repli (Fallback)
-Si la persistence d'un batch complet échoue (ex: erreur de contrainte sur un seul message), l'application bascule automatiquement en mode individuel :
-1. Chaque message du batch est tenté séparément.
-2. Les messages qui réussissent sont persistés.
-3. Les messages provoquant toujours une erreur (ex: "Poison Message") sont dirigés vers la DLT.
-4. Le reste du batch est ainsi validé, permettant au consommateur de progresser sans blocage.
+#### 3.3.2 Mécanisme de Repli (Fallback) : Le traitement "Chirurgical"
+Si la persistence d'un batch complet échoue (ex: une erreur de contrainte sur le 42ème message d'un lot de 100), l'application ne rejette pas tout le travail effectué. Elle bascule automatiquement en **mode individuel**.
+
+**Exemple concret :**
+1. **Batch Mode** : Tentative d'insertion de 100 messages.
+   - ❌ Échec (Erreur : `Duplicate Key` sur un message).
+2. **Individual Mode** :
+   - Message 1 à 41 : ✅ Succès.
+   - Message 42 : ❌ Échec. L'erreur est capturée, le message est envoyé en **DLT**.
+   - Message 43 à 100 : ✅ Succès.
+3. **Conclusion** : 99 messages sont sauvés, 1 est isolé. Le curseur Kafka avance. Sans ce mode, le consommateur resterait bloqué indéfiniment sur ce lot de 100 messages (boucle infinie d'erreurs).
 
 #### 3.3.3 Dead Letter Topic (DLT)
 - **Kafka DLT Topic** : Pour une traçabilité technique avec headers (`DLT_EXCEPTION_MESSAGE`, etc.).
@@ -65,9 +102,11 @@ Si la persistence d'un batch complet échoue (ex: erreur de contrainte sur un se
 
 ---
 
-## 4. Configuration
+---
 
-### 4.1 Variables d'Environnement Principales
+## 5. Configuration
+
+### 5.1 Variables d'Environnement Principales
 | Variable | Description | Défaut |
 |----------|-------------|---------|
 | `KAFKA_BOOTSTRAP_SERVERS` | Liste des brokers Kafka | `kafkadev:9092` |
@@ -85,7 +124,9 @@ Configurables dans `application.yml` :
 
 ---
 
-## 5. Guide Opérationnel
+---
+
+## 6. Guide Opérationnel
 
 ### 5.1 Monitoring en Temps Réel
 Accédez au dashboard via `/dashboard`. Il affiche :
@@ -98,7 +139,9 @@ L'onglet **Kafka Optimizer** (`/optimizer`) permet de suivre l'historique des ch
 
 ---
 
-## 6. Spécifications Techniques et Qualité
+---
+
+## 7. Spécifications Techniques et Qualité
 - **Java** : 21 (Utilisation des `record` pour les DTOs).
 - **Spring Boot** : 3.5.9
 - **Resilience** : Resilience4j (Circuit Breaker, Retry).
