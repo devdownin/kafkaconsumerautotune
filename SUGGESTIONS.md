@@ -20,7 +20,3 @@ Le `KafkaTuningService` actuel ne gère qu'un seul topic/container.
 ### 3.1 Tests de Charge (Performance)
 **Suggestion :**
 - Utiliser **Gatling** ou **JMeter** pour simuler une injection massive de messages Kafka et valider le comportement du contrôleur PID en conditions réelles.
-
-### 3.2 Chaos Engineering
-**Suggestion :**
-- Utiliser **Chaos Mesh** ou **Testcontainers-toxiproxy** dans les tests d'intégration pour simuler des latences réseau entre l'application et Kafka/Oracle et vérifier la robustesse de l'auto-tune.

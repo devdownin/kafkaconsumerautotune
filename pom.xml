@@ -251,6 +251,12 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>toxiproxy</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- AssertJ pour des assertions fluides -->
         <dependency>
             <groupId>org.assertj</groupId>
