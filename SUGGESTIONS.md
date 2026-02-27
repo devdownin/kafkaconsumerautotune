@@ -2,14 +2,6 @@
 
 Ce document détaille les recommandations pour améliorer la qualité du code, la résilience et la généricité de l'application.
 
-## 1. Qualité du Code
-
-### 1.1 Lissage de l'Auto-Tune
-Le redémarrage du consommateur (`stop()` / `start()`) est coûteux car il provoque un rebalance.
-**Suggestion :**
-- Utiliser un filtre passe-bas sur les variations de débit pour éviter les réactions trop brusques du contrôleur PID.
-- Explorer les nouvelles APIs Kafka qui permettent de modifier certains paramètres (comme `max.poll.records`) sans redémarrage complet du container si possible (via `updateConfigs` sur la factory mais nécessite souvent un restart du container Spring Kafka pour application réelle sur le thread de polling).
-
 ## 2. Qualité du Code
 
 ### 2.1 Externalisation de la Configuration
