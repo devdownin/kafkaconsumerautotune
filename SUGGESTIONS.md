@@ -2,14 +2,9 @@
 
 Ce document détaille les recommandations pour améliorer la qualité du code, la résilience et la généricité de l'application.
 
-## 2. Qualité du Code
+## 1. Qualité du Code
 
-### 2.1 Externalisation de la Configuration
-Les constantes du PID étaient initialement en dur. (Corrigé partiellement par l'introduction de `KafkaTuningProperties`).
-**Suggestion :**
-- Continuer à déplacer toute la logique de "magic numbers" vers le `application.yml`.
-
-### 2.2 Documentation API
+### 1.1 Documentation API
 **Suggestion :**
 - Intégrer **SpringDoc OpenAPI** pour générer une documentation Swagger interactive pour les contrôleurs REST (`DashboardController`, `KEventController`).
 
@@ -25,7 +20,3 @@ Le `KafkaTuningService` actuel ne gère qu'un seul topic/container.
 ### 3.1 Tests de Charge (Performance)
 **Suggestion :**
 - Utiliser **Gatling** ou **JMeter** pour simuler une injection massive de messages Kafka et valider le comportement du contrôleur PID en conditions réelles.
-
-### 3.2 Chaos Engineering
-**Suggestion :**
-- Utiliser **Chaos Mesh** ou **Testcontainers-toxiproxy** dans les tests d'intégration pour simuler des latences réseau entre l'application et Kafka/Oracle et vérifier la robustesse de l'auto-tune.
