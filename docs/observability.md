@@ -1,46 +1,46 @@
-# Observabilité : Logging Structuré et Tracing
+# Observabilité : Logging Structuré, Tracing et Métriques
 
-Consotopic intègre une pile d'observabilité moderne basée sur le format JSON ELK (Elasticsearch, Logstash, Kibana) et le standard OpenTelemetry (OTel).
+Consotopic intègre une pile d'observabilité complète basée sur le standard **OpenTelemetry (OTel)** et la suite **Grafana (Prometheus, Loki, Tempo/Jaeger)**.
 
-## 1. Logging Structuré (ELK/ECS)
+## 1. Logging Structuré et Centralisé
 
-L'application génère des logs au format JSON conformes à un schéma hiérarchique inspiré de l'Elastic Common Schema (ECS). Cela facilite l'indexation et l'analyse dans une pile ELK.
+L'application génère des logs au format JSON conformes à l'Elastic Common Schema (ECS), facilitant leur exploitation automatique.
 
-### Format JSON
+### 1.1 Format JSON
 Chaque log inclut les blocs suivants :
 -   `@timestamp` : Horodatage ISO8601 UTC.
--   `event` : Métadonnées de l'événement (`category`, `type`, `outcome`).
+-   `event` : Métadonnées (`category`, `type`, `outcome`).
 -   `correlation` : Identifiants de liaison (`id`, `traceId`, `spanId`).
--   `log` : Détails techniques (`level`, `logger`, `authentication` masqué).
--   `organization` : Métadonnées du service (`id`, `application`, `version`).
+-   `kafka` : Coordonnées du message (`topic`, `partition`, `offset`).
+-   `service` : Identité du service (`id`, `name`, `version`).
 
-### Enrichissement des logs
--   **Web** : Les logs HTTP incluent la méthode (`http.method`) et le chemin (`url.path`).
--   **Kafka** : Les logs de consommation incluent le topic (`kafka.topic`), la partition (`kafka.partition`) et l'offset (`kafka.offset`).
--   **Sécurité** : Le header `Authorization` est automatiquement masqué dans les logs (ex: `Bearer eyJhbGci...`).
+### 1.2 Centralisation avec Loki
+Les logs sont écrits dans un fichier tournant (`/logs/app.log`) via Logback. Un agent **Promtail** scrappe ce fichier en temps réel et expédie les logs vers **Grafana Loki**.
+-   **Corrélation** : Grâce au `traceId` présent dans chaque log, il est possible de retrouver tous les logs associés à une trace spécifique dans Grafana.
 
 ---
 
 ## 2. Tracing Distribué (OpenTelemetry)
 
-L'application utilise **Micrometer Tracing** avec un pont **OpenTelemetry** pour générer des traces distribuées.
+L'application utilise **Micrometer Tracing** avec un pont **OpenTelemetry** pour générer et propager des traces.
 
-### Fonctionnement
--   **Génération d'ID** : Un `traceId` unique est généré pour chaque requête entrante (Web) ou message Kafka.
--   **Propagation** : L'ID de trace est propagé à travers les threads et les services (via les headers Kafka si l'Observation est activée).
--   **MDC Integration** : Le `traceId` et le `spanId` sont automatiquement injectés dans le Mapped Diagnostic Context (MDC) pour lier les logs JSON à la trace correspondante.
+### 2.1 Fonctionnement
+-   **Propagation** : L'ID de trace est propagé à travers les headers Kafka (via l'API Observation de Spring Kafka).
+-   **Exemplars** : Consotopic active les **Exemplars** Prometheus. Cela permet d'associer un `traceId` directement à un point de mesure dans un graphique de métriques. Dans Grafana, un clic sur un "point bleu" dans un graphique de latence permet d'ouvrir instantanément la trace correspondante dans Jaeger.
 
 ---
 
-## 3. Pile Infrastructure OpenTelemetry
+## 3. Pile Infrastructure
 
-Le fichier `docker-compose.yml` inclut une stack complète pour collecter et visualiser ces données :
+Le fichier `docker-compose.yml` déploie une stack d'observabilité prête à l'emploi :
 
 ### Composants
--   **OTel Collector** : Reçoit les traces et métriques via le protocole OTLP (port 4318/HTTP). Il les redirige vers Jaeger et Prometheus.
--   **Jaeger** : Interface de visualisation des traces (disponible sur le port `16686`). Permet d'analyser la latence et les dépendances.
--   **Prometheus** : Collecte les métriques applicatives agrégées par le collecteur (exposées sur le port `8889`).
--   **Grafana** : Tableaux de bord de visualisation (port `3000`).
+-   **OTel Collector** : Pivot de la télémétrie, reçoit traces et métriques (port 4318).
+-   **Prometheus** : Stockage des métriques avec support des Exemplars (port 9090).
+-   **Loki** : Stockage centralisé des logs (port 3100).
+-   **Promtail** : Agent de collecte des logs applicatifs.
+-   **Jaeger** : Visualisation des traces distribuées (port 16686).
+-   **Grafana** : Tableaux de bord unifiés (port 3000) intégrant toutes les sources de données.
 
 ---
 
@@ -49,17 +49,20 @@ Le fichier `docker-compose.yml` inclut une stack complète pour collecter et vis
 ### Propriétés Spring Boot (`application.yml`)
 ```yaml
 management:
+  metrics:
+    distribution:
+      percentiles-histogram:
+        kafka.events.batch.duration: true # Nécessaire pour les Exemplars
   tracing:
     sampling:
-      probability: 1.0 # 100% des traces sont capturées en mode démo
+      probability: 1.0
   otlp:
     tracing:
       endpoint: http://otel-collector:4318/v1/traces
-    metrics:
-      export:
-        url: http://otel-collector:4318/v1/metrics
 ```
 
-### Variables d'Environnement Docker
--   `MANAGEMENT_OTLP_TRACING_ENDPOINT` : URL du collecteur pour les traces.
--   `MANAGEMENT_OTLP_METRICS_EXPORT_URL` : URL du collecteur pour les métriques.
+### Alerting
+Des règles d'alerte Prometheus sont définies dans `prometheus-rules.yml` pour surveiller :
+-   Le lag Kafka excessif.
+-   Le taux d'erreur de traitement (> 5%).
+-   La durée anormale des batchs.

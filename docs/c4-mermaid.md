@@ -4,23 +4,23 @@ Ce document présente l'architecture de l'application Consotopic en suivant le m
 
 ## 1. Niveau 1 : Diagramme de Contexte (System Context)
 
-Ce diagramme montre le système Consotopic dans son environnement global, ses interactions avec les utilisateurs et les systèmes externes.
+Ce diagramme montre le système Consotopic dans son environnement global.
 
 ```mermaid
 C4Context
     title Diagramme de Contexte pour le système Consotopic
 
     Person(user, "Utilisateur / Opérateur", "Surveille les performances et gère les erreurs via le dashboard.")
-    System(consotopic, "Consotopic", "Application de consommation Kafka haute performance avec auto-tuning et résilience.")
+    System(consotopic, "Consotopic", "Application de consommation Kafka haute performance avec auto-tuning intelligent et résilience avancée.")
 
     System_Ext(kafka, "Kafka", "Flux de messages d'entrée (Message Broker).")
     System_Ext(database, "Base de données", "Stockage persistant des événements et erreurs DLT (Oracle/H2).")
-    System_Ext(otel, "OpenTelemetry Stack", "Collecte et visualise les traces et métriques (Collector, Jaeger, Prometheus).")
+    System_Ext(otel_stack, "Observability Stack", "Pile complète (Loki, Prometheus, Jaeger) pour la supervision, le log centralisé et le tracing.")
 
     Rel(user, consotopic, "Surveille et gère", "HTTPS/WebSocket")
     Rel(consotopic, kafka, "Consomme des messages", "Kafka Protocol")
     Rel(consotopic, database, "Persiste les données", "JDBC")
-    Rel(consotopic, otel, "Exporte traces et métriques", "OTLP")
+    Rel(consotopic, otel_stack, "Exporte logs, métriques et traces", "OTLP / File-Scraping")
 ```
 
 ---
@@ -37,26 +37,30 @@ C4Container
 
     Container_Boundary(consotopic_boundary, "Système Consotopic") {
         Container(ui, "Interface Web", "Thymeleaf, Tailwind CSS", "Fournit le dashboard et les outils de gestion DLT.")
-        Container(app, "Application Spring Boot", "Java 21, Spring Boot 3.5", "Gère la logique de consommation, l'auto-tuning, la résilience et l'export OTel.")
+        Container(app, "Application Spring Boot", "Java 21, Spring Boot 3.5", "Logique de consommation, auto-tuning (PID+EMA), résilience et export télémétrique.")
     }
 
     Container_Boundary(otel_boundary, "Pile d'Observabilité") {
-        Container(collector, "OTel Collector", "Go", "Collecte et redirige les données OTLP.")
-        Container(jaeger, "Jaeger", "Distributed Tracing", "Visualisation des traces.")
-        Container(prometheus, "Prometheus", "Metrics Store", "Stockage et requêtage des métriques.")
+        Container(collector, "OTel Collector", "OTLP", "Collecte et redirige les données OTLP.")
+        Container(prometheus, "Prometheus", "Metrics Store", "Stockage des métriques avec support des Exemplars.")
+        Container(loki, "Grafana Loki", "Log Store", "Centralisation des logs JSON.")
+        Container(promtail, "Promtail", "Log Agent", "Collecte des logs via le file system.")
+        Container(jaeger, "Jaeger", "Tracing", "Visualisation des traces distribuées.")
     }
 
     ContainerDb_Ext(database, "Base de données", "Relational (Oracle/H2)", "Stocke les événements et messages DLT.")
     Container_Ext(kafka, "Kafka Broker", "Message Broker", "Source des flux d'événements.")
 
     Rel(user, ui, "Interagit avec", "HTTPS")
-    Rel(user, jaeger, "Consulte les traces", "HTTPS")
+    Rel(user, otel_boundary, "Consulte dashboards et logs", "HTTPS (Grafana)")
     Rel(ui, app, "Appels API & WebSocket", "HTTPS/WebSocket")
     Rel(app, database, "Lit/Écrit dans", "JDBC")
     Rel(app, kafka, "Consomme de", "Kafka Protocol")
-    Rel(app, collector, "Exporte", "OTLP/HTTP")
-    Rel(collector, jaeger, "Envoie les traces", "OTLP/gRPC")
-    Rel(collector, prometheus, "Expose les métriques", "Prometheus Exporter")
+    Rel(app, collector, "Exporte traces & métriques", "OTLP/HTTP")
+    Rel(app, promtail, "Écrit logs JSON", "File system")
+    Rel(promtail, loki, "Pousse logs", "HTTP")
+    Rel(collector, jaeger, "Envoie traces", "OTLP/gRPC")
+    Rel(collector, prometheus, "Expose métriques", "Prometheus Exporter")
 ```
 
 ---
@@ -72,14 +76,14 @@ C4Component
     Container_Boundary(app, "Application Spring Boot") {
         Component(controllers, "REST Controllers", "Spring MVC", "Gère les requêtes du dashboard et les actions DLT.")
         Component(batchConsumer, "EventBatchConsumer", "Spring Kafka", "Consommation batch d'événements.")
-        Component(abstractConsumer, "AbstractBatchConsumer", "Base Class", "Gère le cycle de vie, les métriques et l'enrichissement MDC.")
-        Component(tuningService, "KafkaTuningService", "PID Controller", "Auto-tune des paramètres Kafka.")
-        Component(persistenceService, "EventPersistenceService", "Spring Data JPA", "Persistance résiliente.")
-        Component(cbStateListener, "CircuitBreakerStateListener", "Resilience4j", "Gestion du cycle de vie du consommateur.")
+        Component(abstractConsumer, "AbstractBatchConsumer", "Base Class", "Cycle de vie batch, métriques, MDC et fallback.")
+        Component(tuningService, "KafkaTuningService", "PID+EMA", "Auto-tune avec lissage EMA et throttling santé.")
+        Component(persistenceService, "EventPersistenceService", "Spring Data JPA", "Persistance résiliente (CB + Retry).")
+        Component(cbStateListener, "CircuitBreakerStateListener", "Resilience4j", "Gestion du cycle de vie du consommateur via CB.")
         Component(dltService, "DltService", "Service", "Gestion du routage DLT.")
         Component(dashboardService, "DashboardService", "Service", "Agrégation des métriques.")
         Component(wsService, "WebSocketService", "Spring WebSocket", "Diffusion temps réel.")
-        Component(mdcFilter, "LoggingMdcFilter", "Servlet Filter", "Enrichissement des logs HTTP et corrélation.")
+        Component(mdcFilter, "LoggingMdcFilter", "Servlet Filter", "Enrichissement MDC des logs HTTP.")
     }
 
     ContainerDb_Ext(database, "Base de données", "JDBC", "Stockage.")
@@ -90,7 +94,7 @@ C4Component
     Rel(abstractConsumer, dltService, "Route les erreurs")
     Rel(tuningService, batchConsumer, "Ajuste le polling")
     Rel(cbStateListener, batchConsumer, "Contrôle le container")
-    Rel(mdcFilter, controllers, "Prépare le contexte")
+    Rel(mdcFilter, controllers, "Injecte métadonnées log")
     Rel(controllers, dashboardService, "Consulte les métriques")
     Rel(dashboardService, wsService, "Diffuse les données")
     Rel(persistenceService, database, "JDBC")
