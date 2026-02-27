@@ -61,3 +61,30 @@ Le `KafkaTuningService` actuel ne gère qu'un seul topic/container.
 ### 4.2 Chaos Engineering
 **Suggestion :**
 - Utiliser **Chaos Mesh** ou **Testcontainers-toxiproxy** dans les tests d'intégration pour simuler des latences réseau entre l'application et Kafka/Oracle et vérifier la robustesse de l'auto-tune.
+
+## 5. Supervision et Observabilité
+
+### 5.1 Alerting Avancé
+Le tableau de bord Grafana permet de visualiser les métriques, mais nécessite une attention humaine constante.
+**Suggestion :**
+- Configurer des alertes Grafana (ou Prometheus Alertmanager) sur les seuils critiques :
+    - Lag Kafka dépassant un certain seuil de sécurité.
+    - Pic d'erreurs (Error Rate > 5%).
+    - Durée de batch anormalement longue (signe potentiel de saturation DB).
+
+### 5.2 Centralisation des Logs (Loki)
+Actuellement, les logs sont consultables via Docker ou fichiers.
+**Suggestion :**
+- Ajouter **Grafana Loki** à la stack Docker Compose.
+- Utiliser le driver Docker `loki` ou un agent `Promtail` pour envoyer les logs JSON structurés vers Loki.
+- Permettre la corrélation "Metric-to-Log" directement dans Grafana.
+
+### 5.3 Exemplars (Micrometer + Prometheus)
+Pour faciliter le diagnostic, il est utile de passer directement d'un pic de latence dans un graphique à la trace correspondante.
+**Suggestion :**
+- Activer les **Exemplars** dans Micrometer pour Prometheus. Cela permet d'inclure le `traceId` dans les métriques Prometheus et de cliquer sur un point du graphique dans Grafana pour ouvrir la trace dans Jaeger.
+
+### 5.4 Dashboard Business (KPI)
+Le dashboard actuel est technique.
+**Suggestion :**
+- Créer un dashboard orienté "Métier" affichant le volume de données traitées par type d'événement, les montants financiers (si applicable dans les payloads), et le taux de complétude des données.
