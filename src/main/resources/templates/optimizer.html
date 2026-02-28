@@ -62,6 +62,17 @@
                 </div>
             </div>
 
+            <!-- Timeline Chart -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h4 class="text-base font-bold">Optimization Timeline</h4>
+                        <p class="text-xs text-slate-500">Correlation between throughput and PID-tuned parameters (max.poll.records & concurrency)</p>
+                    </div>
+                </div>
+                <div class="h-[350px] w-full" id="optimizer-timeline-chart"></div>
+            </div>
+
             <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
                 <div class="p-6 border-b border-slate-200 dark:border-slate-800">
                     <h4 class="text-base font-bold">Recent Property Optimizations</h4>
@@ -133,9 +144,137 @@
 <!-- Common Scripts Fragment -->
 <div th:replace="~{fragments/scripts :: common-scripts}"></div>
 
-<script>
+<script th:inline="javascript">
+    var initialStats = /*[[${stats}]]*/ {};
+    var timelineChart;
+
+    function initTimelineChart() {
+        var options = {
+            series: [
+                {
+                    name: 'Throughput (Msg/s)',
+                    type: 'area',
+                    data: initialStats.successThroughput || []
+                },
+                {
+                    name: 'max.poll.records',
+                    type: 'line',
+                    data: initialStats.maxPollRecordsHistory || []
+                },
+                {
+                    name: 'concurrency',
+                    type: 'line',
+                    data: initialStats.concurrencyHistory || []
+                }
+            ],
+            chart: {
+                height: 350,
+                type: 'line',
+                stacked: false,
+                toolbar: { show: false },
+                animations: { enabled: true, easing: 'linear', dynamicAnimation: { speed: 1000 } }
+            },
+            stroke: {
+                width: [0, 3, 3],
+                curve: 'smooth'
+            },
+            plotOptions: {
+                bar: { columnWidth: '50%' }
+            },
+            fill: {
+                type: 'gradient',
+                gradient: {
+                    inverseColors: false,
+                    shade: 'light',
+                    type: "vertical",
+                    opacityFrom: [0.35, 1, 1],
+                    opacityTo: [0.1, 1, 1],
+                    stops: [0, 90, 100]
+                }
+            },
+            colors: ['#135bec', '#10b981', '#f59e0b'],
+            labels: initialStats.timestamps || [],
+            xaxis: {
+                type: 'datetime',
+                labels: {
+                    style: { colors: '#94a3b8', fontSize: '10px' },
+                    datetimeUTC: false,
+                    format: 'HH:mm:ss'
+                }
+            },
+            yaxis: [
+                {
+                    title: { text: 'Throughput (Msg/s)', style: { color: '#135bec' } },
+                    labels: {
+                        style: { colors: '#94a3b8' },
+                        formatter: function(val) { return val.toFixed(1); }
+                    }
+                },
+                {
+                    opposite: true,
+                    title: { text: 'max.poll.records', style: { color: '#10b981' } },
+                    labels: {
+                        style: { colors: '#94a3b8' }
+                    }
+                },
+                {
+                    opposite: true,
+                    offsetY: 0,
+                    title: { text: 'concurrency', style: { color: '#f59e0b' } },
+                    labels: {
+                        style: { colors: '#94a3b8' },
+                        offsetX: -10
+                    }
+                }
+            ],
+            grid: { borderColor: '#1e293b', strokeDashArray: 4 },
+            tooltip: {
+                theme: 'dark',
+                x: { format: 'HH:mm:ss' }
+            },
+            legend: {
+                show: true,
+                position: 'top',
+                horizontalAlign: 'right',
+                labels: { colors: '#94a3b8' }
+            }
+        };
+
+        timelineChart = new ApexCharts(document.querySelector("#optimizer-timeline-chart"), options);
+        timelineChart.render();
+    }
+
+    // WebSocket Setup
+    var socket = new SockJS('/ws');
+    var stompClient = Stomp.over(socket);
+    stompClient.debug = null;
+
+    stompClient.connect({}, function (frame) {
+        updateWsStatus(true);
+        stompClient.subscribe('/topic/stats', function (statsMessage) {
+            var stats = JSON.parse(statsMessage.body);
+            updateTimeline(stats);
+        });
+    }, function(error) {
+        updateWsStatus(false);
+    });
+
+    function updateTimeline(stats) {
+        if (timelineChart) {
+            timelineChart.updateOptions({
+                xaxis: { categories: stats.timestamps }
+            });
+            timelineChart.updateSeries([
+                { name: 'Throughput (Msg/s)', data: stats.successThroughput },
+                { name: 'max.poll.records', data: stats.maxPollRecordsHistory },
+                { name: 'concurrency', data: stats.concurrencyHistory }
+            ]);
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         initThemeToggle();
+        initTimelineChart();
     });
 </script>
 </body>
