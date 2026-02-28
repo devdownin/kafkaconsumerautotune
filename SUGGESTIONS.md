@@ -27,6 +27,3 @@ Le `KafkaTuningService` actuel ne gère qu'un seul topic/container.
 **Suggestion :**
 - Déplacer les messages d'explication du `KafkaTuningService` vers des fichiers de ressources (`messages.properties`) pour permettre le support multi-langue et faciliter la maintenance des textes sans modifier le code source.
 
-### 4.2 Historique visuel des changements (Timeline)
-**Suggestion :**
-- Ajouter une vue "Timeline" dans l'Optimizer pour visualiser graphiquement l'évolution des paramètres (ex: graphe de `max.poll.records` superposé au débit réel) afin de mieux comprendre l'impact des décisions du PID sur le temps.
