@@ -75,7 +75,7 @@
                             <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Property</th>
                             <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center">Old Value</th>
                             <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center">New Value</th>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Reason</th>
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Explication</th>
                         </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -84,7 +84,10 @@
                             <td class="px-6 py-4 text-sm font-mono font-bold text-primary" th:text="${opt.propertyName}">max.poll.records</td>
                             <td class="px-6 py-4 text-sm text-center text-slate-500 line-through" th:text="${opt.oldValue}">100</td>
                             <td class="px-6 py-4 text-sm text-center font-bold text-emerald-500" th:text="${opt.newValue}">500</td>
-                            <td class="px-6 py-4 text-xs text-slate-600 dark:text-slate-400 max-w-xs truncate" th:title="${opt.reason}" th:text="${opt.reason}">Reason for optimization...</td>
+                            <td class="px-6 py-4 text-xs text-slate-600 dark:text-slate-400 max-w-md" th:title="${opt.reason}">
+                                <div class="font-medium text-slate-900 dark:text-slate-200 mb-1" th:text="${opt.explanation}">Explication pédagogique du changement...</div>
+                                <div class="text-[10px] text-slate-400 font-mono" th:text="${opt.reason}">PID optimization detail...</div>
+                            </td>
                         </tr>
                         <tr th:if="${#lists.isEmpty(optimizations)}">
                             <td colspan="5" class="px-6 py-10 text-center text-slate-500 italic">No optimizations recorded yet.</td>

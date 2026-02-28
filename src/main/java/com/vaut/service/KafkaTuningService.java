@@ -169,8 +169,11 @@ public class KafkaTuningService {
             if (shouldUpdate(currentMaxPollRecords, nextMaxPoll)) {
                 log.info("AUTO-TUNE [PID]: Adjusting max.poll.records {} -> {} (Error: {})",
                         currentMaxPollRecords, nextMaxPoll, String.format("%.4f", error));
+                String explanation = nextMaxPoll > currentMaxPollRecords ?
+                        "Augmentation de la taille du lot car le traitement est plus rapide que l'objectif. Cela améliore l'efficacité globale." :
+                        "Réduction de la taille du lot car le traitement est trop lent par rapport à l'objectif. Cela permet de stabiliser le temps de réponse.";
                 optimizerService.addOptimization(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, String.valueOf(currentMaxPollRecords), String.valueOf(nextMaxPoll),
-                        String.format("PID optimization: error=%.4f, throughput=%.2f msg/s", error, throughput));
+                        String.format("PID optimization: error=%.4f, throughput=%.2f msg/s", error, throughput), explanation);
                 currentMaxPollRecords = nextMaxPoll;
                 newConfigs.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, currentMaxPollRecords);
                 needsRestart = true;
@@ -186,8 +189,11 @@ public class KafkaTuningService {
 
             if (shouldUpdate(currentFetchMaxWaitMs, nextWait)) {
                 log.info("AUTO-TUNE: Adjusting fetch.max.wait.ms {} -> {}ms", currentFetchMaxWaitMs, nextWait);
+                String explanation = nextWait > currentFetchMaxWaitMs ?
+                        "Augmentation du temps d'attente car le débit est faible. On attend un peu plus pour grouper les messages et économiser le réseau." :
+                        "Réduction du temps d'attente car le débit est élevé. On privilégie la réactivité pour traiter le flux important.";
                 optimizerService.addOptimization(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, String.valueOf(currentFetchMaxWaitMs), String.valueOf(nextWait),
-                        String.format("Optimizing wait time based on throughput (%.2f msg/s)", throughput));
+                        String.format("Optimizing wait time based on throughput (%.2f msg/s)", throughput), explanation);
                 currentFetchMaxWaitMs = nextWait;
                 newConfigs.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, currentFetchMaxWaitMs);
                 needsRestart = true;
@@ -201,7 +207,8 @@ public class KafkaTuningService {
             if (shouldUpdate(currentFetchMinBytes, nextFetchMinBytes)) {
                 log.info("AUTO-TUNE: Adjusting fetch.min.bytes {} -> {} bytes", currentFetchMinBytes, nextFetchMinBytes);
                 optimizerService.addOptimization(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, String.valueOf(currentFetchMinBytes), String.valueOf(nextFetchMinBytes),
-                        String.format("Optimizing fetch efficiency for %.2f msg/s", throughput));
+                        String.format("Optimizing fetch efficiency for %.2f msg/s", throughput),
+                        "Ajustement du volume minimum de données pour optimiser les transferts réseau en fonction du débit constaté.");
                 currentFetchMinBytes = nextFetchMinBytes;
                 newConfigs.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, currentFetchMinBytes);
                 needsRestart = true;
@@ -214,7 +221,8 @@ public class KafkaTuningService {
             if (shouldUpdate(currentFetchMaxBytes, nextFetchMaxBytes)) {
                 log.info("AUTO-TUNE: Adjusting fetch.max.bytes & max.partition.fetch.bytes {} -> {} bytes", currentFetchMaxBytes, nextFetchMaxBytes);
                 optimizerService.addOptimization(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, String.valueOf(currentFetchMaxBytes), String.valueOf(nextFetchMaxBytes),
-                        String.format("Scaling fetch size for max.poll.records=%d and avgMsgSize=%.2f", currentMaxPollRecords, avgMsgSize));
+                        String.format("Scaling fetch size for max.poll.records=%d and avgMsgSize=%.2f", currentMaxPollRecords, avgMsgSize),
+                        "Adaptation de la mémoire tampon pour s'aligner sur la taille des lots et éviter de tronquer les messages.");
                 currentFetchMaxBytes = nextFetchMaxBytes;
                 newConfigs.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, currentFetchMaxBytes);
                 newConfigs.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, currentFetchMaxBytes);
@@ -234,7 +242,8 @@ public class KafkaTuningService {
                             String.format("%.1f", currentCpuLoad * 100), String.format("%.1f", memoryUsage * 100),
                             currentMaxPollRecords, throttledMaxPoll);
                     optimizerService.addOptimization(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, String.valueOf(currentMaxPollRecords), String.valueOf(throttledMaxPoll),
-                            String.format("Emergency throttling: CPU=%.2f, MEM=%.2f", currentCpuLoad, memoryUsage));
+                            String.format("Emergency throttling: CPU=%.2f, MEM=%.2f", currentCpuLoad, memoryUsage),
+                            "Réduction d'urgence de la charge pour préserver la stabilité du système face à une saturation des ressources.");
                     currentMaxPollRecords = throttledMaxPoll;
                     newConfigs.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, currentMaxPollRecords);
                     needsRestart = true;
@@ -248,7 +257,8 @@ public class KafkaTuningService {
             if (shouldUpdate(currentMaxPollIntervalMs, nextMaxPollInterval)) {
                 log.info("AUTO-TUNE: Adjusting max.poll.interval.ms {} -> {}ms", currentMaxPollIntervalMs, nextMaxPollInterval);
                 optimizerService.addOptimization(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, String.valueOf(currentMaxPollIntervalMs), String.valueOf(nextMaxPollInterval),
-                        String.format("Extending poll interval safety for target batch duration of %.0fms", tuningProperties.getTargetBatchDurationMs()));
+                        String.format("Extending poll interval safety for target batch duration of %.0fms", tuningProperties.getTargetBatchDurationMs()),
+                        "Augmentation du délai de sécurité pour éviter que Kafka n'exclue le consumer si le traitement d'un lot prend plus de temps que prévu.");
                 currentMaxPollIntervalMs = nextMaxPollInterval;
                 newConfigs.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, currentMaxPollIntervalMs);
                 needsRestart = true;
@@ -272,7 +282,8 @@ public class KafkaTuningService {
                             log.info("AUTO-TUNE: High system load detected ({}), decreasing concurrency {} -> {}",
                                     String.format("%.2f", systemCpuLoad), currentConcurrency, nextConcurrency);
                             optimizerService.addOptimization("concurrency", String.valueOf(currentConcurrency), String.valueOf(nextConcurrency),
-                                    String.format("High system load (%.2f) detected", systemCpuLoad));
+                                    String.format("High system load (%.2f) detected", systemCpuLoad),
+                                    "Réduction du nombre de threads pour soulager le processeur et stabiliser l'application.");
                         }
                     } else if (systemCpuLoad >= 0 && systemCpuLoad < tuningProperties.getCpuThresholdLow() && lag > tuningProperties.getLagThresholdForScaling()) {
                         nextConcurrency = Math.min(partitionCount, currentConcurrency + 1);
@@ -280,7 +291,8 @@ public class KafkaTuningService {
                             log.info("AUTO-TUNE: Low system load ({}) and lag ({}) detected, increasing concurrency {} -> {}",
                                     String.format("%.2f", systemCpuLoad), lag, currentConcurrency, nextConcurrency);
                             optimizerService.addOptimization("concurrency", String.valueOf(currentConcurrency), String.valueOf(nextConcurrency),
-                                    String.format("Low load (%.2f) and high lag (%d) detected", systemCpuLoad, lag));
+                                    String.format("Low load (%.2f) and high lag (%d) detected", systemCpuLoad, lag),
+                                    "Augmentation du parallélisme pour traiter le retard accumulé (lag) car les ressources système sont disponibles.");
                         }
                     } else if (currentConcurrency > partitionCount) {
                         // Safety: never exceed partition count

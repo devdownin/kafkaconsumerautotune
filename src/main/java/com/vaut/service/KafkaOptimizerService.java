@@ -27,6 +27,7 @@ public class KafkaOptimizerService {
                 .oldValue("100")
                 .newValue("450")
                 .reason("PID optimization: error=0.352, throughput=1240.25 msg/s")
+                .explanation("Augmentation de la taille du lot pour optimiser le débit. Le système traite les messages plus vite que l'objectif fixé, nous augmentons donc la charge par lot pour réduire l'overhead des polls.")
                 .timestamp(LocalDateTime.now().minusHours(2))
                 .build());
 
@@ -35,6 +36,7 @@ public class KafkaOptimizerService {
                 .oldValue("10240")
                 .newValue("65536")
                 .reason("Optimizing fetch efficiency for 1240.25 msg/s")
+                .explanation("Optimisation de l'efficacité réseau. En attendant d'avoir plus de données avant de répondre, on réduit le nombre d'allers-retours réseau inutiles.")
                 .timestamp(LocalDateTime.now().minusMinutes(45))
                 .build());
 
@@ -43,6 +45,7 @@ public class KafkaOptimizerService {
                 .oldValue("300000")
                 .newValue("360000")
                 .reason("Extending poll interval safety for target batch duration of 1200ms")
+                .explanation("Ajustement de la marge de sécurité. Pour éviter que Kafka ne considère le consumer comme mort pendant un traitement long, nous augmentons le délai maximum autorisé entre deux lectures.")
                 .timestamp(LocalDateTime.now().minusMinutes(120))
                 .build());
 
@@ -51,6 +54,7 @@ public class KafkaOptimizerService {
                 .oldValue("52428800")
                 .newValue("62914560")
                 .reason("Scaling fetch size for max.poll.records=450 and avgMsgSize=820.5")
+                .explanation("Adaptation de la mémoire tampon. La taille maximale des données récupérées est augmentée pour s'aligner sur le nombre croissant de messages demandés par lot.")
                 .timestamp(LocalDateTime.now().minusDays(1))
                 .build());
     }
@@ -73,13 +77,15 @@ public class KafkaOptimizerService {
      * @param oldVal The previous value of the property.
      * @param newVal The new value applied to the property.
      * @param reason The reason for the change.
+     * @param explanation A pedagogical explanation of the change.
      */
-    public void addOptimization(String property, String oldVal, String newVal, String reason) {
+    public void addOptimization(String property, String oldVal, String newVal, String reason, String explanation) {
         optimizations.add(0, KafkaPropertyOptimization.builder()
                 .propertyName(property)
                 .oldValue(oldVal)
                 .newValue(newVal)
                 .reason(reason)
+                .explanation(explanation)
                 .timestamp(LocalDateTime.now())
                 .build());
 
