@@ -27,6 +27,10 @@ public record DashboardStatsDTO(
     List<Double> retryThroughput,
     /** Consumer lag history. */
     List<Long> lagHistory,
+    /** Max poll records history. */
+    List<Integer> maxPollRecordsHistory,
+    /** Concurrency history. */
+    List<Integer> concurrencyHistory,
     /** Timestamps for the history points. */
     List<Long> timestamps,
     /** Throughput history for the last 24 hours. */

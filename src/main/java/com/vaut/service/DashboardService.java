@@ -88,6 +88,8 @@ public class DashboardService {
     private final List<Double> errorThroughput5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0.0));
     private final List<Double> retryThroughput5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0.0));
     private final List<Long> lagHistory5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0L));
+    private final List<Integer> maxPollRecordsHistory5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0));
+    private final List<Integer> concurrencyHistory5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0));
     private final List<Long> timestamps5s = new ArrayList<>();
     private final List<Double> throughput1m = new ArrayList<>(Collections.nCopies(THROUGHPUT_1M_SIZE, 0.0));
     private final Map<String, List<Double>> metricsHistory = new java.util.concurrent.ConcurrentHashMap<>();
@@ -136,6 +138,19 @@ public class DashboardService {
             for (int i = THROUGHPUT_5S_SIZE - 1; i >= 0; i--) {
                 timestamps5s.add(now - (i * 5000L));
             }
+
+            // Get initial tuning parameters for pre-filling history
+            Map<String, Object> tuningParams = kafkaTuningService.getCurrentTuningParameters();
+            int currentMaxPoll = 0;
+            Object mpr = tuningParams.get("maxPollRecords");
+            if (mpr instanceof Number n) currentMaxPoll = n.intValue();
+
+            int currentConcurrency = 0;
+            Object conc = tuningParams.get("concurrency");
+            if (conc instanceof Number n) currentConcurrency = n.intValue();
+
+            Collections.fill(maxPollRecordsHistory5s, currentMaxPoll);
+            Collections.fill(concurrencyHistory5s, currentConcurrency);
         }
     }
 
@@ -310,12 +325,22 @@ public class DashboardService {
 
         long currentLag = calculateTotalLag();
         long now = System.currentTimeMillis();
+        Map<String, Object> tuningParams = kafkaTuningService.getCurrentTuningParameters();
+        int currentMaxPoll = 0;
+        Object mpr = tuningParams.get("maxPollRecords");
+        if (mpr instanceof Number n) currentMaxPoll = n.intValue();
+
+        int currentConcurrency = 0;
+        Object conc = tuningParams.get("concurrency");
+        if (conc instanceof Number n) currentConcurrency = n.intValue();
 
         synchronized (successThroughput5s) {
             successThroughput5s.add(successMsgPerSec);
             errorThroughput5s.add(errorMsgPerSec);
             retryThroughput5s.add(retryMsgPerSec);
             lagHistory5s.add(currentLag);
+            maxPollRecordsHistory5s.add(currentMaxPoll);
+            concurrencyHistory5s.add(currentConcurrency);
             timestamps5s.add(now);
 
             if (successThroughput5s.size() > THROUGHPUT_5S_SIZE) {
@@ -323,6 +348,8 @@ public class DashboardService {
                 errorThroughput5s.remove(0);
                 retryThroughput5s.remove(0);
                 lagHistory5s.remove(0);
+                maxPollRecordsHistory5s.remove(0);
+                concurrencyHistory5s.remove(0);
                 timestamps5s.remove(0);
             }
         }
@@ -499,6 +526,8 @@ public class DashboardService {
         List<Double> errorThroughput;
         List<Double> retryThroughput;
         List<Long> lagHistory;
+        List<Integer> maxPollRecordsHistory;
+        List<Integer> concurrencyHistory;
         List<Long> timestamps;
         List<Double> throughput24h;
         synchronized (successThroughput5s) {
@@ -506,6 +535,8 @@ public class DashboardService {
             errorThroughput = new ArrayList<>(errorThroughput5s);
             retryThroughput = new ArrayList<>(retryThroughput5s);
             lagHistory = new ArrayList<>(lagHistory5s);
+            maxPollRecordsHistory = new ArrayList<>(maxPollRecordsHistory5s);
+            concurrencyHistory = new ArrayList<>(concurrencyHistory5s);
             timestamps = new ArrayList<>(timestamps5s);
         }
         synchronized (throughput1m) {
@@ -575,6 +606,8 @@ public class DashboardService {
                 .errorThroughput(errorThroughput)
                 .retryThroughput(retryThroughput)
                 .lagHistory(lagHistory)
+                .maxPollRecordsHistory(maxPollRecordsHistory)
+                .concurrencyHistory(concurrencyHistory)
                 .timestamps(timestamps)
                 .throughput24h(throughput24h)
                 .kafkaClusterName(bootstrapServers)
