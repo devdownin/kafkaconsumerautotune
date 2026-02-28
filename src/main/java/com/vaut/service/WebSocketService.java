@@ -83,4 +83,13 @@ public class WebSocketService {
     public void broadcast(String topic, Object payload) {
         messagingTemplate.convertAndSend(topic, payload);
     }
+
+    /**
+     * Broadcasts the current status of the traffic simulation.
+     *
+     * @param status The simulation status DTO.
+     */
+    public void sendSimulationStatus(Object status) {
+        messagingTemplate.convertAndSend(AppConstants.WEBSOCKET_TOPIC_SIMULATION, status);
+    }
 }

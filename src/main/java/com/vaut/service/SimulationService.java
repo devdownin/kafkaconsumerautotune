@@ -27,6 +27,7 @@ public class SimulationService {
 
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
+    private final WebSocketService webSocketService;
 
     @Value("${kafka.topic.name}")
     private String topicName;
@@ -36,6 +37,7 @@ public class SimulationService {
     private final AtomicInteger sentValidCount = new AtomicInteger(0);
     private final AtomicInteger sentErrorCount = new AtomicInteger(0);
     private final AtomicInteger sentMalformedCount = new AtomicInteger(0);
+    private final AtomicInteger sentDuplicateCount = new AtomicInteger(0);
     private final AtomicInteger totalMessages = new AtomicInteger(0);
     private final java.util.concurrent.atomic.AtomicLong startTime = new java.util.concurrent.atomic.AtomicLong(0);
 
@@ -47,6 +49,7 @@ public class SimulationService {
                 .sentValid(sentValidCount.get())
                 .sentError(sentErrorCount.get())
                 .sentMalformed(sentMalformedCount.get())
+                .sentDuplicate(sentDuplicateCount.get())
                 .startTime(startTime.get())
                 .build();
     }
@@ -64,58 +67,82 @@ public class SimulationService {
 
         MDC.put(AppConstants.MDC_EVENT_CATEGORY, "simulation");
         MDC.put(AppConstants.MDC_EVENT_TYPE, "produce");
-        MDC.put(AppConstants.MDC_EVENT_OUTCOME, "success");
 
         this.totalMessages.set(request.getTotalMessages());
         this.processedCount.set(0);
         this.sentValidCount.set(0);
         this.sentErrorCount.set(0);
         this.sentMalformedCount.set(0);
+        this.sentDuplicateCount.set(0);
         this.startTime.set(System.currentTimeMillis());
 
         log.info("Starting simulation: {}", request);
         Random random = new Random();
 
+        String lastKey = null;
+        String lastPayload = null;
+
         try {
             for (int i = 0; i < request.getTotalMessages() && running.get(); i++) {
                 int chance = random.nextInt(100);
                 String payload;
-                String key = UUID.randomUUID().toString();
+                String key;
                 String correlationId = UUID.randomUUID().toString();
+
+                boolean isDuplicate = (lastKey != null && chance < request.getDuplicatePercentage());
+
+                if (isDuplicate) {
+                    key = lastKey;
+                    payload = lastPayload;
+                    sentDuplicateCount.incrementAndGet();
+                    MDC.put(AppConstants.MDC_EVENT_TYPE, "produce_duplicate");
+                } else {
+                    key = UUID.randomUUID().toString();
+                    MDC.put(AppConstants.MDC_EVENT_TYPE, "produce");
+                    if (chance < (request.getDuplicatePercentage() + request.getMalformedJsonPercentage())) {
+                        payload = "MALFORMED_JSON_CONTENT_{" + key + "}";
+                        sentMalformedCount.incrementAndGet();
+                    } else if (chance < (request.getDuplicatePercentage() + request.getMalformedJsonPercentage() + request.getErrorPercentage())) {
+                        payload = objectMapper.writeValueAsString(Map.of(
+                                "notIdPassage", key,
+                                "timestamp", System.currentTimeMillis(),
+                                "data", "Message missing idPassage"
+                        ));
+                        sentErrorCount.incrementAndGet();
+                    } else {
+                        payload = objectMapper.writeValueAsString(Map.of(
+                                "idPassage", key,
+                                "timestamp", System.currentTimeMillis(),
+                                "data", "Valid message content"
+                        ));
+                        sentValidCount.incrementAndGet();
+                    }
+                    lastKey = key;
+                    lastPayload = payload;
+                }
 
                 MDC.put(AppConstants.MDC_CORRELATION_ID, correlationId);
                 MDC.put(AppConstants.MDC_KAFKA_KEY, key);
                 MDC.put(AppConstants.MDC_KAFKA_TOPIC, topicName);
 
-                if (chance < request.getMalformedJsonPercentage()) {
-                    payload = "MALFORMED_JSON_CONTENT_{" + key + "}";
-                    sentMalformedCount.incrementAndGet();
-                } else if (chance < (request.getMalformedJsonPercentage() + request.getErrorPercentage())) {
-                    payload = objectMapper.writeValueAsString(Map.of(
-                            "notIdPassage", key,
-                            "timestamp", System.currentTimeMillis(),
-                            "data", "Message missing idPassage"
-                    ));
-                    sentErrorCount.incrementAndGet();
-                } else {
-                    payload = objectMapper.writeValueAsString(Map.of(
-                            "idPassage", key,
-                            "timestamp", System.currentTimeMillis(),
-                            "data", "Valid message content"
-                    ));
-                    sentValidCount.incrementAndGet();
-                }
-
                 ProducerRecord<String, String> record = new ProducerRecord<>(topicName, key, payload);
                 record.headers().add(AppConstants.HEADER_CORRELATION_ID, correlationId.getBytes(StandardCharsets.UTF_8));
 
                 kafkaTemplate.send(record);
-                MDC.put(AppConstants.MDC_EVENT_OUTCOME, "success");
                 log.info("Simulated message sent with correlationId: {}", correlationId);
 
                 processedCount.incrementAndGet();
 
-                if (request.getDelayBetweenMessagesMs() > 0) {
+                // Periodic broadcast for UI (every 50 messages or if last)
+                if (processedCount.get() % 50 == 0 || processedCount.get() == totalMessages.get()) {
+                    webSocketService.sendSimulationStatus(getStatus());
+                }
+
+                // Throttle control
+                if (request.getTargetThroughputMsgPerSec() > 0) {
+                    long targetInterval = 1000 / request.getTargetThroughputMsgPerSec();
+                    Thread.sleep(targetInterval);
+                } else if (request.getDelayBetweenMessagesMs() > 0) {
                     Thread.sleep(request.getDelayBetweenMessagesMs());
                 }
 
@@ -124,14 +151,13 @@ public class SimulationService {
                 MDC.remove(AppConstants.MDC_KAFKA_TOPIC);
             }
         } catch (InterruptedException e) {
-            MDC.put(AppConstants.MDC_EVENT_OUTCOME, "failure");
             log.error("Simulation interrupted", e);
             Thread.currentThread().interrupt();
         } catch (Exception e) {
-            MDC.put(AppConstants.MDC_EVENT_OUTCOME, "failure");
             log.error("Error during simulation", e);
         } finally {
             running.set(false);
+            webSocketService.sendSimulationStatus(getStatus());
             log.info("Simulation finished: {}/{}", processedCount.get(), totalMessages);
             MDC.clear();
         }

@@ -40,6 +40,8 @@ public final class AppConstants {
     public static final String WEBSOCKET_TOPIC_METRICS_LIVE = "/topic/metrics-live";
     /** WebSocket topic for system-wide notifications and state changes. */
     public static final String WEBSOCKET_TOPIC_SYSTEM_EVENTS = "/topic/system-events";
+    /** WebSocket topic for broadcasting real-time simulation progress. */
+    public static final String WEBSOCKET_TOPIC_SIMULATION = "/topic/simulation";
 
     // Logging MDC Keys
     public static final String MDC_CORRELATION_ID = "correlationId";
