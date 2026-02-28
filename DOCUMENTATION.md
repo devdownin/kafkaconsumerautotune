@@ -43,9 +43,11 @@ Gère le cycle de vie du traitement batch avec une généricité totale (`<T>`).
 
 ### 3.2 Moteur d'Auto-Tune (KafkaTuningService)
 Surveille le débit et ajuste les paramètres pour atteindre une cible de **1,2 seconde** par batch.
--   **Contrôleur PID** : Ajuste `max.poll.records`, `fetch.*` et la `concurrency`.
--   **Lissage (EMA)** : Utilise une moyenne mobile exponentielle pour ignorer les pics de latence isolés et stabiliser les redémarrages.
--   **Throttling Santé** : Réduit préventivement la charge si le CPU ou la Mémoire dépassent 90% d'utilisation.
+-   **Contrôleur PID** : Utilise la formule `P*error + I*integral + D*derivative` pour ajuster `max.poll.records`. L'erreur est calculée comme `(Target - Actual) / Target`.
+-   **Optimisation Réseau** : Ajuste dynamiquement `fetch.min.bytes`, `fetch.max.wait.ms` et `fetch.max.bytes` en fonction du débit (msg/s) et de la taille moyenne des messages.
+-   **Scaling Horizontal Interne** : Ajuste la `concurrency` (nombre de threads) en fonction de la charge CPU et du lag Kafka, sans dépasser le nombre de partitions.
+-   **Lissage (EMA)** : Applique un coefficient de lissage (alpha=0.2 par défaut) sur la durée des batchs pour éviter les sur-réactions aux pics de latence.
+-   **Throttling de Survie** : Si le CPU ou la Mémoire dépassent 90%, le système réduit immédiatement `max.poll.records` de 30% pour éviter un crash.
 
 ### 3.3 Résilience et Circuit Breaker
 Protège la persistance via Resilience4j.

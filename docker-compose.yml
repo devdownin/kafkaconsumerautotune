@@ -93,6 +93,7 @@ services:
   app:
     build: .
     container_name: kafka-consumer-app
+    restart: always
     ports:
       - "8080:8080"
     environment:
