@@ -17,6 +17,8 @@ public record KafkaPropertyOptimization(
     String newValue,
     /** The reason for the adjustment (e.g., "Throughput target exceeded"). */
     String reason,
+    /** A pedagogical explanation of the change. */
+    String explanation,
     /** The timestamp when the optimization was applied. */
     LocalDateTime timestamp
 ) {}
