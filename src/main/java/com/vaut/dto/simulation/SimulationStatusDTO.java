@@ -16,5 +16,6 @@ public class SimulationStatusDTO {
     private int sentValid;
     private int sentError;
     private int sentMalformed;
+    private int sentDuplicate;
     private long startTime;
 }

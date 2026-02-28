@@ -18,4 +18,8 @@ public class SimulationRequestDTO {
     private int malformedJsonPercentage = 2; // Not a valid JSON
     @lombok.Builder.Default
     private int delayBetweenMessagesMs = 10;
+    @lombok.Builder.Default
+    private int duplicatePercentage = 0;
+    @lombok.Builder.Default
+    private int targetThroughputMsgPerSec = 0; // 0 means use delayBetweenMessagesMs
 }
