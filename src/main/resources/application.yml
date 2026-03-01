@@ -179,6 +179,9 @@ management:
     metrics:
       export:
         url: ${MANAGEMENT_OTLP_METRICS_EXPORT_URL:http://localhost:4318/v1/metrics}
+    logs:
+      export:
+        enabled: false
   # Exposition des endpoints Actuator pour le monitoring (Prometheus, Health, etc.)
   endpoints:
     web:
