@@ -427,6 +427,17 @@
 
     function updateStats(stats) {
         initialStats = stats;
+
+        // Update Circuit Breaker Alert visibility
+        const cbAlert = document.getElementById('cb-alert');
+        if (cbAlert) {
+            if (stats.circuitBreakerStatus === 'OPEN') {
+                cbAlert.classList.remove('hidden');
+            } else {
+                cbAlert.classList.add('hidden');
+            }
+        }
+
         document.getElementById('total-processed-count').innerText = stats.totalProcessed.toLocaleString('en-US');
         document.getElementById('success-rate').innerText = stats.successRate.toFixed(2) + '%';
         document.getElementById('success-rate-bar').style.width = stats.successRate + '%';
