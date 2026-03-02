@@ -148,6 +148,7 @@ resilience4j:
         minimumNumberOfCalls: 5
         permittedNumberOfCallsInHalfOpenState: 3
         waitDurationInOpenState: 30s
+        automaticTransitionFromOpenToHalfOpenEnabled: true
         failureRateThreshold: 50
         recordExceptions:
           - org.springframework.dao.TransientDataAccessException

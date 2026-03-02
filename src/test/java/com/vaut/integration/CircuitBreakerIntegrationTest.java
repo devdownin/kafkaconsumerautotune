@@ -66,18 +66,21 @@ public class CircuitBreakerIntegrationTest {
         // Reset mock to succeed
         reset(eventRepository);
 
-        // Transition manually to Half-Open to simulate time passing
+        // Transition manually to Half-Open to simulate time passing (avoiding long waits in CI)
         cb.transitionToHalfOpenState();
 
-        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted(() -> {
             MessageListenerContainer container = kafkaRegistry.getListenerContainer("eventBatchConsumer");
             assertThat(container.isRunning()).isTrue();
         });
 
         // Send a message to move it to CLOSED
-        kafkaTemplate.send(topicName, "RECOVERY", "{\"idPassage\": \"RECOVERY\"}");
+        // The circuit breaker transitions to CLOSED only after 'permittedNumberOfCallsInHalfOpenState' successful calls (which is 3).
+        for (int i = 0; i < 5; i++) {
+             kafkaTemplate.send(topicName, "RECOVERY-" + i, "{\"idPassage\": \"RECOVERY-" + i + "\"}");
+        }
 
-        await().atMost(10, TimeUnit.SECONDS).untilAsserted(() -> {
+        await().atMost(20, TimeUnit.SECONDS).untilAsserted(() -> {
             assertThat(cb.getState()).isEqualTo(CircuitBreaker.State.CLOSED);
         });
     }
