@@ -130,6 +130,17 @@ services:
       - prometheus
       - loki
 
+  alertmanager:
+    image: prom/alertmanager:v0.28.0
+    container_name: alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+
   loki:
     image: grafana/loki:latest
     container_name: loki

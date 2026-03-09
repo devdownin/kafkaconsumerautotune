@@ -92,3 +92,51 @@ groups:
         annotations:
           summary: "Abnormally long batch duration"
           description: "The maximum batch duration is over 3 seconds ({{ $value | printf \"%.2f\" }}s) for 5 minutes. The auto-tuner might be struggling."
+
+  - name: traffic-anomalies
+    rules:
+      - alert: TrafficDropWeeklyComparison
+        expr: |
+          sum(rate(app_kafka_events_received_count_total[5m])) < 0.5 * (sum(rate(app_kafka_events_received_count_total[5m] offset 1w)) + 1)
+          and
+          sum(rate(app_kafka_events_received_count_total[5m] offset 1w)) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Abnormal traffic drop compared to last week"
+          description: "Current throughput ({{ $value | printf \"%.2f\" }} msg/s) is less than 50% of what it was at the same time last week. This might indicate an upstream producer issue."
+
+      - alert: TrafficSpikeWeeklyComparison
+        expr: |
+          sum(rate(app_kafka_events_received_count_total[5m])) > 3 * (sum(rate(app_kafka_events_received_count_total[5m] offset 1w)) + 0.5)
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Abnormal traffic spike compared to last week"
+          description: "Current throughput ({{ $value | printf \"%.2f\" }} msg/s) is more than 300% of what it was at the same time last week."
+
+      - alert: DLTRateSpike
+        expr: |
+          sum(rate(app_kafka_events_errors_total[5m])) > 2 * sum(rate(app_kafka_events_errors_total[5m] offset 1h))
+          and
+          sum(rate(app_kafka_events_errors_total[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Sudden spike in DLT/Errors"
+          description: "The rate of errors/DLT has doubled compared to the previous hour (current: {{ $value | printf \"%.2f\" }} msg/s)."
+
+  - name: consumer-stability
+    rules:
+      - alert: ExcessiveRebalances
+        expr: |
+          changes(kafka_consumer_group_members{group="ASF.PEAGE.BACKOFFICE.PARTAGE.RECOUVRABLE"}[15m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Excessive consumer group rebalances"
+          description: "Consumer group has rebalanced {{ $value }} times in the last 15 minutes. This may indicate unstable network or processing timeouts exceeding max.poll.interval.ms."
