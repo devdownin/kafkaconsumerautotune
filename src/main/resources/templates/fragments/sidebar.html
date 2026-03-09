@@ -36,6 +36,10 @@
             <span class="material-symbols-outlined">monitoring</span>
             <span th:class="${'text-sm ' + (activePage == 'metrics' ? 'font-semibold' : 'font-medium')}">Application Metrics</span>
         </a>
+        <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'alerts' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/alerts}">
+            <span class="material-symbols-outlined">notifications</span>
+            <span th:class="${'text-sm ' + (activePage == 'alerts' ? 'font-semibold' : 'font-medium')}">System Alerts</span>
+        </a>
         <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'optimizer' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/optimizer}">
             <span class="material-symbols-outlined">auto_fix_high</span>
             <span th:class="${'text-sm ' + (activePage == 'optimizer' ? 'font-semibold' : 'font-medium')}">Kafka Optimizer</span>

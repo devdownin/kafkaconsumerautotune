@@ -7,7 +7,7 @@ route:
 receivers:
   - name: 'web.hook'
     webhook_configs:
-      - url: 'http://host.docker.internal:5001/' # Change to your actual webhook receiver
+      - url: 'http://app:8080/api/alerts/webhook'
 inhibit_rules:
   - source_match:
       severity: 'critical'

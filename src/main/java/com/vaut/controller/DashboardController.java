@@ -25,6 +25,7 @@ public class DashboardController {
 	private final DashboardService dashboardService;
 	private final KafkaOptimizerService optimizerService;
 	private final MessageViewerConfig messageViewerConfig;
+	private final com.vaut.service.AlertService alertService;
 
 	/**
 	 * Renders the main dashboard view.
@@ -143,6 +144,14 @@ public class DashboardController {
 		model.addAttribute("stats", dashboardService.getStats());
 		model.addAttribute("activePage", "architecture");
 		return "architecture";
+	}
+
+	@GetMapping("/alerts")
+	public String alerts(Model model) {
+		model.addAttribute("stats", dashboardService.getStats());
+		model.addAttribute("alerts", alertService.getRecentAlerts(50));
+		model.addAttribute("activePage", "alerts");
+		return "alerts";
 	}
 
 	/**

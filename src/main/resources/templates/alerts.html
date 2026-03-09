@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html class="dark" lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head('System Alerts')}">
+    <title>System Alerts</title>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<div th:replace="~{fragments/notifications :: notifications}"></div>
+
+<div class="flex h-screen overflow-hidden">
+    <div th:replace="~{fragments/sidebar :: sidebar}"></div>
+
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
+            <div class="flex items-center gap-4">
+                <h2 class="text-lg font-bold">System Alerts</h2>
+                <span class="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+                    Prometheus Alertmanager
+                </span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()">
+                    <span class="material-symbols-outlined">refresh</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-8 space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm">
+                    <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Active Alerts</p>
+                    <h3 class="text-2xl font-bold mt-1" id="firing-count">0</h3>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm">
+                    <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Resolved (Recent)</p>
+                    <h3 class="text-2xl font-bold mt-1" id="resolved-count">0</h3>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm">
+                    <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Total Received</p>
+                    <h3 class="text-2xl font-bold mt-1" th:text="${alerts.size()}">0</h3>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                <div class="p-6 border-b border-slate-200 dark:border-slate-800">
+                    <h4 class="text-base font-bold">Alert History</h4>
+                    <p class="text-xs text-slate-500">Real-time alerts from Alertmanager</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50 dark:bg-slate-800/50">
+                        <tr>
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Status</th>
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Severity</th>
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Alert Name</th>
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Summary</th>
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Starts At</th>
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Ends At</th>
+                        </tr>
+                        </thead>
+                        <tbody id="alerts-table-body" class="divide-y divide-slate-100 dark:divide-slate-800">
+                        <tr th:if="${#lists.isEmpty(alerts)}">
+                            <td colspan="6" class="px-6 py-12 text-center text-slate-500">No alerts received yet.</td>
+                        </tr>
+                        <tr th:each="alert : ${alerts}" class="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                            <td class="px-6 py-4">
+                                <span th:class="${'px-2 py-0.5 rounded text-[10px] font-bold uppercase border ' +
+                                    (alert.status == 'firing' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20')}"
+                                      th:text="${alert.status}">firing</span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span th:class="${'px-2 py-0.5 rounded text-[10px] font-bold uppercase ' +
+                                    (alert.severity == 'critical' ? 'bg-rose-600 text-white' : 'bg-amber-500 text-white')}"
+                                      th:text="${alert.severity}">critical</span>
+                            </td>
+                            <td class="px-6 py-4 text-sm font-bold" th:text="${alert.alertName}">HighKafkaLag</td>
+                            <td class="px-6 py-4 text-sm text-slate-500" th:text="${alert.summary}">Lag is too high</td>
+                            <td class="px-6 py-4 text-sm text-slate-500" th:text="${#temporals.format(alert.startsAt, 'yyyy-MM-dd HH:mm:ss')}">2023-10-24 14:12:05</td>
+                            <td class="px-6 py-4 text-sm text-slate-500" th:text="${alert.endsAt != null ? #temporals.format(alert.endsAt, 'yyyy-MM-dd HH:mm:ss') : '-'}">-</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div th:replace="~{fragments/sidebar :: footer-status}"></div>
+    </main>
+</div>
+
+<div th:replace="~{fragments/scripts :: common-scripts}"></div>
+
+<script th:inline="javascript">
+    // WebSocket Setup
+    var socket = new SockJS('/ws');
+    var stompClient = Stomp.over(socket);
+    stompClient.debug = null;
+
+    stompClient.connect({}, function (frame) {
+        stompClient.subscribe('/topic/alerts', function (message) {
+            var alerts = JSON.parse(message.body);
+            updateAlertsTable(alerts);
+        });
+    });
+
+    function updateAlertsTable(alerts) {
+        const tbody = document.getElementById('alerts-table-body');
+        tbody.innerHTML = '';
+
+        let firing = 0;
+        let resolved = 0;
+
+        alerts.forEach(alert => {
+            if (alert.status === 'firing') firing++;
+            else resolved++;
+
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors animate-pulse';
+
+            const statusClass = alert.status === 'firing' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
+            const severityClass = alert.severity === 'critical' ? 'bg-rose-600 text-white' : 'bg-amber-500 text-white';
+
+            row.innerHTML = `
+                <td class="px-6 py-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${statusClass}">${alert.status}</span></td>
+                <td class="px-6 py-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${severityClass}">${alert.severity}</span></td>
+                <td class="px-6 py-4 text-sm font-bold">${alert.alertName}</td>
+                <td class="px-6 py-4 text-sm text-slate-500">${alert.summary || ''}</td>
+                <td class="px-6 py-4 text-sm text-slate-500">${formatDate(alert.startsAt)}</td>
+                <td class="px-6 py-4 text-sm text-slate-500">${alert.endsAt ? formatDate(alert.endsAt) : '-'}</td>
+            `;
+            tbody.appendChild(row);
+            setTimeout(() => row.classList.remove('animate-pulse'), 2000);
+        });
+
+        document.getElementById('firing-count').textContent = firing;
+        document.getElementById('resolved-count').textContent = resolved;
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return '-';
+        const date = new Date(dateStr);
+        return date.toISOString().replace('T', ' ').substring(0, 19);
+    }
+
+    // Initial counts
+    document.addEventListener('DOMContentLoaded', () => {
+        const initialAlerts = /*[[${alerts}]]*/ [];
+        let firing = 0;
+        let resolved = 0;
+        initialAlerts.forEach(a => {
+            if (a.status === 'firing') firing++;
+            else resolved++;
+        });
+        document.getElementById('firing-count').textContent = firing;
+        document.getElementById('resolved-count').textContent = resolved;
+    });
+</script>
+</body>
+</html>
