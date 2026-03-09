@@ -67,6 +67,16 @@ public class EventProcessingService {
 
             MDC.put(AppConstants.MDC_EVENT_ID, eventId);
 
+            // Handle simulated slow processing
+            try {
+                Integer delay = JsonPath.read(payload, "$.processingDelayMs");
+                if (delay != null && delay > 0) {
+                    Thread.sleep(delay);
+                }
+            } catch (Exception e) {
+                // Ignore
+            }
+
             KEvent event = KEvent.builder()
                     .eventId(eventId)
                     .payload(payload)

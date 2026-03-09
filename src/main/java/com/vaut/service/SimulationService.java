@@ -110,11 +110,24 @@ public class SimulationService {
                         ));
                         sentErrorCount.incrementAndGet();
                     } else {
-                        payload = objectMapper.writeValueAsString(Map.of(
-                                "idPassage", key,
-                                "timestamp", System.currentTimeMillis(),
-                                "data", "Valid message content"
-                        ));
+                        Map<String, Object> msg = new java.util.HashMap<>();
+                        msg.put("idPassage", key);
+                        msg.put("timestamp", System.currentTimeMillis());
+                        msg.put("data", "Valid message content");
+
+                        if (chance < (request.getDuplicatePercentage() + request.getMalformedJsonPercentage() + request.getErrorPercentage() + request.getSlowProcessingPercentage())) {
+                            msg.put("processingDelayMs", request.getSlowProcessingDelayMs());
+                        }
+
+                        if (!request.isSimulateBusinessDrop()) {
+                            Map<String, Object> tarification = new java.util.HashMap<>();
+                            Map<String, Object> prix = new java.util.HashMap<>();
+                            prix.put("montantHT", 5.0 + (random.nextDouble() * 20.0));
+                            tarification.put("prix", prix);
+                            msg.put("tarification", tarification);
+                        }
+
+                        payload = objectMapper.writeValueAsString(msg);
                         sentValidCount.incrementAndGet();
                     }
                     lastKey = key;

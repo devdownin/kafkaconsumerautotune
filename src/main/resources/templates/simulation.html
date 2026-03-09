@@ -28,6 +28,8 @@
                 <button onclick="applyPreset('stress')" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold hover:border-rose-500 transition-colors whitespace-nowrap">Stress Test</button>
                 <button onclick="applyPreset('degraded')" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold hover:border-amber-500 transition-colors whitespace-nowrap">Degraded Data</button>
                 <button onclick="applyPreset('idempotency')" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold hover:border-blue-500 transition-colors whitespace-nowrap">Idempotency Check</button>
+                <button onclick="applyPreset('slow')" class="px-4 py-2 bg-rose-500/10 border border-rose-500/20 rounded-lg text-xs font-bold text-rose-500 hover:bg-rose-500/20 transition-colors whitespace-nowrap">Alert: High Batch Duration</button>
+                <button onclick="applyPreset('business_drop')" class="px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs font-bold text-amber-500 hover:bg-amber-500/20 transition-colors whitespace-nowrap">Alert: Business Value Drop</button>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -72,6 +74,31 @@
                                 </div>
                                 <input type="range" id="duplicatePercentage" value="0" min="0" max="100" oninput="document.getElementById('val-duplicate').innerText = this.value + '%'" class="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500" />
                             </div>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-4">
+                            <h5 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Alert Injection</h5>
+
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <label class="block text-xs font-medium text-slate-500 uppercase">Slow Processing</label>
+                                    <span id="val-slow" class="text-xs font-bold text-rose-500">0%</span>
+                                </div>
+                                <input type="range" id="slowProcessingPercentage" value="0" min="0" max="100" oninput="document.getElementById('val-slow').innerText = this.value + '%'" class="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-500" />
+                            </div>
+
+                            <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-bold">Business Value Drop</span>
+                                    <span class="text-[10px] text-slate-500">Remove transaction amounts</span>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="simulateBusinessDrop" class="sr-only peer">
+                                    <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-amber-500"></div>
+                                </label>
+                            </div>
+
+                            <input type="hidden" id="slowProcessingDelayMs" value="500">
                         </div>
 
                         <div class="pt-4 flex gap-2">
@@ -154,10 +181,12 @@
     let donutChart;
 
     const presets = {
-        nominal: { total: 5000, tput: 200, delay: 0, err: 0, malf: 0, dup: 0 },
-        stress: { total: 20000, tput: 1000, delay: 0, err: 2, malf: 1, dup: 0 },
-        degraded: { total: 2000, tput: 50, delay: 0, err: 20, malf: 10, dup: 5 },
-        idempotency: { total: 1000, tput: 100, delay: 0, err: 0, malf: 0, dup: 80 }
+        nominal: { total: 5000, tput: 200, delay: 0, err: 0, malf: 0, dup: 0, slow: 0, bdrop: false },
+        stress: { total: 20000, tput: 1000, delay: 0, err: 2, malf: 1, dup: 0, slow: 0, bdrop: false },
+        degraded: { total: 2000, tput: 50, delay: 0, err: 20, malf: 10, dup: 5, slow: 0, bdrop: false },
+        idempotency: { total: 1000, tput: 100, delay: 0, err: 0, malf: 0, dup: 80, slow: 0, bdrop: false },
+        slow: { total: 1000, tput: 10, delay: 0, err: 0, malf: 0, dup: 0, slow: 90, bdrop: false },
+        business_drop: { total: 1000, tput: 50, delay: 0, err: 0, malf: 0, dup: 0, slow: 0, bdrop: true }
     };
 
     function applyPreset(id) {
@@ -174,6 +203,10 @@
 
         document.getElementById('duplicatePercentage').value = p.dup;
         document.getElementById('val-duplicate').innerText = p.dup + '%';
+
+        document.getElementById('slowProcessingPercentage').value = p.slow;
+        document.getElementById('val-slow').innerText = p.slow + '%';
+        document.getElementById('simulateBusinessDrop').checked = p.bdrop;
     }
 
     function initWs() {
@@ -195,7 +228,10 @@
             malformedJsonPercentage: parseInt(document.getElementById('malformedJsonPercentage').value),
             delayBetweenMessagesMs: parseInt(document.getElementById('delayBetweenMessagesMs').value),
             duplicatePercentage: parseInt(document.getElementById('duplicatePercentage').value),
-            targetThroughputMsgPerSec: parseInt(document.getElementById('targetThroughput').value)
+            targetThroughputMsgPerSec: parseInt(document.getElementById('targetThroughput').value),
+            slowProcessingPercentage: parseInt(document.getElementById('slowProcessingPercentage').value),
+            slowProcessingDelayMs: parseInt(document.getElementById('slowProcessingDelayMs').value),
+            simulateBusinessDrop: document.getElementById('simulateBusinessDrop').checked
         };
 
         fetch('/api/simulation/start', {

@@ -22,4 +22,12 @@ public class SimulationRequestDTO {
     private int duplicatePercentage = 0;
     @lombok.Builder.Default
     private int targetThroughputMsgPerSec = 0; // 0 means use delayBetweenMessagesMs
+
+    // Alert simulation parameters
+    @lombok.Builder.Default
+    private int slowProcessingPercentage = 0;
+    @lombok.Builder.Default
+    private int slowProcessingDelayMs = 0;
+    @lombok.Builder.Default
+    private boolean simulateBusinessDrop = false;
 }
