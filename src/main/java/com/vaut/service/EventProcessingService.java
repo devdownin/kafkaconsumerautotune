@@ -77,6 +77,16 @@ public class EventProcessingService {
                     .headers(serializeHeaders(record))
                     .build();
 
+            // Extract business value for monitoring
+            try {
+                Double amount = JsonPath.read(payload, "$.tarification.prix.montantHT");
+                if (amount != null) {
+                    meterRegistry.counter(AppConstants.METRIC_BUSINESS_TRANSACTION_VALUE).increment(amount);
+                }
+            } catch (Exception e) {
+                // Ignore if path not found in this specific event type
+            }
+
             return Optional.of(event);
 
         } catch (Exception e) {

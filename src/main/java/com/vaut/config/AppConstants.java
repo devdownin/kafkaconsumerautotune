@@ -28,6 +28,10 @@ public final class AppConstants {
     public static final String METRIC_KAFKA_TUNING_BATCH_DURATION_SMOOTHED = "app.kafka.tuning.batch.duration.smoothed";
     public static final String METRIC_KAFKA_TUNING_BATCH_DURATION_SMOOTHED_DESC = "Smoothed average duration (EMA) of batch processing";
 
+    /** Total value of processed transactions. */
+    public static final String METRIC_BUSINESS_TRANSACTION_VALUE = "app.business.transaction.value.total";
+    public static final String METRIC_BUSINESS_TRANSACTION_VALUE_DESC = "Total value of processed transactions";
+
     /** WebSocket topic for broadcasting new successfully processed events. */
     public static final String WEBSOCKET_TOPIC_EVENTS = "/topic/events";
     /** WebSocket topic for broadcasting general dashboard statistics. */

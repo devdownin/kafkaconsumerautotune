@@ -9,6 +9,8 @@ groups:
         annotations:
           summary: "Service {{ $labels.job }} is down"
           description: "The application {{ $labels.instance }} has been unreachable for more than 1 minute."
+          runbook_url: "http://host.docker.internal:8080/architecture"
+          dashboard_url: "http://host.docker.internal:8080/"
 
   - name: jvm-resource-alerts
     rules:
@@ -60,6 +62,27 @@ groups:
         annotations:
           summary: "Critical Kafka consumer lag"
           description: "Lag for group {{ $labels.group }} on topic {{ $labels.topic }} is {{ $value }} for over 1 minute."
+          dashboard_url: "http://host.docker.internal:8080/consumer-groups"
+
+      - alert: PredictiveMaxPollIntervalSaturation
+        expr: |
+          predict_linear(app_kafka_events_batch_duration_seconds_max[10m], 3600) >= 300
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Predictive: Max Poll Interval Saturation"
+          description: "Based on the last 10 minutes, the max batch duration is predicted to reach the 300s limit within the next hour."
+
+      - alert: LagRapidIncrease
+        expr: |
+          deriv(sum by (group) (kafka_consumer_group_lag)[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Lag is increasing rapidly"
+          description: "The consumer lag for group {{ $labels.group }} is increasing at a rate of {{ $value | printf \"%.2f\" }} msg/s."
 
       - alert: KafkaConsumerStopped
         expr: sum by (group) (kafka_consumer_group_members) == 0
@@ -140,3 +163,28 @@ groups:
         annotations:
           summary: "Excessive consumer group rebalances"
           description: "Consumer group has rebalanced {{ $value }} times in the last 15 minutes. This may indicate unstable network or processing timeouts exceeding max.poll.interval.ms."
+          dashboard_url: "http://host.docker.internal:8080/optimizer"
+
+      - alert: AutoTunerInstability
+        expr: |
+          changes(app_kafka_tuning_batch_duration_smoothed[1h]) > 20
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Auto-tuner instability detected"
+          description: "The auto-tuner has changed parameters {{ $value }} times in the last hour. This might indicate oscillating system conditions."
+
+  - name: business-alerts
+    rules:
+      - alert: BusinessTransactionValueDrop
+        expr: |
+          sum(rate(app_business_transaction_value_total[10m])) < 0.2 * (sum(rate(app_business_transaction_value_total[10m] offset 1w)) + 1)
+          and
+          sum(rate(app_business_transaction_value_total[10m] offset 1w)) > 10
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Massive drop in transaction value"
+          description: "Current processed transaction value ({{ $value | printf \"%.2f\" }} €/s) is less than 20% of last week's average. Possible functional issue."
