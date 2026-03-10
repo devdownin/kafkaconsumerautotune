@@ -16,23 +16,7 @@ If you set these values too low, you underutilize your resources. If you set the
 
 **KafkaConsumerAutoTune solves this by automating these settings and simplifying traffic generation.**
 
----
-
-## Innovation: Automatic Request Creation from Image
-
-Beyond performance tuning, KafkaConsumerAutoTune introduces a breakthrough in developer productivity: **Visual Request Generation**.
-
-### Why this innovation?
-Manually crafting complex JSON payloads or SQL queries for testing is tedious and error-prone. Developers often work from architectural diagrams, whiteboard sketches, or screenshots of existing systems. This feature bridges the gap between design and simulation.
-
-### How it works
-1. **Visual Input**: Upload a screenshot of a data structure, a hand-drawn diagram, or a legacy system UI.
-2. **AI Analysis**: The system uses integrated vision models to identify fields, relationships, and data types.
-3. **Instant Simulation**: It automatically generates valid Kafka message payloads and SQL queries that match the visual structure.
-
-> **Result**: You can move from a visual concept to a live Kafka simulation in seconds, ensuring your consumer is ready for real-world data structures without writing a single line of boilerplate JSON.
-
----
+--
 
 ## Innovation: The "Cruise Control" (PID Controller)
 
