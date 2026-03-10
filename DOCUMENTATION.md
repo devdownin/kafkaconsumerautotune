@@ -1,77 +1,77 @@
-# Documentation Technique - Kafka Consumer Auto-tune
+# Technical Documentation - Kafka Consumer Auto-tune
 
-## 1. Résumé Exécutif
-Consotopic est une application Spring Boot de haute performance conçue pour consommer des messages Kafka en mode batch, les traiter, et les persister. L'application se distingue par son moteur d'**auto-tuning** intelligent basé sur un contrôleur PID qui ajuste dynamiquement les paramètres pour optimiser le débit. Elle intègre une gestion avancée des erreurs (DLT, Fallback), une protection par **Circuit Breaker**, et une pile d'observabilité complète (Loki, Prometheus, Jaeger, Grafana).
+## 1. Executive Summary
+**KafkaConsumerAutoTune** is a high-performance Spring Boot application designed to consume Kafka messages in batch mode, process them, and persist them. The application stands out for its intelligent **auto-tuning** engine based on a PID controller that dynamically adjusts parameters to optimize throughput. It integrates advanced error management (DLT, Fallback), protection via **Circuit Breaker**, and a complete observability stack (Loki, Prometheus, Jaeger, Grafana).
 
-**Documents complémentaires :**
-- [Gestion des Erreurs et Résilience](docs/error-management.md)
-- [Observabilité (Logging, Tracing, Métriques)](docs/observability.md)
+**Complementary Documents:**
+- [Error Management and Resilience](docs/error-management.md)
+- [Observability (Logging, Tracing, Metrics)](docs/observability.md)
 
 ---
 
-## 2. Architecture Globale
+## 2. Overall Architecture
 
-L'application suit une architecture modulaire. Les données circulent comme suit :
+The application follows a modular architecture. Data flows as follows:
 
 ```mermaid
 graph TD
-    K[Kafka Topic] -->|1. Batch de Records| C[AbstractBatchConsumer]
+    K[Kafka Topic] -->|1. Record Batch| C[AbstractBatchConsumer]
     C -->|2. Transformation| P[EventProcessingService]
     P -->|3. Validation| C
-    C -->|4. Persistance Batch| S[EventPersistenceService]
-    S -->|5. Circuit Breaker| DB[(Base de données)]
+    C -->|4. Batch Persistence| S[EventPersistenceService]
+    S -->|5. Circuit Breaker| DB[(Database)]
 
-    subgraph "Boucle d'Auto-Tuning"
+    subgraph "Auto-Tuning Loop"
         M[Micrometer Metrics] --- T[KafkaTuningService]
-        T -->|Ajustement| C
+        T -->|Adjustment| C
     end
 
-    subgraph "Gestion des Erreurs"
+    subgraph "Error Management"
         C -->|Fallback / DLT| DLT[DltService]
-        DLT -->|Stockage| DB
+        DLT -->|Storage| DB
     end
 ```
 
 ---
 
-## 3. Composants Clés en Détail
+## 3. Key Components in Detail
 
-### 3.1 Consommation Kafka (AbstractBatchConsumer)
-Gère le cycle de vie du traitement batch avec une généricité totale (`<T>`).
--   **Standardisation** : Routage DLT, métriques, et logs structurés automatiques.
--   **Classification d'Erreurs** : Distingue les erreurs permanentes (envoi direct en DLT) des erreurs transitoires (déclenchement du retry Kafka).
+### 3.1 Kafka Consumption (AbstractBatchConsumer)
+Manages the batch processing lifecycle with total genericity (`<T>`).
+-   **Standardization**: Automatic DLT routing, metrics, and structured logs.
+-   **Error Classification**: Distinguishes permanent errors (direct send to DLT) from transient errors (triggering Kafka retry).
 
-### 3.2 Moteur d'Auto-Tune (KafkaTuningService)
-Surveille le débit et ajuste les paramètres pour atteindre une cible de **1,2 seconde** par batch.
--   **Contrôleur PID** : Utilise la formule `P*error + I*integral + D*derivative` pour ajuster `max.poll.records`. L'erreur est calculée comme `(Target - Actual) / Target`.
--   **Optimisation Réseau** : Ajuste dynamiquement `fetch.min.bytes`, `fetch.max.wait.ms` et `fetch.max.bytes` en fonction du débit (msg/s) et de la taille moyenne des messages.
--   **Scaling Horizontal Interne** : Ajuste la `concurrency` (nombre de threads) en fonction de la charge CPU et du lag Kafka, sans dépasser le nombre de partitions.
--   **Lissage (EMA)** : Applique un coefficient de lissage (alpha=0.2 par défaut) sur la durée des batchs pour éviter les sur-réactions aux pics de latence.
--   **Throttling de Survie** : Si le CPU ou la Mémoire dépassent 90%, le système réduit immédiatement `max.poll.records` de 30% pour éviter un crash.
+### 3.2 Auto-Tune Engine (KafkaTuningService)
+Monitors throughput and adjusts parameters to reach a target of **1.2 seconds** per batch.
+-   **PID Controller**: Uses the formula `P*error + I*integral + D*derivative` to adjust `max.poll.records`. The error is calculated as `(Target - Actual) / Target`.
+-   **Network Optimization**: Dynamically adjusts `fetch.min.bytes`, `fetch.max.wait.ms`, and `fetch.max.bytes` based on throughput (msg/s) and average message size.
+-   **Internal Horizontal Scaling**: Adjusts `concurrency` (number of threads) based on CPU load and Kafka lag, without exceeding the number of partitions.
+-   **Smoothing (EMA)**: Applies a smoothing coefficient (default alpha=0.2) on batch duration to avoid over-reacting to latency spikes.
+-   **Survival Throttling**: If CPU or Memory exceeds 90%, the system immediately reduces `max.poll.records` by 30% to avoid a crash.
 
-### 3.3 Résilience et Circuit Breaker
-Protège la persistance via Resilience4j.
--   **Circuit Breaker** : Bascule en `OPEN` en cas de défaillance DB.
--   **Auto-Pause/Reprise** : Le consommateur Kafka s'arrête et redémarre automatiquement selon l'état du circuit.
--   **Fallback Chirurgical** : En cas d'échec de batch, l'application tente chaque message individuellement pour isoler les "poison messages" vers la DLT tout en sauvant le reste du lot.
-
----
-
-## 4. Observabilité et Supervision
-
-### 4.1 Pile de Centralisation
--   **Logs** : Centralisés dans **Loki** via Promtail. Format JSON ELK/ECS nativement supporté.
--   **Traces** : Exportées vers **Jaeger** via OTLP.
--   **Corrélation** : Support des **Exemplars** Prometheus permettant de passer d'un graphique de métriques à une trace Jaeger d'un seul clic.
-
-### 4.2 Monitoring et Alerting
--   **Tableaux de bord** : Dashboard Technique et Dashboard Business KPI provisionnés dans Grafana.
--   **Alertes** : Définies dans `prometheus-rules.yml` sur le lag Kafka, le taux d'erreur et la performance des batchs.
+### 3.3 Resilience and Circuit Breaker
+Protects persistence via Resilience4j.
+-   **Circuit Breaker**: Switches to `OPEN` in case of DB failure.
+-   **Auto-Pause/Resume**: The Kafka consumer automatically stops and restarts according to the circuit state.
+-   **Surgical Fallback**: In case of batch failure, the application attempts each message individually to isolate "poison messages" to the DLT while saving the rest of the batch.
 
 ---
 
-## 5. Spécifications Techniques
--   **Langage** : Java 21 (Utilisation des `record`).
--   **Framework** : Spring Boot 3.5.9.
--   **Base de données** : Oracle (ou H2 en profil dev).
--   **Infrastructure** : Docker Compose prêt pour la production (Prometheus, Loki, Jaeger, Grafana).
+## 4. Observability and Supervision
+
+### 4.1 Centralization Stack
+-   **Logs**: Centralized in **Loki** via Promtail. JSON ELK/ECS format natively supported.
+-   **Traces**: Exported to **Jaeger** via OTLP.
+-   **Correlation**: Support for Prometheus **Exemplars** allowing to jump from a metrics graph to a Jaeger trace with a single click.
+
+### 4.2 Monitoring and Alerting
+-   **Dashboards**: Technical Dashboard and Business KPI Dashboard provisioned in Grafana.
+-   **Alerts**: Defined in `prometheus-rules.yml` on Kafka lag, error rate, and batch performance.
+
+---
+
+## 5. Technical Specifications
+-   **Language**: Java 21 (Use of `record`).
+-   **Framework**: Spring Boot 3.5.9.
+-   **Database**: Oracle (or H2 in dev profile).
+-   **Infrastructure**: Production-ready Docker Compose (Prometheus, Loki, Jaeger, Grafana).
