@@ -27,7 +27,7 @@ spring:
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafkadev:9092}
     consumer:
-      group-id: ASF.PEAGE.BACKOFFICE.PARTAGE.RECOUVRABLE
+      group-id: DOMAIN.APP.MYID
       auto-offset-reset: earliest
       enable-auto-commit: false
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -73,7 +73,7 @@ spring:
 
 # Configuration de l'application (UI & Business)
 app:
-  edition: PARTAGE Edition
+  edition: DEMO Edition
   service:
     id: USR-SVC-001
     version: 1.0.0
@@ -95,18 +95,18 @@ app:
     id-json-path: "$.idPassage"
   message-viewer:
     blocks:
-      - title: "Système"
-        jsonPath: "passageSortie.systeme"
-      - title: "ETAT DE TRANSACTION"
-        jsonPath: "passageSortie.etat"
-      - title: "LOCALISATION"
-        jsonPath: "passageSortie.localisation.gare"
+      - title: "System"
+        jsonPath: "demo.systeme"
+      - title: "Statr"
+        jsonPath: "demo.state"
+      - title: "origin"
+        jsonPath: "demo.detail.origin"
 
 # Configuration spécifique à l'application
 kafka:
   topic:
-    name: asf.peage.backoffice.sortie.recouvrable
-    dlt: asf.peage.backoffice.sortie.recouvrable.dlt
+    name: demo.app.topic
+    dlt: demo.app.topic.dlt
   tuning:
     # Durée cible de traitement d'un batch en millisecondes.
     # Le moteur d'auto-tune ajustera le max.poll.records pour essayer de stabiliser le traitement à cette valeur.
