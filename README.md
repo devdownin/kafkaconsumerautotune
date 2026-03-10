@@ -1,10 +1,10 @@
-# 🚀 Consotopic : Le Consommateur Kafka Intelligent
+# Consotopic : Le Consommateur Kafka Intelligent
 
 Bienvenue dans **Consotopic**, une implémentation de référence d'un consommateur Kafka haute performance pour Spring Boot. Plus qu'un simple outil de consommation, Consotopic est conçu comme un système auto-adaptatif capable d'optimiser ses propres performances en temps réel.
 
 ---
 
-## 🎯 Pourquoi Consotopic ?
+## Pourquoi Consotopic ?
 
 Traditionnellement, configurer un consommateur Kafka est un jeu de devinettes :
 - *Combien de messages dois-je prendre par lot (`max.poll.records`) ?*
@@ -17,7 +17,7 @@ Si vous fixez ces valeurs trop bas, vous sous-utilisez vos ressources. Si vous l
 
 ---
 
-## 🧠 L'Innovation : Le "Régulateur de Vitesse" (Contrôleur PID)
+## L'Innovation : Le "Régulateur de Vitesse" (Contrôleur PID)
 
 Imaginez que vous conduisez une voiture. Pour maintenir une vitesse constante, vous n'appuyez pas sur l'accélérateur à une position fixe. Vous ajustez votre pression en fonction de la pente, du vent et de la vitesse actuelle.
 
@@ -30,7 +30,7 @@ Consotopic fait exactement la même chose pour Kafka grâce à un **Contrôleur 
 
 ---
 
-## 🛡️ Résilience de "Qualité Industrielle"
+## Résilience de "Qualité Industrielle"
 
 Le traitement de données réelles est chaotique. Consotopic est bâti pour survivre aux pannes les plus courantes :
 
@@ -49,7 +49,7 @@ C'est le mode "chirurgical". Si un lot de 100 messages échoue à cause d'un seu
 
 ---
 
-## 📊 Observabilité Totale
+## Observabilité Totale
 
 On ne peut pas améliorer ce qu'on ne mesure pas. Consotopic offre :
 - **Dashboard Temps Réel** : Visualisez le débit (msg/s), le lag Kafka et les interventions de l'Optimizer.
@@ -58,7 +58,7 @@ On ne peut pas améliorer ce qu'on ne mesure pas. Consotopic offre :
 
 ---
 
-## 🚀 Démarrage Rapide
+## Démarrage Rapide
 
 ### Pré-requis
 - Docker et Docker Compose
@@ -77,7 +77,7 @@ Ceci lance : Kafka, Oracle XE, Prometheus, Jaeger, et l'application Consotopic.
 
 ---
 
-## 📚 En savoir plus
+## En savoir plus
 - [Documentation Technique détaillée](DOCUMENTATION.md)
 - [Gestion des Erreurs](docs/error-management.md)
 - [Observabilité](docs/observability.md)
