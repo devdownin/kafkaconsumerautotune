@@ -82,3 +82,10 @@ This launches: Kafka, Oracle XE, Prometheus, Jaeger, and the KafkaConsumerAutoTu
 - [Detailed Technical Documentation](DOCUMENTATION.md)
 - [Error Management](docs/error-management.md)
 - [Observability](docs/observability.md)
+- [Contributing Guidelines](CONTRIBUTING.md)
+
+---
+
+## License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
