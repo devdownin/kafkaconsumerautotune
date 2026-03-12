@@ -33,7 +33,13 @@ public class FlinkMetric {
     @Column(nullable = false, length = 2000)
     private String query;
 
+    @Column(length = 1000)
+    private String labels;
+
     private String description;
+
+    @Column(length = 50)
+    private String status;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

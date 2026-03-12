@@ -22,21 +22,27 @@ public class FlinkMetricService {
                     .name("kafka_events_total")
                     .type("COUNTER")
                     .query("SELECT COUNT(*) FROM kafka_source")
+                    .labels("app=kafka-consumer,env=prod")
                     .description("Total number of events consumed from Kafka")
+                    .status("ACTIVE")
                     .build());
 
             repository.save(FlinkMetric.builder()
                     .name("avg_processing_latency")
                     .type("GAUGE")
                     .query("SELECT AVG(PROCTIME() - rowtime) FROM kafka_source")
+                    .labels("app=kafka-consumer")
                     .description("Average processing latency in milliseconds")
+                    .status("ACTIVE")
                     .build());
 
             repository.save(FlinkMetric.builder()
                     .name("events_per_minute")
                     .type("HISTOGRAM")
                     .query("SELECT window_start, window_end, COUNT(*) FROM TABLE(TUMBLE(TABLE kafka_source, DESCRIPTOR(event_time), INTERVAL '1' MINUTE)) GROUP BY window_start, window_end")
+                    .labels("app=kafka-consumer,window=1m")
                     .description("Distribution of events per minute window")
+                    .status("INITIALIZING")
                     .build());
         }
     }
