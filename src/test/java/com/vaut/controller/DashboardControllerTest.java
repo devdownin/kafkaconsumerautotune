@@ -36,6 +36,9 @@ class DashboardControllerTest {
     @MockBean
     private com.vaut.config.MessageViewerConfig messageViewerConfig;
 
+    @MockBean
+    private com.vaut.service.FlinkMetricService flinkMetricService;
+
     @Test
     void shouldRenderDashboardWithStats() throws Exception {
         // Given

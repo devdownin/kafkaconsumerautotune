@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html class="dark" lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head('Flink Metrics Configuration')}">
+    <title>Flink Metrics Configuration</title>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<div th:replace="~{fragments/notifications :: notifications}"></div>
+
+<div class="flex h-screen overflow-hidden">
+    <div th:replace="~{fragments/sidebar :: sidebar}"></div>
+
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
+            <div class="flex items-center gap-4">
+                <h2 class="text-lg font-bold">Flink Metrics Configuration</h2>
+                <span class="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-500 text-[10px] font-bold uppercase tracking-wider">
+                    Prometheus Bridge
+                </span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="openModal()" class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors">
+                    <span class="material-symbols-outlined text-sm">add</span>
+                    Create Metric
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-8 space-y-6">
+            <div class="bg-blue-500/5 border border-blue-500/20 rounded-xl p-6 flex items-start gap-4">
+                <span class="material-symbols-outlined text-blue-500">info</span>
+                <div>
+                    <p class="text-sm font-bold text-blue-500">About Flink Metrics</p>
+                    <p class="text-xs text-slate-500 mt-1">
+                        Define real-time metrics using Flink SQL queries. These metrics are automatically exported to Prometheus and can be used for alerting and dashboarding.
+                    </p>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-800/50">
+                                <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800">Metric Name</th>
+                                <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800">Type</th>
+                                <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800">Flink SQL Query</th>
+                                <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="metric : ${flinkMetrics}" class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                <td class="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                                    <div class="font-bold text-sm" th:text="${metric.name}">metric_name</div>
+                                    <div class="text-[10px] text-slate-400" th:text="${metric.description}">Description</div>
+                                </td>
+                                <td class="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                                    <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-bold" th:text="${metric.type}">COUNTER</span>
+                                </td>
+                                <td class="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                                    <code class="text-[10px] bg-slate-100 dark:bg-slate-800 p-2 rounded block max-w-md truncate" th:text="${metric.query}">SELECT *...</code>
+                                </td>
+                                <td class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 text-right">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <button th:data-id="${metric.id}"
+                                                th:data-name="${metric.name}"
+                                                th:data-type="${metric.type}"
+                                                th:data-query="${metric.query}"
+                                                th:data-description="${metric.description}"
+                                                onclick="handleEdit(this)"
+                                                class="p-2 hover:bg-primary/10 text-slate-400 hover:text-primary rounded-lg transition-colors">
+                                            <span class="material-symbols-outlined text-sm">edit</span>
+                                        </button>
+                                        <form th:action="@{/flink-metrics/delete}" method="post" class="inline" onsubmit="return confirm('Delete this metric?')">
+                                            <input type="hidden" name="id" th:value="${metric.id}">
+                                            <button type="submit" class="p-2 hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 rounded-lg transition-colors">
+                                                <span class="material-symbols-outlined text-sm">delete</span>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div th:replace="~{fragments/sidebar :: footer-status}"></div>
+    </main>
+</div>
+
+<!-- Modal -->
+<div id="metric-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <h3 id="modal-title" class="text-lg font-bold">Create New Flink Metric</h3>
+            <button onclick="closeModal()" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <form th:action="@{/flink-metrics/save}" method="post" class="p-6 space-y-4">
+            <input type="hidden" id="metric-id" name="id">
+
+            <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Metric Name</label>
+                <input type="text" id="metric-name" name="name" required placeholder="e.g. processing_latency_seconds"
+                       class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm focus:ring-2 focus:ring-primary">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Metric Type</label>
+                    <select id="metric-type" name="type" required onchange="updateTemplate()"
+                            class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm focus:ring-2 focus:ring-primary">
+                        <option value="COUNTER">Counter</option>
+                        <option value="GAUGE">Gauge</option>
+                        <option value="HISTOGRAM">Histogram</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Description</label>
+                    <input type="text" id="metric-desc" name="description" placeholder="Short description..."
+                           class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm focus:ring-2 focus:ring-primary">
+                </div>
+            </div>
+
+            <div>
+                <div class="flex items-center justify-between mb-1">
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase">Flink SQL Query</label>
+                    <button type="button" onclick="updateTemplate()" class="text-[10px] text-primary font-bold hover:underline">Apply Template</button>
+                </div>
+                <textarea id="metric-query" name="query" rows="4" required
+                          class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs font-mono focus:ring-2 focus:ring-primary"></textarea>
+            </div>
+
+            <div class="pt-4 flex items-center justify-end gap-3">
+                <button type="button" onclick="closeModal()" class="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">Cancel</button>
+                <button type="submit" class="px-6 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
+                    Save Metric
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div th:replace="~{fragments/scripts :: common-scripts}"></div>
+<script>
+    const templates = {
+        'COUNTER': 'SELECT COUNT(*) FROM kafka_source',
+        'GAUGE': 'SELECT AVG(processing_time) FROM kafka_source',
+        'HISTOGRAM': "SELECT window_start, window_end, COUNT(*) FROM TABLE(TUMBLE(TABLE kafka_source, DESCRIPTOR(rowtime), INTERVAL '1' MINUTE)) GROUP BY window_start, window_end"
+    };
+
+    function openModal() {
+        document.getElementById('modal-title').innerText = 'Create New Flink Metric';
+        document.getElementById('metric-id').value = '';
+        document.getElementById('metric-name').value = '';
+        document.getElementById('metric-type').value = 'COUNTER';
+        document.getElementById('metric-desc').value = '';
+        document.getElementById('metric-query').value = templates['COUNTER'];
+        document.getElementById('metric-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+        document.getElementById('metric-modal').classList.add('hidden');
+    }
+
+    function updateTemplate() {
+        const type = document.getElementById('metric-type').value;
+        const queryArea = document.getElementById('metric-query');
+        if (queryArea.value === '' || Object.values(templates).includes(queryArea.value)) {
+            queryArea.value = templates[type];
+        }
+    }
+
+    function handleEdit(button) {
+        const id = button.getAttribute('data-id');
+        const name = button.getAttribute('data-name');
+        const type = button.getAttribute('data-type');
+        const query = button.getAttribute('data-query');
+        const desc = button.getAttribute('data-description');
+        editMetric(id, name, type, query, desc);
+    }
+
+    function editMetric(id, name, type, query, desc) {
+        document.getElementById('modal-title').innerText = 'Edit Flink Metric';
+        document.getElementById('metric-id').value = id;
+        document.getElementById('metric-name').value = name;
+        document.getElementById('metric-type').value = type;
+        document.getElementById('metric-desc').value = desc;
+        document.getElementById('metric-query').value = query;
+        document.getElementById('metric-modal').classList.remove('hidden');
+    }
+</script>
+</body>
+</html>
