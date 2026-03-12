@@ -26,6 +26,27 @@
         </header>
 
         <div class="flex-1 overflow-y-auto p-8 space-y-6">
+            <!-- Search and Filters -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-sm">
+                <div class="flex items-center gap-2 flex-1 max-w-md">
+                    <div class="relative w-full">
+                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+                        <input type="text" id="metric-search" placeholder="Search by name, labels or query..."
+                               class="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs focus:ring-2 focus:ring-primary">
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <select id="filter-type" class="bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs focus:ring-2 focus:ring-primary py-2 px-3">
+                        <option value="ALL">All Types</option>
+                        <option value="COUNTER">Counter</option>
+                        <option value="GAUGE">Gauge</option>
+                        <option value="HISTOGRAM">Histogram</option>
+                    </select>
+                    <div class="h-6 w-px bg-slate-200 dark:bg-slate-700"></div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase"><span id="metric-count">0</span> metrics found</p>
+                </div>
+            </div>
+
             <div class="bg-blue-500/5 border border-blue-500/20 rounded-xl p-6 flex items-start gap-4">
                 <span class="material-symbols-outlined text-blue-500">info</span>
                 <div>
@@ -48,29 +69,30 @@
                                 <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800 text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <tr th:each="metric : ${flinkMetrics}" class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                <td class="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                        <tbody id="metrics-tbody">
+                            <tr th:each="metric : ${flinkMetrics}" class="metric-row hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                                th:data-name="${metric.name}" th:data-type="${metric.type}" th:data-labels="${metric.labels}" th:data-query="${metric.query}">
+                                <td class="px-6 py-3 border-b border-slate-100 dark:border-slate-800">
                                     <div class="flex items-center gap-2">
-                                        <div th:class="${'size-2 rounded-full ' + (metric.status == 'ACTIVE' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400')}" th:title="${metric.status}"></div>
-                                        <div class="font-bold text-sm" th:text="${metric.name}">metric_name</div>
+                                        <div th:class="${'size-2 rounded-full shrink-0 ' + (metric.status == 'ACTIVE' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400')}" th:title="${metric.status}"></div>
+                                        <div class="font-bold text-xs" th:text="${metric.name}">metric_name</div>
                                     </div>
-                                    <div class="text-[10px] text-slate-400" th:text="${metric.description}">Description</div>
+                                    <div class="text-[9px] text-slate-400 truncate max-w-[150px]" th:text="${metric.description}">Description</div>
                                 </td>
-                                <td class="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-                                    <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-bold" th:text="${metric.type}">COUNTER</span>
+                                <td class="px-6 py-3 border-b border-slate-100 dark:border-slate-800">
+                                    <span class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[9px] font-bold" th:text="${metric.type}">COUNTER</span>
                                 </td>
-                                <td class="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-                                    <div class="flex flex-wrap gap-1">
+                                <td class="px-6 py-3 border-b border-slate-100 dark:border-slate-800">
+                                    <div class="flex flex-wrap gap-1 max-w-[200px]">
                                         <span th:each="label : ${#strings.arraySplit(metric.labels, ',')}"
                                               class="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 text-[9px] font-bold border border-blue-500/20"
                                               th:text="${label}">label=value</span>
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-                                    <pre class="bg-slate-100 dark:bg-slate-800 p-2 rounded max-w-md overflow-hidden"><code class="language-sql text-[10px]" th:text="${metric.query}">SELECT *...</code></pre>
+                                <td class="px-6 py-3 border-b border-slate-100 dark:border-slate-800">
+                                    <pre class="bg-slate-100 dark:bg-slate-800 p-1.5 rounded max-w-lg overflow-hidden border border-slate-200 dark:border-slate-700/50"><code class="language-sql text-[9px]" th:text="${metric.query}">SELECT *...</code></pre>
                                 </td>
-                                <td class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 text-right">
+                                <td class="px-6 py-3 border-b border-slate-100 dark:border-slate-800 text-right">
                                     <div class="flex items-center justify-end gap-2">
                                         <button th:data-id="${metric.id}"
                                                 th:data-name="${metric.name}"
@@ -80,8 +102,17 @@
                                                 th:data-status="${metric.status}"
                                                 th:data-description="${metric.description}"
                                                 onclick="handleEdit(this)"
-                                                class="p-2 hover:bg-primary/10 text-slate-400 hover:text-primary rounded-lg transition-colors">
+                                                class="p-2 hover:bg-primary/10 text-slate-400 hover:text-primary rounded-lg transition-colors" title="Edit">
                                             <span class="material-symbols-outlined text-sm">edit</span>
+                                        </button>
+                                        <button th:data-name="${metric.name + '_copy'}"
+                                                th:data-type="${metric.type}"
+                                                th:data-query="${metric.query}"
+                                                th:data-labels="${metric.labels}"
+                                                th:data-description="${metric.description}"
+                                                onclick="handleClone(this)"
+                                                class="p-2 hover:bg-indigo-500/10 text-slate-400 hover:text-indigo-500 rounded-lg transition-colors" title="Clone">
+                                            <span class="material-symbols-outlined text-sm">content_copy</span>
                                         </button>
                                         <form th:action="@{/flink-metrics/delete}" method="post" class="inline" onsubmit="return confirm('Delete this metric?')">
                                             <input type="hidden" name="id" th:value="${metric.id}">
@@ -168,6 +199,45 @@
 
 <div th:replace="~{fragments/scripts :: common-scripts}"></div>
 <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        initFilters();
+    });
+
+    function initFilters() {
+        const searchInput = document.getElementById('metric-search');
+        const typeFilter = document.getElementById('filter-type');
+        const rows = document.querySelectorAll('.metric-row');
+        const countElem = document.getElementById('metric-count');
+
+        function filter() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const typeValue = typeFilter.value;
+            let visibleCount = 0;
+
+            rows.forEach(row => {
+                const name = row.getAttribute('data-name').toLowerCase();
+                const type = row.getAttribute('data-type');
+                const labels = (row.getAttribute('data-labels') || '').toLowerCase();
+                const query = row.getAttribute('data-query').toLowerCase();
+
+                const matchesSearch = name.includes(searchTerm) || labels.includes(searchTerm) || query.includes(searchTerm);
+                const matchesType = typeValue === 'ALL' || type === typeValue;
+
+                if (matchesSearch && matchesType) {
+                    row.classList.remove('hidden');
+                    visibleCount++;
+                } else {
+                    row.classList.add('hidden');
+                }
+            });
+            countElem.innerText = visibleCount;
+        }
+
+        searchInput.addEventListener('input', filter);
+        typeFilter.addEventListener('change', filter);
+        filter(); // Initial count
+    }
+
     const templates = {
         'COUNTER': 'SELECT COUNT(*) FROM kafka_source',
         'GAUGE': 'SELECT AVG(processing_time) FROM kafka_source',
@@ -207,6 +277,22 @@
         const status = button.getAttribute('data-status');
         const desc = button.getAttribute('data-description');
         editMetric(id, name, type, query, labels, status, desc);
+    }
+
+    function handleClone(button) {
+        const name = button.getAttribute('data-name');
+        const type = button.getAttribute('data-type');
+        const query = button.getAttribute('data-query');
+        const labels = button.getAttribute('data-labels');
+        const desc = button.getAttribute('data-description');
+
+        openModal();
+        document.getElementById('modal-title').innerText = 'Clone Flink Metric';
+        document.getElementById('metric-name').value = name;
+        document.getElementById('metric-type').value = type;
+        document.getElementById('metric-labels').value = labels || '';
+        document.getElementById('metric-desc').value = desc;
+        document.getElementById('metric-query').value = query;
     }
 
     function editMetric(id, name, type, query, labels, status, desc) {
