@@ -32,6 +32,8 @@ import java.util.stream.Collectors;
 public class EventPersistenceService {
 
     private final KEventRepository keventRepository;
+    private final FilePersistenceService filePersistenceService;
+    private final com.vaut.config.PersistenceProperties persistenceProperties;
 
     /**
      * Persists a batch of generalized events.
@@ -47,6 +49,13 @@ public class EventPersistenceService {
         if (events == null || events.isEmpty()) {
             return List.of();
         }
+
+        if (persistenceProperties.isSaveInFile()) {
+            log.debug("Saving batch of {} events to file system", events.size());
+            filePersistenceService.saveEvents(events);
+            return events;
+        }
+
         log.debug("Processing batch of {} events for persistence", events.size());
 
         Set<String> idsToCheck = events.stream()

@@ -73,6 +73,10 @@ spring:
 
 # Configuration de l'application (UI & Business)
 app:
+  persistence:
+    save-in-file: false
+    trace-path: trace
+    format: json
   edition: DEMO Edition
   service:
     id: USR-SVC-001
