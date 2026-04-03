@@ -1,11 +1,13 @@
 package com.vaut.service;
 
+import com.vaut.config.AppConstants;
 import com.vaut.entity.KEvent;
 import com.vaut.repository.KEventRepository;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Retryable;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,8 +16,15 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Service responsible for persisting generalized Kafka events to the database.
- * Handles idempotency by checking for existing event IDs before saving.
+ * Service responsible for the reliable persistence of {@link KEvent} entities.
+ *
+ * <p>This service is fortified with multiple resilience patterns:</p>
+ * <ul>
+ *     <li><b>Idempotency:</b> Automatically detects and skips duplicate events based on their unique business ID.</li>
+ *     <li><b>Circuit Breaker:</b> Stops calls to the database if the failure rate is too high, protecting the infrastructure.</li>
+ *     <li><b>Retry:</b> Automatically retries transient failures (e.g., temporary lock issues) before giving up.</li>
+ *     <li><b>Transactional:</b> Ensures that a batch of new events is saved atomically.</li>
+ * </ul>
  */
 @Service
 @RequiredArgsConstructor
@@ -23,6 +32,8 @@ import java.util.stream.Collectors;
 public class EventPersistenceService {
 
     private final KEventRepository keventRepository;
+    private final FilePersistenceService filePersistenceService;
+    private final com.vaut.config.PersistenceProperties persistenceProperties;
 
     /**
      * Persists a batch of generalized events.
@@ -32,15 +43,19 @@ public class EventPersistenceService {
      * @return List of events that were actually saved.
      */
     @Transactional
-    @Retryable(
-        retryFor = { org.springframework.dao.TransientDataAccessException.class, org.springframework.dao.ConcurrencyFailureException.class },
-        maxAttempts = 3,
-        backoff = @Backoff(delay = 1000, multiplier = 2)
-    )
+    @CircuitBreaker(name = "persistence")
+    @Retry(name = "persistence")
     public List<KEvent> saveEventsBatch(List<KEvent> events) {
         if (events == null || events.isEmpty()) {
             return List.of();
         }
+
+        if (persistenceProperties.isSaveInFile()) {
+            log.debug("Saving batch of {} events to file system", events.size());
+            filePersistenceService.saveEvents(events);
+            return events;
+        }
+
         log.debug("Processing batch of {} events for persistence", events.size());
 
         Set<String> idsToCheck = events.stream()
@@ -53,7 +68,9 @@ public class EventPersistenceService {
                 .filter(event -> {
                     boolean exists = existingIds.contains(event.getEventId());
                     if (exists) {
+                        MDC.put(AppConstants.MDC_EVENT_ID, event.getEventId());
                         log.warn("KEvent with eventId {} already exists, skipping", event.getEventId());
+                        MDC.remove(AppConstants.MDC_EVENT_ID);
                     }
                     return !exists;
                 })

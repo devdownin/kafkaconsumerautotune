@@ -1,11 +1,17 @@
 package com.vaut.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vaut.entity.DltEvent;
 import com.vaut.repository.DltEventRepository;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
 
@@ -25,8 +31,22 @@ public class DltServiceTest {
     @Mock
     private KafkaTemplate<String, String> kafkaTemplate;
 
+    @Mock
+    private MeterRegistry meterRegistry;
+
+    @Mock
+    private Counter retryCounter;
+
+    @Spy
+    private ObjectMapper objectMapper = new ObjectMapper();
+
     @InjectMocks
     private DltService dltService;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(meterRegistry.counter(anyString(), any(String[].class))).thenReturn(retryCounter);
+    }
 
     @Test
     public void testBulkRetry() {
@@ -35,7 +55,7 @@ public class DltServiceTest {
 
         dltService.bulkRetry(List.of(1L));
 
-        verify(kafkaTemplate).send(eq("topic"), eq("{}"));
+        verify(kafkaTemplate).send(any(ProducerRecord.class));
         verify(dltEventRepository).save(any(DltEvent.class));
     }
 
@@ -46,7 +66,7 @@ public class DltServiceTest {
 
         dltService.retryWithPayload(1L, "{\"fixed\":true}");
 
-        verify(kafkaTemplate).send(eq("topic"), eq("{\"fixed\":true}"));
+        verify(kafkaTemplate).send(any(ProducerRecord.class));
         verify(dltEventRepository).save(argThat(e -> "{\"fixed\":true}".equals(e.getPayload()) && "RESOLVED".equals(e.getStatus())));
     }
 }

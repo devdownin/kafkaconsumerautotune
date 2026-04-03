@@ -13,7 +13,7 @@ RUN chmod +x wait-for-db.sh
 
 # Copy the executable JAR file from the target directory into the container
 # The `kafka-consumer-demo-1.0.0-SNAPSHOT.jar` is the name of the JAR produced by Maven
-COPY target/kafka-consumer-demo-1.0.0-SNAPSHOT.jar app.jar
+COPY target/kafka-consumer-demo-1.0.1.jar app.jar
 
 # Expose the port the Spring Boot application runs on (default is 8080)
 EXPOSE 8080

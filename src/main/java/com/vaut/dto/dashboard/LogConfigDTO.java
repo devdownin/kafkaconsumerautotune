@@ -1,16 +1,16 @@
 package com.vaut.dto.dashboard;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+/**
+ * Data Transfer Object representing the logging configuration for a specific logger.
+ */
 @Builder
-public class LogConfigDTO {
-    private String loggerName;
-    private String configuredLevel;
-    private String effectiveLevel;
-}
+public record LogConfigDTO(
+    /** The name of the logger (e.g., com.vaut.service). */
+    String loggerName,
+    /** The explicitly configured log level (e.g., INFO, DEBUG), or null if not explicitly set. */
+    String configuredLevel,
+    /** The level currently in effect for this logger (taking inheritance into account). */
+    String effectiveLevel
+) {}

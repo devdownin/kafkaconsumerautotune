@@ -1,10 +1,6 @@
 package com.vaut.dto.dashboard;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 import java.util.List;
 
 /**
@@ -12,62 +8,108 @@ import java.util.List;
  * Includes processing metrics, database status, Kafka information,
  * system details, and adaptive tuning parameters.
  */
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 @Builder
-public class DashboardStatsDTO {
-    private long totalProcessed;
-    private double successRate;
-    private long dltCount;
-    private long consumerLag;
+public record DashboardStatsDTO(
+    /** Total number of messages processed by the application since startup. */
+    long totalProcessed,
+    /** Percentage of successfully processed messages. */
+    double successRate,
+    /** Total number of messages currently in the Dead Letter Topic (DLT). */
+    long dltCount,
+    /** Current Kafka consumer lag (sum of lags for all partitions). */
+    long consumerLag,
 
-    private List<Double> throughput;
-    private List<Double> throughput24h;
+    /** Recent success throughput history (e.g., last hour, sampled periodically). */
+    List<Double> successThroughput,
+    /** Error throughput history. */
+    List<Double> errorThroughput,
+    /** Retry throughput history. */
+    List<Double> retryThroughput,
+    /** Consumer lag history. */
+    List<Long> lagHistory,
+    /** Max poll records history. */
+    List<Integer> maxPollRecordsHistory,
+    /** Concurrency history. */
+    List<Integer> concurrencyHistory,
+    /** Timestamps for the history points. */
+    List<Long> timestamps,
+    /** Throughput history for the last 24 hours. */
+    List<Double> throughput24h,
 
-    private long successCount;
-    private long errorCount;
-    private long retryCount;
+    /** Count of successfully processed messages. */
+    long successCount,
+    /** Count of failed processing attempts. */
+    long errorCount,
+    /** Count of retry attempts performed by the application. */
+    long retryCount,
 
-    private String kafkaClusterName;
-    private long totalDlt24h;
-    private long unresolvedErrors;
-    private String avgResolutionTime;
+    /** Name or identifier of the Kafka cluster. */
+    String kafkaClusterName,
+    /** Total number of DLT events recorded in the last 24 hours. */
+    long totalDlt24h,
+    /** Count of errors that have not yet been resolved in the DLT management. */
+    long unresolvedErrors,
+    /** Average time taken to resolve an error in the DLT. */
+    String avgResolutionTime,
 
-    private String appVersion;
-    private String systemUser;
-    private String dbStatus;
+    /** Current version of the application. */
+    String appVersion,
+    /** System user under which the application is running. */
+    String systemUser,
+    /** Status of the database connection (e.g., UP, DOWN). */
+    String dbStatus,
 
-    // Additional Database Details
-    private String dbSchema;
-    private String dbDriver;
-    private int dbActiveConnections;
-    private int dbIdleConnections;
-    private int dbTotalConnections;
-    private int dbMaxPoolSize;
+    /** Database schema being used. */
+    String dbSchema,
+    /** Database driver version or name. */
+    String dbDriver,
+    /** Number of active database connections in the pool. */
+    int dbActiveConnections,
+    /** Number of idle database connections in the pool. */
+    int dbIdleConnections,
+    /** Total number of database connections (active + idle). */
+    int dbTotalConnections,
+    /** Maximum allowed size of the database connection pool. */
+    int dbMaxPoolSize,
 
-    // Kafka Settings
-    private String topicName;
-    private String consumerGroup;
-    private String idJsonPath;
+    /** Kafka topic name being consumed. */
+    String topicName,
+    /** Kafka consumer group identifier. */
+    String consumerGroup,
+    /** JsonPath used to extract the event ID from the payload. */
+    String idJsonPath,
 
-    // System Info
-    private String javaVersion;
-    private String springBootVersion;
+    /** Java version running the application. */
+    String javaVersion,
+    /** Spring Boot version used. */
+    String springBootVersion,
 
-    private List<ConsumerGroupDTO> consumerGroups;
+    /** List of details for each consumer group being monitored. */
+    List<ConsumerGroupDTO> consumerGroups,
 
-    // SSL Info
-    private Long sslCertExpiryDays;
-    private String kafkaSecurityProtocol;
+    /** Number of days until SSL certificate expiry, if applicable. */
+    Long sslCertExpiryDays,
+    /** Security protocol used to connect to Kafka (e.g., PLAINTEXT, SSL). */
+    String kafkaSecurityProtocol,
 
-    // App Info
-    private String appName;
-    private String appEdition;
+    /** Name of the application. */
+    String appName,
+    /** Edition of the application (e.g., Enterprise, Community). */
+    String appEdition,
 
-    // Dynamic Tuning Info
-    private Integer maxPollRecords;
-    private Integer fetchMinBytes;
-    private Integer fetchMaxWaitMs;
-    private Integer concurrency;
-}
+    /** Current max.poll.records Kafka consumer parameter. */
+    Integer maxPollRecords,
+    /** Current fetch.min.bytes Kafka consumer parameter. */
+    Integer fetchMinBytes,
+    /** Current fetch.max.wait.ms Kafka consumer parameter. */
+    Integer fetchMaxWaitMs,
+    /** Current fetch.max.bytes Kafka consumer parameter. */
+    Integer fetchMaxBytes,
+    /** Current max.poll.interval.ms Kafka consumer parameter. */
+    Integer maxPollIntervalMs,
+    /** Current number of concurrent consumer threads. */
+    Integer concurrency,
+
+    /** Current state of the persistence circuit breaker. */
+    String circuitBreakerStatus
+) {}

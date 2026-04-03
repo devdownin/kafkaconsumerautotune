@@ -27,7 +27,7 @@ spring:
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafkadev:9092}
     consumer:
-      group-id: ASF.PEAGE.BACKOFFICE.PARTAGE.RECOUVRABLE
+      group-id: DOMAIN.APP.MYID
       auto-offset-reset: earliest
       enable-auto-commit: false
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -73,25 +73,121 @@ spring:
 
 # Configuration de l'application (UI & Business)
 app:
-  edition: PARTAGE Edition
+  persistence:
+    save-in-file: false
+    trace-path: trace
+    format: json
+  edition: DEMO Edition
+  service:
+    id: USR-SVC-001
+    version: 1.0.0
+  metrics:
+    thresholds:
+      "kafka.lag":
+        warning: 1000
+        critical: 5000
+      "kafka.events.received.count":
+        warning: 100000
+        critical: 500000
+      "jvm.memory.used":
+        warning: 805306368 # 768MB
+        critical: 1073741824 # 1GB
+      "process.cpu.usage":
+        warning: 0.7
+        critical: 0.9
   event:
     id-json-path: "$.idPassage"
   message-viewer:
     blocks:
-      - title: "Système"
-        jsonPath: "passageSortie.systeme"
-      - title: "ETAT DE TRANSACTION"
-        jsonPath: "passageSortie.etat"
-      - title: "LOCALISATION"
-        jsonPath: "passageSortie.localisation.gare"
+      - title: "System"
+        jsonPath: "demo.systeme"
+      - title: "Statr"
+        jsonPath: "demo.state"
+      - title: "origin"
+        jsonPath: "demo.detail.origin"
 
 # Configuration spécifique à l'application
 kafka:
   topic:
-    name: asf.peage.backoffice.sortie.recouvrable
-    dlt: asf.peage.backoffice.sortie.recouvrable.dlt
+    name: demo.app.topic
+    dlt: demo.app.topic.dlt
+  tuning:
+    # Durée cible de traitement d'un batch en millisecondes.
+    # Le moteur d'auto-tune ajustera le max.poll.records pour essayer de stabiliser le traitement à cette valeur.
+    target-batch-duration-ms: 1200.0
+
+    # Coefficients du contrôleur PID (Proportional, Integral, Derivative)
+    # kP : Réaction proportionnelle à l'erreur actuelle (vitesse de réaction initiale)
+    kp: 150.0
+    # kI : Réaction proportionnelle à l'accumulation des erreurs passées (élimination de l'erreur statique)
+    ki: 20.0
+    # kD : Réaction proportionnelle à la tendance de l'erreur (amortissement des oscillations)
+    kd: 50.0
+
+    # Intervalle minimum entre deux redémarrages du consommateur (en ms).
+    # Évite les "rebalance storms" en limitant la fréquence des changements de configuration réels.
+    min-restart-interval-ms: 300000
+
+    # Seuil de changement minimal (0.1 = 10%).
+    # Une modification de paramètre n'est appliquée que si elle dépasse ce seuil par rapport à la valeur actuelle.
+    change-threshold: 0.1
+
+    # Limites de sécurité pour le paramètre max.poll.records
+    min-max-poll-records: 20
+    max-max-poll-records: 1000
+
+    # Paramètres de planification de la tâche de tuning (en ms)
+    initial-delay: 30000
+    fixed-rate: 60000
+
+    # Facteur de lissage (EMA) pour la durée de batch (0.2 = lissage fort, 0.8 = lissage faible)
+    ema-alpha: 0.2
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      persistence:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        waitDurationInOpenState: 30s
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        failureRateThreshold: 50
+        recordExceptions:
+          - org.springframework.dao.TransientDataAccessException
+          - org.springframework.dao.DataAccessResourceFailureException
+          - java.sql.SQLException
+  retry:
+    instances:
+      persistence:
+        maxAttempts: 3
+        waitDuration: 1s
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - org.springframework.dao.TransientDataAccessException
+          - org.springframework.dao.ConcurrencyFailureException
 
 management:
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        kafka.events.batch.duration: true
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${MANAGEMENT_OTLP_TRACING_ENDPOINT:http://localhost:4318/v1/traces}
+    metrics:
+      export:
+        url: ${MANAGEMENT_OTLP_METRICS_EXPORT_URL:http://localhost:4318/v1/metrics}
+    logs:
+      export:
+        enabled: false
+  # Exposition des endpoints Actuator pour le monitoring (Prometheus, Health, etc.)
   endpoints:
     web:
       exposure:

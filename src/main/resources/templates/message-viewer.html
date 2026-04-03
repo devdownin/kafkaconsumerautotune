@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html class="dark" lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head('Analytical Message Analysis')}">
-    <title>Analytical Message Analysis</title>
+<html class="dark" lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head('Message Analysis')}">
+    <title>Message Analysis</title>
     <!-- Page specific scripts/styles -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet" />
     <style>
@@ -10,11 +10,71 @@
         .hover-scale { transition: transform 0.2s; }
         .hover-scale:hover { transform: scale(1.02); }
         .category-active { border-left: 4px solid #135bec; background: rgba(19, 91, 236, 0.1); }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+        /* Modern JSON Prism Styling */
+        pre[class*="language-"] {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: transparent !important;
+        }
+        .token.property { color: #80cbc4 !important; font-weight: bold; }
+        .token.string { color: #c3e88d !important; }
+        .token.number { color: #f78c6c !important; }
+        .token.boolean { color: #ffcb6b !important; }
+        .token.operator { color: #89ddff !important; }
+        .token.punctuation { color: #89ddff !important; }
+
+        .search-match {
+            background-color: rgba(255, 255, 0, 0.3);
+            border-bottom: 2px solid yellow;
+            border-radius: 2px;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet" />
+<style>
+    .serif-title { font-family: 'Georgia', serif; }
+    .glass-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); }
+    .hover-scale { transition: transform 0.2s; }
+    .hover-scale:hover { transform: scale(1.02); }
+    .category-active { border-left: 4px solid #135bec; background: rgba(19, 91, 236, 0.1); }
+
+    .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+    /* Modern JSON Prism Styling */
+    pre[class*="language-"], code[class*="language-"] {
+        font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', 'Consolas', monospace !important;
+        text-shadow: none !important;
+    }
+
+    #raw-json-content { color: #e06c75 !important; } /* Default fallback to reddish */
+    .token.property { color: #56b6c2 !important; font-weight: 600; }
+    .token.string { color: #98c379 !important; }
+    .token.number { color: #d19a66 !important; }
+    .token.boolean { color: #c678dd !important; }
+    .token.operator, .token.punctuation { color: #abb2bf !important; }
+    .token.keyword { color: #61afef !important; }
+    .token.null { color: #d19a66 !important; }
+
+    .search-match {
+        background-color: rgba(255, 255, 0, 0.3);
+        border-bottom: 2px solid yellow;
+        border-radius: 2px;
+    }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 <!-- Toast Container -->
 <div id="toast-container" class="fixed bottom-8 right-8 z-[100] flex flex-col gap-3"></div>
 
@@ -41,7 +101,7 @@
             <div class="flex items-center gap-6">
                 <div class="relative">
                     <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
-                    <input id="json-search" oninput="filterData()" class="bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm pl-10 pr-4 py-1.5 w-64 focus:ring-1 focus:ring-primary placeholder:text-slate-500" placeholder="Rechercher une valeur..." type="text"/>
+                    <input id="json-search" oninput="filterData()" class="bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm pl-10 pr-4 py-1.5 w-64 focus:ring-1 focus:ring-primary placeholder:text-slate-500" placeholder="Search for a value..." type="text"/>
                 </div>
                 <div class="flex items-center gap-2">
                     <button id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500">
@@ -65,20 +125,20 @@
                     <div class="p-2 bg-primary text-white rounded-lg transition-colors">
                         <span class="material-symbols-outlined text-xl">analytics</span>
                     </div>
-                    <span class="text-sm font-semibold">Vue d'ensemble</span>
+                    <span class="text-sm font-semibold">Overview</span>
                 </button>
                 <button onclick="scrollToSection('section-raw')" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all hover:bg-slate-100 dark:hover:bg-slate-800 group category-btn" id="btn-raw">
                     <div class="p-2 bg-slate-500/10 text-slate-500 rounded-lg group-hover:bg-primary group-hover:text-white transition-colors">
                         <span class="material-symbols-outlined text-xl">code</span>
                     </div>
-                    <span class="text-sm font-semibold">Données Brutes</span>
+                    <span class="text-sm font-semibold">Raw Data</span>
                 </button>
 
                 <!-- History Navigation -->
                 <div class="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
                     <div class="flex items-center justify-between px-4 mb-3">
-                        <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Historique Récent</h3>
-                        <button onclick="toggleCompareMode()" id="btn-compare-mode" class="text-[9px] font-bold text-primary hover:underline uppercase" data-tooltip="Comparer deux messages">Comparer</button>
+                        <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Recent History</h3>
+                        <button onclick="toggleCompareMode()" id="btn-compare-mode" class="text-[9px] font-bold text-primary hover:underline uppercase" data-tooltip="Compare two messages">Compare</button>
                     </div>
                     <div class="flex flex-col gap-1 px-2" id="history-list">
                         <div th:each="event : ${recentEvents}"
@@ -104,15 +164,15 @@
             <div class="flex-1 overflow-y-auto p-8 bg-slate-50 dark:bg-background-dark scroll-smooth" id="sections-container">
                 <div id="no-message-warning" class="hidden flex flex-col items-center justify-center h-full text-slate-500 space-y-4">
                     <span class="material-symbols-outlined text-6xl opacity-20">cloud_off</span>
-                    <p class="text-lg font-medium">Aucun message disponible pour la visualisation</p>
+                    <p class="text-lg font-medium">No messages available for visualization</p>
                 </div>
 
                 <div class="space-y-12 max-w-5xl mx-auto" id="main-content">
                     <!-- Section: Overview -->
                     <section id="section-overview" class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                         <div class="flex items-center justify-between">
-                            <h3 class="text-2xl serif-title font-bold text-slate-800 dark:text-slate-100">Vue d'ensemble</h3>
-                            <span class="px-3 py-1 bg-primary/10 text-primary text-xs font-bold rounded-full">Dernière Mise à Jour: <span id="last-update-time">-</span></span>
+                            <h3 class="text-2xl serif-title font-bold text-slate-800 dark:text-slate-100">Overview</h3>
+                            <span class="px-3 py-1 bg-primary/10 text-primary text-xs font-bold rounded-full">Last Update: <span id="last-update-time">-</span></span>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="generic-blocks-container">
                         </div>
@@ -130,15 +190,26 @@
                     <!-- Section: Raw JSON -->
                     <section id="section-raw" class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                         <div class="flex items-center justify-between">
-                            <h3 class="text-2xl serif-title font-bold text-slate-800 dark:text-slate-100">Données Brutes (JSON)</h3>
+                            <h3 class="text-2xl serif-title font-bold text-slate-800 dark:text-slate-100">Raw Data (JSON)</h3>
                             <button onclick="copyRawJson()" class="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg transition-all text-xs font-bold uppercase">
                                 <span class="material-symbols-outlined text-sm">content_copy</span>
-                                Copier JSON
+                                Copy JSON
                             </button>
                         </div>
-                        <div class="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-                            <div class="p-6 overflow-x-auto max-h-[600px]">
-                                <pre class="text-xs leading-relaxed"><code id="raw-json-content" class="language-json"></code></pre>
+                        <div class="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+                            <div class="flex items-center justify-between px-6 py-3 border-b border-slate-800 bg-slate-900/50">
+                                <div class="flex items-center gap-2">
+                                    <div class="flex gap-1.5">
+                                        <div class="size-2.5 rounded-full bg-rose-500/20 border border-rose-500/40"></div>
+                                        <div class="size-2.5 rounded-full bg-amber-500/20 border border-amber-500/40"></div>
+                                        <div class="size-2.5 rounded-full bg-emerald-500/20 border border-emerald-500/40"></div>
+                                    </div>
+                                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-2">JSON Payload</span>
+                                </div>
+                                <div class="text-[10px] font-medium text-slate-600 font-mono" id="json-meta">Size: 0 bytes</div>
+                            </div>
+                            <div class="p-6 overflow-x-auto max-h-[600px] custom-scrollbar">
+                                <pre class="language-json text-xs leading-relaxed"><code id="raw-json-content" class="language-json"></code></pre>
                             </div>
                         </div>
                     </section>
@@ -146,8 +217,8 @@
                     <!-- Section: Diff Viewer (Hidden by default) -->
                     <section id="section-diff" class="space-y-6 hidden animate-in fade-in zoom-in duration-500">
                         <div class="flex items-center justify-between">
-                            <h3 class="text-2xl serif-title font-bold text-slate-800 dark:text-slate-100">Comparaison de Messages</h3>
-                            <button onclick="exitCompareMode()" class="text-xs font-bold text-rose-500 hover:underline">Quitter le mode comparaison</button>
+                            <h3 class="text-2xl serif-title font-bold text-slate-800 dark:text-slate-100">Message Comparison</h3>
+                            <button onclick="exitCompareMode()" class="text-xs font-bold text-rose-500 hover:underline">Exit Compare Mode</button>
                         </div>
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             <div class="space-y-2">
@@ -173,6 +244,10 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+
+<!-- Common Scripts Fragment -->
+<div th:replace="~{fragments/scripts :: common-scripts}"></div>
+
 <script th:inline="javascript">
     var lastEvent = /*[[${lastEvent}]]*/ null;
     var recentEvents = /*[[${recentEvents}]]*/ [];
@@ -194,6 +269,7 @@
         var socket = new SockJS('/ws');
         var stompClient = Stomp.over(socket);
         stompClient.connect({}, function (frame) {
+            updateWsStatus(true);
             stompClient.subscribe('/topic/events', function (eventMessage) {
                 var events = JSON.parse(eventMessage.body);
                 if (events.length > 0) {
@@ -233,6 +309,8 @@
                     }
                 }
             });
+        }, function() {
+            updateWsStatus(false);
         });
     });
 
@@ -264,7 +342,7 @@
         const data = JSON.parse(event.payload);
         document.getElementById('main-content').classList.remove('hidden');
         document.getElementById('no-message-warning').classList.add('hidden');
-        document.getElementById('last-update-time').innerText = new Date().toLocaleTimeString('fr-FR');
+        document.getElementById('last-update-time').innerText = new Date().toLocaleTimeString('en-US');
 
         const container = document.getElementById('generic-blocks-container');
         container.innerHTML = '';
@@ -293,7 +371,13 @@
         }
 
         const rawContentElem = document.getElementById('raw-json-content');
-        rawContentElem.textContent = JSON.stringify(data, null, 2);
+        const jsonString = JSON.stringify(data, null, 2);
+        rawContentElem.textContent = jsonString;
+
+        // Update meta
+        const size = new Blob([jsonString]).size;
+        document.getElementById('json-meta').innerText = `Size: ${size} bytes`;
+
         Prism.highlightElement(rawContentElem);
     }
 
@@ -315,7 +399,7 @@
         const btn = document.getElementById('btn-compare-mode');
         const checkboxes = document.querySelectorAll('.compare-checkbox');
         if (compareMode) {
-            btn.innerText = 'Annuler';
+            btn.innerText = 'Cancel';
             btn.classList.add('text-rose-500');
             checkboxes.forEach(c => c.classList.remove('hidden'));
         } else {
@@ -326,7 +410,7 @@
     function exitCompareMode() {
         compareMode = false;
         compareSelection = [];
-        document.getElementById('btn-compare-mode').innerText = 'Comparer';
+        document.getElementById('btn-compare-mode').innerText = 'Compare';
         document.getElementById('btn-compare-mode').classList.remove('text-rose-500');
         document.querySelectorAll('.compare-checkbox').forEach(c => c.classList.add('hidden'));
         document.querySelectorAll('.compare-checkbox input').forEach(i => i.checked = false);
@@ -366,9 +450,48 @@
         Prism.highlightElement(c1); Prism.highlightElement(c2);
     }
 
+    function filterData() {
+        const query = document.getElementById('json-search').value.toLowerCase();
+        const contentElem = document.getElementById('raw-json-content');
+        if (!contentElem) return;
+
+        // Reset if query is empty
+        if (!query) {
+            const event = recentEvents.find(e => e.id === currentEventId);
+            if (event) {
+                contentElem.textContent = JSON.stringify(JSON.parse(event.payload), null, 2);
+                Prism.highlightElement(contentElem);
+            }
+            return;
+        }
+
+        // Simple search and highlight by wrapping matches in a span
+        const rawJson = contentElem.textContent;
+        // We need to re-render but highlight. This is tricky with Prism.
+        // For a better experience, we can use a library or a custom regex.
+        // Let's try a simple approach: if we find the query, we highlight it.
+        // But doing it on the highlighted HTML is hard.
+        // Let's just highlight the raw text and NOT use Prism when searching,
+        // OR use a better way.
+
+        // Actually, let's keep Prism and just add a class to the tokens that match.
+        const tokens = contentElem.querySelectorAll('.token');
+        let matchCount = 0;
+        tokens.forEach(token => {
+            const text = token.textContent.toLowerCase();
+            if (text.includes(query)) {
+                token.classList.add('search-match');
+                matchCount++;
+                if (matchCount === 1) token.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                token.classList.remove('search-match');
+            }
+        });
+    }
+
     function copyRawJson() {
         navigator.clipboard.writeText(document.getElementById('raw-json-content').textContent).then(() => {
-            showToast('JSON copié', 'success');
+            showToast('JSON copied', 'success');
         });
     }
 
@@ -382,24 +505,6 @@
         setTimeout(() => { toast.classList.add('opacity-0', 'translate-y-4'); setTimeout(() => toast.remove(), 300); }, 3000);
     }
 
-    function initThemeToggle() {
-        var btn = document.getElementById('theme-toggle');
-        var darkIcon = document.getElementById('theme-toggle-dark-icon');
-        var lightIcon = document.getElementById('theme-toggle-light-icon');
-        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            lightIcon.classList.remove('hidden'); document.documentElement.classList.add('dark');
-        } else {
-            darkIcon.classList.remove('hidden'); document.documentElement.classList.remove('dark');
-        }
-        btn.addEventListener('click', function() {
-            darkIcon.classList.toggle('hidden'); lightIcon.classList.toggle('hidden');
-            if (document.documentElement.classList.contains('dark')) {
-                document.documentElement.classList.remove('dark'); localStorage.setItem('color-theme', 'light');
-            } else {
-                document.documentElement.classList.add('dark'); localStorage.setItem('color-theme', 'dark');
-            }
-        });
-    }
 </script>
 </body>
 </html>

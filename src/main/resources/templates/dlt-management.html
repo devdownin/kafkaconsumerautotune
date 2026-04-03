@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 
 <html class="dark" lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head('Page')}">
-    <title>Page</title>
+<head th:replace="~{fragments/head :: head('DLT Error Management')}">
+    <title>DLT Error Management</title>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
 <div class="flex h-screen overflow-hidden">
@@ -189,6 +189,12 @@
                             </div>
                         </div>
                         <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Message Headers</p>
+                            <div id="inspect-headers" class="flex flex-wrap gap-2">
+                                <!-- Headers will be injected here -->
+                            </div>
+                        </div>
+                        <div>
                             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Error Trace</p>
                             <div class="p-3 bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/20 rounded-lg">
                                 <p class="text-xs font-mono text-rose-600 dark:text-rose-400 leading-relaxed break-words" id="inspect-error">-</p>
@@ -244,6 +250,10 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+
+<!-- Common Scripts Fragment -->
+<div th:replace="~{fragments/scripts :: common-scripts}"></div>
+
 <script th:inline="javascript">
     /*<![CDATA[*/
     var dltEvents = /*[[${dltEvents}]]*/ [];
@@ -266,9 +276,12 @@
     });
 
     function updateStats(stats) {
-        document.getElementById('total-dlt-count-24h').innerText = stats.totalDlt24h.toLocaleString('en-US');
-        document.getElementById('unresolved-errors').innerText = stats.unresolvedErrors.toLocaleString('en-US');
-        document.getElementById('avg-resolution-time').innerText = stats.avgResolutionTime;
+        const totalDltElem = document.getElementById('total-dlt-count-24h');
+        if (totalDltElem) totalDltElem.innerText = stats.totalDlt24h.toLocaleString('en-US');
+        const unresolvedElem = document.getElementById('unresolved-errors');
+        if (unresolvedElem) unresolvedElem.innerText = stats.unresolvedErrors.toLocaleString('en-US');
+        const avgResolutionElem = document.getElementById('avg-resolution-time');
+        if (avgResolutionElem) avgResolutionElem.innerText = stats.avgResolutionTime;
     }
     /*]]>*/
 
@@ -292,41 +305,6 @@
         }
     });
 
-    function initThemeToggle() {
-        var themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
-        var themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
-
-        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            themeToggleLightIcon.classList.remove('hidden');
-        } else {
-            themeToggleDarkIcon.classList.remove('hidden');
-        }
-
-        var themeToggleBtn = document.getElementById('theme-toggle');
-
-        themeToggleBtn.addEventListener('click', function() {
-            themeToggleDarkIcon.classList.toggle('hidden');
-            themeToggleLightIcon.classList.toggle('hidden');
-
-            if (localStorage.getItem('color-theme')) {
-                if (localStorage.getItem('color-theme') === 'light') {
-                    document.documentElement.classList.add('dark');
-                    localStorage.setItem('color-theme', 'dark');
-                } else {
-                    document.documentElement.classList.remove('dark');
-                    localStorage.setItem('color-theme', 'light');
-                }
-            } else {
-                if (document.documentElement.classList.contains('dark')) {
-                    document.documentElement.classList.remove('dark');
-                    localStorage.setItem('color-theme', 'light');
-                } else {
-                    document.documentElement.classList.add('dark');
-                    localStorage.setItem('color-theme', 'dark');
-                }
-            }
-        });
-    }
 
     var currentInspectedId = null;
 
@@ -360,6 +338,28 @@
             const editor = document.getElementById('inspect-payload-editor');
             editor.value = payload;
             validateJson();
+
+            // Populate Headers
+            const headersContainer = document.getElementById('inspect-headers');
+            headersContainer.innerHTML = '';
+            if (event.headers) {
+                try {
+                    const headersMap = JSON.parse(event.headers);
+                    Object.entries(headersMap).forEach(([k, v]) => {
+                        const badge = document.createElement('div');
+                        badge.className = 'flex flex-col px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 min-w-[120px]';
+                        badge.innerHTML = `
+                            <span class="text-[8px] font-bold text-slate-400 uppercase truncate" title="${k}">${k}</span>
+                            <span class="text-[10px] font-medium text-slate-700 dark:text-slate-300 truncate" title="${v}">${v}</span>
+                        `;
+                        headersContainer.appendChild(badge);
+                    });
+                } catch (e) {
+                    headersContainer.innerHTML = '<span class="text-xs text-slate-500 italic">Error parsing headers</span>';
+                }
+            } else {
+                headersContainer.innerHTML = '<span class="text-xs text-slate-500 italic">No headers present</span>';
+            }
 
             document.getElementById('inspection-panel').style.display = 'flex';
 
@@ -594,7 +594,7 @@
         events.forEach(event => {
             const row = document.createElement('tr');
             row.className = 'hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group';
-            row.onclick = () => inspectEvent(event.id);
+            row.onclick = () => inspectEvent(null, event.id);
 
             const errorType = event.errorMessage.includes('Validation') ? 'Validation' : 'Parsing';
             const date = new Date(event.dhm);

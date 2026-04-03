@@ -1,29 +1,28 @@
-// Points clés à retenir
-//
-//Aspect				Implémentation
-//Signature méthode		List<ConsumerRecord<K,V>> + Acknowledgment
-//Commit				Manuel via acknowledgment.acknowledge() après succès
-//Performance			Traiter en bloc (ex: saveAll() plutôt que boucle de save())
-//Erreur				Exception remonte → retry automatique via ErrorHandler
-//Parsing				Filter les messages invalides plutôt que fail tout le batch
-//Métriques				Toujours mesurer throughput et latence
-//
-//Ce pattern garantit performance (batch DB), fiabilité (commit manuel + retry), et observabilité (metrics + logs structurés).
-
 package com.vaut;
-
-
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+/**
+ * Main entry point for the Consotopic application.
+ * This application is a high-performance Kafka consumer with auto-tuning capabilities,
+ * a monitoring dashboard, and Dead Letter Topic (DLT) management.
+ */
+@EnableCaching
 @EnableRetry
 @EnableScheduling
-@SpringBootApplication() //exclude = { Neo4jDataAutoConfiguration.class, R2dbcAutoConfiguration.class })
+@org.springframework.scheduling.annotation.EnableAsync
+@SpringBootApplication
 public class ConsotopicApplication {
 
+	/**
+	 * Main method to launch the Spring Boot application.
+	 *
+	 * @param args Command line arguments.
+	 */
 	public static void main(String[] args) {
 		SpringApplication.run(ConsotopicApplication.class, args);
 	}

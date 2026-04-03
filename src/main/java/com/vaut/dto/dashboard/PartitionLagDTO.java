@@ -1,17 +1,18 @@
 package com.vaut.dto.dashboard;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+/**
+ * Data Transfer Object representing Kafka lag for a specific partition.
+ */
 @Builder
-public class PartitionLagDTO {
-    private int partition;
-    private long currentOffset;
-    private long logEndOffset;
-    private long lag;
-}
+public record PartitionLagDTO(
+    /** The partition number. */
+    int partition,
+    /** The last committed offset for this partition. */
+    long currentOffset,
+    /** The latest offset available in the partition on the Kafka broker. */
+    long logEndOffset,
+    /** The difference between the log end offset and the current offset (messages remaining to be consumed). */
+    long lag
+) {}

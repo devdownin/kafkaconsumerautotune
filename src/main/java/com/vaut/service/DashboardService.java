@@ -8,6 +8,7 @@ import com.vaut.repository.DltEventRepository;
 import com.vaut.entity.DltEvent;
 import com.vaut.repository.KEventRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,7 @@ import org.springframework.boot.logging.LoggerConfiguration;
 import com.vaut.config.AppConstants;
 import java.util.Optional;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.ConsumerGroupDescription;
 import org.apache.kafka.clients.admin.ListConsumerGroupOffsetsOptions;
@@ -39,10 +41,14 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.scheduling.annotation.Scheduled;
+import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.lang.management.ManagementFactory;
@@ -50,10 +56,13 @@ import java.lang.management.MemoryMXBean;
 import java.lang.management.ThreadMXBean;
 import com.sun.management.OperatingSystemMXBean;
 import com.vaut.dto.dashboard.JvmStatsDTO;
+import com.vaut.dto.dashboard.MetricDTO;
+import com.vaut.config.MetricThresholdProperties;
+import io.micrometer.core.instrument.Measurement;
 
 /**
  * Service that provides statistics and monitoring data for the dashboard.
- * Generalized to work with KEvent.
+ * It aggregates information from Kafka, the database, JVM, and application metrics.
  */
 @Service
 @RequiredArgsConstructor
@@ -70,14 +79,30 @@ public class DashboardService {
     private final KafkaProperties kafkaProperties;
     private final WebSocketService webSocketService;
     private final KafkaTuningService kafkaTuningService;
+    private final MetricThresholdProperties metricThresholdProperties;
+    private final CircuitBreakerRegistry circuitBreakerRegistry;
 
-    private static final int THROUGHPUT_5S_SIZE = 180; // 15 minutes at 5s interval
+    private static final int THROUGHPUT_5S_SIZE = 120; // 10 minutes at 5s interval
     private static final int THROUGHPUT_1M_SIZE = 1440; // 24 hours at 1m interval
-    private final List<Double> throughput5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0.0));
+    private final List<Double> successThroughput5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0.0));
+    private final List<Double> errorThroughput5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0.0));
+    private final List<Double> retryThroughput5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0.0));
+    private final List<Long> lagHistory5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0L));
+    private final List<Integer> maxPollRecordsHistory5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0));
+    private final List<Integer> concurrencyHistory5s = new ArrayList<>(Collections.nCopies(THROUGHPUT_5S_SIZE, 0));
+    private final List<Long> timestamps5s = new ArrayList<>();
     private final List<Double> throughput1m = new ArrayList<>(Collections.nCopies(THROUGHPUT_1M_SIZE, 0.0));
-    private long lastProcessedCount = 0;
+    private final Map<String, List<Double>> metricsHistory = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final int MAX_HISTORY_POINTS = 20;
+    private long lastSuccessCount = 0;
+    private long lastErrorCount = 0;
+    private long lastRetryCount = 0;
     private int minuteCounter = 0;
     private double minuteAccumulator = 0;
+
+    private String cachedDbVendor;
+    private String cachedDbSchema;
+    private String cachedDbDriver;
 
     // Cache for Kafka Lag to avoid over-polling AdminClient
     private final AtomicLong cachedTotalLag = new AtomicLong(0);
@@ -88,7 +113,7 @@ public class DashboardService {
     @Value("${spring.kafka.bootstrap-servers:kafkadev:9093}")
     private String bootstrapServers;
 
-    @Value("${kafka.topic.name:asf.peage.backoffice.sortie.recouvrable}")
+    @Value("${kafka.topic:asf.peage.backoffice.sortie.recouvrable}")
     private String topicName;
 
     @Value("${spring.kafka.consumer.group-id:ASF.PEAGE.BACKOFFICE.PARTAGE.RECOUVRABLE}")
@@ -97,7 +122,7 @@ public class DashboardService {
     @Value("${spring.kafka.ssl.enabled:false}")
     private boolean sslEnabled;
 
-    @Value("${spring.application.name:KafkaMonitor}")
+    @Value("${spring.application:KafkaMonitor}")
     private String appName;
 
     @Value("${app.edition:Enterprise Edition}")
@@ -106,6 +131,33 @@ public class DashboardService {
     @Value("${app.event.id-json-path:$.idPassage}")
     private String idJsonPath;
 
+    @PostConstruct
+    public void init() {
+        long now = System.currentTimeMillis();
+        synchronized (successThroughput5s) {
+            for (int i = THROUGHPUT_5S_SIZE - 1; i >= 0; i--) {
+                timestamps5s.add(now - (i * 5000L));
+            }
+
+            // Get initial tuning parameters for pre-filling history
+            Map<String, Object> tuningParams = kafkaTuningService.getCurrentTuningParameters();
+            int currentMaxPoll = 0;
+            Object mpr = tuningParams.get("maxPollRecords");
+            if (mpr instanceof Number n) currentMaxPoll = n.intValue();
+
+            int currentConcurrency = 0;
+            Object conc = tuningParams.get("concurrency");
+            if (conc instanceof Number n) currentConcurrency = n.intValue();
+
+            Collections.fill(maxPollRecordsHistory5s, currentMaxPoll);
+            Collections.fill(concurrencyHistory5s, currentConcurrency);
+        }
+    }
+
+    /**
+     * Periodically refreshes Kafka-related metrics such as consumer group status and lag.
+     * Uses the AdminClient to query the Kafka cluster.
+     */
     @Scheduled(fixedRate = 30000)
     public void refreshKafkaMetrics() {
         if (adminClient.isEmpty()) return;
@@ -158,7 +210,7 @@ public class DashboardService {
                         totalMainLag = groupLag;
                     }
 
-                    partitionLags.sort((a, b) -> Integer.compare(a.getPartition(), b.getPartition()));
+                    partitionLags.sort((a, b) -> Integer.compare(a.partition(), b.partition()));
 
                     int assignedPartitions = (int) desc.members().stream()
                             .flatMap(m -> m.assignment().topicPartitions().stream())
@@ -184,6 +236,11 @@ public class DashboardService {
         }
     }
 
+    /**
+     * Returns the cached information for the monitored Kafka consumer groups.
+     *
+     * @return A list of ConsumerGroupDTO objects.
+     */
     public List<ConsumerGroupDTO> getConsumerGroupsInfo() {
         if (cachedConsumerGroups.isEmpty() && adminClient.isPresent()) {
             refreshKafkaMetrics();
@@ -191,6 +248,11 @@ public class DashboardService {
         return cachedConsumerGroups;
     }
 
+    /**
+     * Calculates the total consumer lag across all partitions.
+     *
+     * @return The total lag as a long.
+     */
     public long calculateTotalLag() {
         if (lastKafkaUpdate.get() == 0 && adminClient.isPresent()) {
             refreshKafkaMetrics();
@@ -198,26 +260,101 @@ public class DashboardService {
         return cachedTotalLag.get();
     }
 
+    /**
+     * Periodically updates the historical data points for all tracked metrics.
+     * Broadcasts the updated metrics to connected clients via WebSockets.
+     */
+    @Scheduled(fixedRate = 10000)
+    public void updateMetricsHistory() {
+        Set<String> currentMetricNames = new HashSet<>();
+        meterRegistry.getMeters().forEach(meter -> {
+            String name = meter.getId().getName();
+            List<Measurement> measurements = new ArrayList<>();
+            meter.measure().forEach(measurements::add);
+
+            for (Measurement measurement : measurements) {
+                String suffix = measurement.getStatistic().name().toLowerCase();
+                String fullName = name + (measurements.size() > 1 ? "." + suffix : "");
+                double value = measurement.getValue();
+                currentMetricNames.add(fullName);
+
+                metricsHistory.compute(fullName, (k, v) -> {
+                    List<Double> history = (v == null) ? new CopyOnWriteArrayList<>() : v;
+                    history.add(value);
+                    if (history.size() > MAX_HISTORY_POINTS) {
+                        history.remove(0);
+                    }
+                    return history;
+                });
+            }
+        });
+        metricsHistory.keySet().retainAll(currentMetricNames);
+        webSocketService.broadcast(AppConstants.WEBSOCKET_TOPIC_METRICS_LIVE, getAllMetrics());
+    }
+
+    /**
+     * Periodically updates throughput history (messages per second) and broadcasts
+     * updated statistics and JVM status via WebSockets.
+     */
     @Scheduled(fixedRate = 5000)
     public void updateThroughputHistory() {
-        double currentProcessed = Optional.ofNullable(meterRegistry.find(AppConstants.METRIC_KAFKA_EVENTS_RECEIVED_COUNT).counter())
+        double currentSuccess = Optional.ofNullable(meterRegistry.find(AppConstants.METRIC_KAFKA_EVENTS_PROCESSED_SUCCESS).counter())
+                .map(counter -> counter.count())
+                .orElse(0.0);
+        double currentErrors = Optional.ofNullable(meterRegistry.find(AppConstants.METRIC_KAFKA_EVENTS_ERRORS).counter())
+                .map(counter -> counter.count())
+                .orElse(0.0);
+        double currentRetries = Optional.ofNullable(meterRegistry.find(AppConstants.METRIC_KAFKA_EVENTS_RETRIED).counter())
                 .map(counter -> counter.count())
                 .orElse(0.0);
 
-        long delta = (long) (currentProcessed - lastProcessedCount);
-        if (delta < 0) delta = 0; 
+        long successDelta = (long) (currentSuccess - lastSuccessCount);
+        if (successDelta < 0) successDelta = 0;
+        lastSuccessCount = (long) currentSuccess;
+        double successMsgPerSec = successDelta / 5.0;
 
-        lastProcessedCount = (long) currentProcessed;
-        double msgPerSec = delta / 5.0;
+        long errorDelta = (long) (currentErrors - lastErrorCount);
+        if (errorDelta < 0) errorDelta = 0;
+        lastErrorCount = (long) currentErrors;
+        double errorMsgPerSec = errorDelta / 5.0;
 
-        synchronized (throughput5s) {
-            throughput5s.add(msgPerSec);
-            if (throughput5s.size() > THROUGHPUT_5S_SIZE) {
-                throughput5s.remove(0);
+        long retryDelta = (long) (currentRetries - lastRetryCount);
+        if (retryDelta < 0) retryDelta = 0;
+        lastRetryCount = (long) currentRetries;
+        double retryMsgPerSec = retryDelta / 5.0;
+
+        long currentLag = calculateTotalLag();
+        long now = System.currentTimeMillis();
+        Map<String, Object> tuningParams = kafkaTuningService.getCurrentTuningParameters();
+        int currentMaxPoll = 0;
+        Object mpr = tuningParams.get("maxPollRecords");
+        if (mpr instanceof Number n) currentMaxPoll = n.intValue();
+
+        int currentConcurrency = 0;
+        Object conc = tuningParams.get("concurrency");
+        if (conc instanceof Number n) currentConcurrency = n.intValue();
+
+        synchronized (successThroughput5s) {
+            successThroughput5s.add(successMsgPerSec);
+            errorThroughput5s.add(errorMsgPerSec);
+            retryThroughput5s.add(retryMsgPerSec);
+            lagHistory5s.add(currentLag);
+            maxPollRecordsHistory5s.add(currentMaxPoll);
+            concurrencyHistory5s.add(currentConcurrency);
+            timestamps5s.add(now);
+
+            if (successThroughput5s.size() > THROUGHPUT_5S_SIZE) {
+                successThroughput5s.remove(0);
+                errorThroughput5s.remove(0);
+                retryThroughput5s.remove(0);
+                lagHistory5s.remove(0);
+                maxPollRecordsHistory5s.remove(0);
+                concurrencyHistory5s.remove(0);
+                timestamps5s.remove(0);
             }
         }
 
-        minuteAccumulator += msgPerSec;
+        minuteAccumulator += successMsgPerSec + errorMsgPerSec;
         minuteCounter++;
         if (minuteCounter >= 12) {
             double avgMsgPerSec = minuteAccumulator / 12.0;
@@ -235,6 +372,11 @@ public class DashboardService {
         webSocketService.sendJvmStats(getJvmStats());
     }
 
+    /**
+     * Retrieves current JVM and system performance statistics.
+     *
+     * @return A JvmStatsDTO object.
+     */
     public JvmStatsDTO getJvmStats() {
         MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
         ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
@@ -251,10 +393,21 @@ public class DashboardService {
                 .build();
     }
 
+    /**
+     * Retrieves the most recent events from the Dead Letter Topic (DLT).
+     *
+     * @param limit The maximum number of events to retrieve.
+     * @return A list of DltEvent objects.
+     */
     public List<DltEvent> getRecentDltEvents(int limit) {
         return dltEventRepository.findAll(PageRequest.of(0, limit, Sort.by("id").descending())).getContent();
     }
 
+    /**
+     * Retrieves the current logging configuration for tracked loggers.
+     *
+     * @return A list of LogConfigDTO objects.
+     */
     public List<LogConfigDTO> getLogConfigs() {
         List<String> loggersToTrack = Arrays.asList("com.vaut", "org.springframework.kafka", "org.hibernate.SQL", "org.apache.kafka");
         return loggersToTrack.stream()
@@ -273,69 +426,148 @@ public class DashboardService {
                 .toList();
     }
 
+    /**
+     * Updates the log level for a specific logger.
+     *
+     * @param loggerName The name of the logger to update.
+     * @param level The new log level (e.g., DEBUG, INFO).
+     */
     public void updateLogLevel(String loggerName, String level) {
         loggingSystem.setLogLevel(loggerName, LogLevel.valueOf(level.toUpperCase()));
     }
 
+    /**
+     * Retrieves all registered metrics with their current values, trends, and statuses.
+     *
+     * @return A list of MetricDTO objects.
+     */
+    public List<MetricDTO> getAllMetrics() {
+        return meterRegistry.getMeters().stream()
+                .flatMap(meter -> {
+                    String name = meter.getId().getName();
+                    String type = meter.getId().getType().name();
+                    String description = meter.getId().getDescription();
+                    String baseUnit = meter.getId().getBaseUnit();
+                    boolean appSpecific = name.startsWith("kafka.events") || name.startsWith("app.") || name.startsWith("myconsumer.") || name.startsWith("process.");
+
+                    List<MetricDTO> metrics = new ArrayList<>();
+                    List<Measurement> measurements = new ArrayList<>();
+                    meter.measure().forEach(measurements::add);
+
+                    for (Measurement measurement : measurements) {
+                        String suffix = measurement.getStatistic().name().toLowerCase();
+                        String fullName = name + (measurements.size() > 1 ? "." + suffix : "");
+                        double currentValue = measurement.getValue();
+
+                        List<Double> history = new ArrayList<>(metricsHistory.getOrDefault(fullName, Collections.emptyList()));
+
+                        String trend = "STABLE";
+                        if (history.size() >= 2) {
+                            double prevValue = history.get(history.size() - 2);
+                            if (currentValue > prevValue) trend = "UP";
+                            else if (currentValue < prevValue) trend = "DOWN";
+                        }
+
+                        String status = "NORMAL";
+                        MetricThresholdProperties.Threshold threshold = metricThresholdProperties.getThresholds().get(fullName);
+                        if (threshold == null) threshold = metricThresholdProperties.getThresholds().get(name);
+
+                        if (threshold != null) {
+                            if (threshold.getCritical() != null && currentValue >= threshold.getCritical()) {
+                                status = "CRITICAL";
+                            } else if (threshold.getWarning() != null && currentValue >= threshold.getWarning()) {
+                                status = "WARNING";
+                            }
+                        }
+
+                        metrics.add(MetricDTO.builder()
+                                .name(fullName)
+                                .type(type)
+                                .description(description != null ? description : "N/A")
+                                .value(String.format("%.2f", currentValue))
+                                .baseUnit(baseUnit != null ? baseUnit : "")
+                                .appSpecific(appSpecific)
+                                .history(history)
+                                .trend(trend)
+                                .status(status)
+                                .build());
+                    }
+                    return metrics.stream();
+                })
+                .sorted((a, b) -> a.name().compareToIgnoreCase(b.name()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Aggregates all application statistics for the main dashboard view.
+     * Results are cached for 5 seconds to improve performance.
+     *
+     * @return A DashboardStatsDTO object.
+     */
+    @Cacheable(value = "stats", sync = true)
     public DashboardStatsDTO getStats() {
         long successCount = eventRepository.count();
-        long dltCount = dltEventRepository.count();
+        var dltStats = dltEventRepository.getDltStats(LocalDateTime.now().minusDays(1));
+
+        long dltCount = dltStats.getTotalCount() != null ? dltStats.getTotalCount() : 0L;
         long total = successCount + dltCount;
 
         double successRate = total == 0 ? 100.0 : (double) successCount / total * 100.0;
 
-        long totalDlt24h = dltEventRepository.countByDhmAfter(LocalDateTime.now().minusDays(1));
-        long unresolvedErrors = dltEventRepository.countByStatus("UNRESOLVED");
+        long totalDlt24h = dltStats.getCountLast24h() != null ? dltStats.getCountLast24h() : 0L;
+        long unresolvedErrors = dltStats.getUnresolvedCount() != null ? dltStats.getUnresolvedCount() : 0L;
 
-        List<DltEvent> resolvedEvents = dltEventRepository.findByStatus("RESOLVED");
-        resolvedEvents.addAll(dltEventRepository.findByStatus("DISCARDED"));
-
+        // Optimized: We no longer fetch all events in memory to calculate average
+        // For now, we set it to N/A or implement it via a more specific query if needed
         String avgResolutionTime = "N/A";
-        if (!resolvedEvents.isEmpty()) {
-            long totalMinutes = 0;
-            int count = 0;
-            for (DltEvent event : resolvedEvents) {
-                if (event.getResolvedAt() != null && event.getDhm() != null) {
-                    java.time.Duration duration = java.time.Duration.between(event.getDhm(), event.getResolvedAt());
-                    totalMinutes += duration.toMinutes();
-                    count++;
-                }
-            }
-            if (count > 0) {
-                avgResolutionTime = (totalMinutes / count) + "m";
-            }
-        } else {
-            avgResolutionTime = "0m";
-        }
 
         long realLag = calculateTotalLag();
-        List<Double> realThroughput;
+        List<Double> successThroughput;
+        List<Double> errorThroughput;
+        List<Double> retryThroughput;
+        List<Long> lagHistory;
+        List<Integer> maxPollRecordsHistory;
+        List<Integer> concurrencyHistory;
+        List<Long> timestamps;
         List<Double> throughput24h;
-        synchronized (throughput5s) {
-            realThroughput = new ArrayList<>(throughput5s);
+        synchronized (successThroughput5s) {
+            successThroughput = new ArrayList<>(successThroughput5s);
+            errorThroughput = new ArrayList<>(errorThroughput5s);
+            retryThroughput = new ArrayList<>(retryThroughput5s);
+            lagHistory = new ArrayList<>(lagHistory5s);
+            maxPollRecordsHistory = new ArrayList<>(maxPollRecordsHistory5s);
+            concurrencyHistory = new ArrayList<>(concurrencyHistory5s);
+            timestamps = new ArrayList<>(timestamps5s);
         }
         synchronized (throughput1m) {
             throughput24h = new ArrayList<>(throughput1m);
         }
 
-        long resolvedCount = dltEventRepository.countByStatus("RESOLVED");
-        long discardedCount = dltEventRepository.countByStatus("DISCARDED");
+        long resolvedCount = dltStats.getResolvedCount() != null ? dltStats.getResolvedCount() : 0L;
+        long discardedCount = dltStats.getDiscardedCount() != null ? dltStats.getDiscardedCount() : 0L;
 
-        String dbVendor = "Database";
         String dbStatus = "Connected";
-        String dbSchema = "N/A";
-        String dbDriver = "N/A";
         int activeConnections = 0;
         int idleConnections = 0;
         int totalConnections = 0;
         int maxPoolSize = 0;
 
-        try (Connection connection = dataSource.getConnection()) {
-            DatabaseMetaData metaData = connection.getMetaData();
-            dbVendor = metaData.getDatabaseProductName();
-            dbSchema = metaData.getUserName();
-            dbDriver = metaData.getDriverName();
+        if (cachedDbVendor == null) {
+            try (Connection connection = dataSource.getConnection()) {
+                DatabaseMetaData metaData = connection.getMetaData();
+                cachedDbVendor = metaData.getDatabaseProductName();
+                cachedDbSchema = metaData.getUserName();
+                cachedDbDriver = metaData.getDriverName();
+            } catch (Exception e) {
+                // Temporary failure to get metadata, don't cache yet
+            }
+        }
 
+        String dbVendor = cachedDbVendor != null ? cachedDbVendor : "Database";
+        String dbSchema = cachedDbSchema != null ? cachedDbSchema : "N/A";
+        String dbDriver = cachedDbDriver != null ? cachedDbDriver : "N/A";
+
+        try {
             String validationQuery = dbVendor.toLowerCase().contains("oracle") ? "SELECT 1 FROM DUAL" : "SELECT 1";
             Query query = entityManager.createNativeQuery(validationQuery);
             query.getSingleResult();
@@ -352,6 +584,7 @@ public class DashboardService {
 
         String version = buildProperties.map(BuildProperties::getVersion).orElse("1.0.0-SNAPSHOT");
         Map<String, Object> tuningParams = kafkaTuningService.getCurrentTuningParameters();
+        String cbStatus = circuitBreakerRegistry.circuitBreaker("persistence").getState().name();
 
         Long sslCertExpiry = null;
         if (sslEnabled) {
@@ -369,7 +602,13 @@ public class DashboardService {
                 .successCount(successCount)
                 .errorCount(unresolvedErrors)
                 .retryCount(resolvedCount + discardedCount)
-                .throughput(realThroughput)
+                .successThroughput(successThroughput)
+                .errorThroughput(errorThroughput)
+                .retryThroughput(retryThroughput)
+                .lagHistory(lagHistory)
+                .maxPollRecordsHistory(maxPollRecordsHistory)
+                .concurrencyHistory(concurrencyHistory)
+                .timestamps(timestamps)
                 .throughput24h(throughput24h)
                 .kafkaClusterName(bootstrapServers)
                 .totalDlt24h(totalDlt24h)
@@ -397,7 +636,10 @@ public class DashboardService {
                 .maxPollRecords((Integer) tuningParams.get("maxPollRecords"))
                 .fetchMinBytes((Integer) tuningParams.get("fetchMinBytes"))
                 .fetchMaxWaitMs((Integer) tuningParams.get("fetchMaxWaitMs"))
+                .fetchMaxBytes((Integer) tuningParams.get("fetchMaxBytes"))
+                .maxPollIntervalMs((Integer) tuningParams.get("maxPollIntervalMs"))
                 .concurrency((Integer) tuningParams.get("concurrency"))
+                .circuitBreakerStatus(cbStatus)
                 .build();
     }
 }

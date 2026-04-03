@@ -1,0 +1,110 @@
+<!-- Notifications Fragment -->
+<div th:fragment="notifications" id="toast-container" class="fixed bottom-8 right-8 z-[100] flex flex-col gap-3">
+    <script>
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showToast(event) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            // Define colors and icons based on type
+            let bgColor = 'bg-white dark:bg-slate-900';
+            let iconColor = 'text-primary';
+            let icon = 'info';
+
+            if (event.type === 'ERROR') {
+                iconColor = 'text-rose-500';
+                icon = 'error';
+            } else if (event.type === 'WARNING') {
+                iconColor = 'text-amber-500';
+                icon = 'warning';
+            } else if (event.type === 'SUCCESS') {
+                iconColor = 'text-emerald-500';
+                icon = 'check_circle';
+            }
+
+            toast.className = `flex items-start gap-4 p-4 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 ${bgColor} min-w-[320px] max-w-[400px] transform translate-x-full transition-transform duration-500 ease-out z-[101]`;
+
+            const safeTitle = escapeHtml(event.title);
+            const safeCategory = escapeHtml(event.category);
+            const safeMessage = escapeHtml(event.message);
+            const timeStr = new Date(event.timestamp).toLocaleTimeString();
+
+            toast.innerHTML = `
+                <div class="p-2 rounded-lg bg-slate-50 dark:bg-slate-800 ${iconColor}">
+                    <span class="material-symbols-outlined text-xl">${icon}</span>
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                        <h5 class="text-sm font-bold">${safeTitle}</h5>
+                        <span class="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">${safeCategory}</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">${safeMessage}</p>
+                    <p class="text-[10px] text-slate-400 mt-2">${timeStr}</p>
+                </div>
+                <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <span class="material-symbols-outlined text-sm">close</span>
+                </button>
+            `;
+
+            container.appendChild(toast);
+
+            // Trigger animation
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full');
+            }, 100);
+
+            // Auto-remove
+            setTimeout(() => {
+                toast.classList.add('translate-x-[150%]');
+                setTimeout(() => toast.remove(), 500);
+            }, 8000);
+        }
+
+        // Global WebSocket Listener for System Events
+        function initSystemNotifications(stompClient) {
+            stompClient.subscribe('/topic/system-events', function (message) {
+                const event = JSON.parse(message.body);
+                showToast(event);
+                updateSystemStatus(event);
+            });
+        }
+
+        function updateSystemStatus(event) {
+            if (event.category === 'CIRCUIT_BREAKER') {
+                const dot = document.getElementById('cb-status-dot');
+                const text = document.getElementById('cb-status-text');
+                const alert = document.getElementById('cb-alert');
+
+                const status = event.message.replace('State changed to ', '');
+
+                if (dot && text) {
+                    text.innerText = status;
+                    dot.className = 'size-2 rounded-full ' +
+                        (status === 'CLOSED' ? 'bg-emerald-500' : (status === 'HALF_OPEN' ? 'bg-amber-500' : 'bg-rose-500'));
+                }
+
+                if (alert) {
+                    if (status === 'OPEN') alert.classList.remove('hidden');
+                    else alert.classList.add('hidden');
+                }
+            }
+
+            if (event.category === 'BATCH' && event.type === 'WARNING') {
+                const fallbackAlert = document.getElementById('fallback-alert');
+                if (fallbackAlert) {
+                    fallbackAlert.classList.remove('hidden');
+                    // Auto-hide after 30 seconds of no fallback events
+                    if (window.fallbackTimeout) clearTimeout(window.fallbackTimeout);
+                    window.fallbackTimeout = setTimeout(() => {
+                        fallbackAlert.classList.add('hidden');
+                    }, 30000);
+                }
+            }
+        }
+    </script>
+</div>

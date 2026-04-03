@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -51,16 +52,20 @@ public class EventProcessingService {
                 Object result = JsonPath.read(payload, idJsonPath);
                 eventId = result != null ? result.toString() : null;
             } catch (Exception e) {
+                MDC.put(AppConstants.MDC_EVENT_OUTCOME, "failure");
                 log.error("Failed to extract event ID using path {} at offset {}: {}", idJsonPath, record.offset(), e.getMessage());
                 meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_ERRORS, "type", "id_extraction").increment();
                 return Optional.empty();
             }
 
             if (eventId == null || eventId.trim().isEmpty()) {
+                MDC.put(AppConstants.MDC_EVENT_OUTCOME, "failure");
                 log.error("Extracted event ID is null or empty at offset {}", record.offset());
                 meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_ERRORS, "type", "missing_id").increment();
                 return Optional.empty();
             }
+
+            MDC.put(AppConstants.MDC_EVENT_ID, eventId);
 
             KEvent event = KEvent.builder()
                     .eventId(eventId)
@@ -75,6 +80,7 @@ public class EventProcessingService {
             return Optional.of(event);
 
         } catch (Exception e) {
+            MDC.put(AppConstants.MDC_EVENT_OUTCOME, "failure");
             log.error("Error processing message at offset {}: {}", record.offset(), e.getMessage());
             meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_ERRORS, "type", "generic_processing").increment();
         }

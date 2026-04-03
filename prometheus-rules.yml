@@ -1,0 +1,94 @@
+groups:
+  - name: service-health
+    rules:
+      - alert: AppDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "The application {{ $labels.instance }} has been unreachable for more than 1 minute."
+
+  - name: jvm-resource-alerts
+    rules:
+      - alert: JVMHighCpuUsage
+        expr: process_cpu_usage > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is at {{ $value | printf \"%.2f\" }} for over 5 minutes."
+
+      - alert: JVMHighMemoryUsage
+        expr: jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"} > 0.90
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High Heap Memory usage on {{ $labels.instance }}"
+          description: "Heap memory usage is above 90% (current: {{ $value | printf \"%.2f\" }}) for over 5 minutes."
+
+  - name: resilience-alerts
+    rules:
+      - alert: PersistenceCircuitBreakerOpen
+        expr: resilience4j_circuitbreaker_state{name="persistence", state="open"} == 1
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Circuit Breaker 'persistence' is OPEN"
+          description: "The database persistence circuit breaker is OPEN on {{ $labels.instance }}. Consumption is likely paused."
+
+  - name: kafka-alerts
+    rules:
+      - alert: HighKafkaLag
+        expr: sum by (group, topic) (kafka_consumer_group_lag) > 1000
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Kafka consumer lag"
+          description: "Lag for group {{ $labels.group }} on topic {{ $labels.topic }} is {{ $value }} for over 2 minutes."
+
+      - alert: CriticalKafkaLag
+        expr: sum by (group, topic) (kafka_consumer_group_lag) > 5000
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical Kafka consumer lag"
+          description: "Lag for group {{ $labels.group }} on topic {{ $labels.topic }} is {{ $value }} for over 1 minute."
+
+      - alert: KafkaConsumerStopped
+        expr: sum by (group) (kafka_consumer_group_members) == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kafka consumer group has no members"
+          description: "The consumer group {{ $labels.group }} has 0 active members. No messages are being processed."
+
+  - name: application-performance
+    rules:
+      - alert: HighProcessingErrorRate
+        expr: |
+          sum(rate(app_kafka_events_errors_total[5m]))
+          /
+          sum(rate(app_kafka_events_received_count_total[5m])) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High processing error rate"
+          description: "Application is failing to process over 10% of incoming messages (current rate: {{ $value | printf \"%.2f\" }})."
+
+      - alert: AbnormallyLongBatchDuration
+        expr: app_kafka_events_batch_duration_seconds_max > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Abnormally long batch duration"
+          description: "The maximum batch duration is over 3 seconds ({{ $value | printf \"%.2f\" }}s) for 5 minutes. The auto-tuner might be struggling."

@@ -28,9 +28,17 @@
             <span class="material-symbols-outlined">error_outline</span>
             <span th:class="${'text-sm ' + (activePage == 'dlt' ? 'font-semibold' : 'font-medium')}">DLT Management</span>
         </a>
+        <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'simulation' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/simulation}">
+            <span class="material-symbols-outlined">rocket_launch</span>
+            <span th:class="${'text-sm ' + (activePage == 'simulation' ? 'font-semibold' : 'font-medium')}">Traffic Simulator</span>
+        </a>
         <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'metrics' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/metrics}">
             <span class="material-symbols-outlined">monitoring</span>
             <span th:class="${'text-sm ' + (activePage == 'metrics' ? 'font-semibold' : 'font-medium')}">Application Metrics</span>
+        </a>
+        <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'flink-metrics' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/flink-metrics}">
+            <span class="material-symbols-outlined">query_stats</span>
+            <span th:class="${'text-sm ' + (activePage == 'flink-metrics' ? 'font-semibold' : 'font-medium')}">Flink Metrics</span>
         </a>
         <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'optimizer' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/optimizer}">
             <span class="material-symbols-outlined">auto_fix_high</span>
@@ -40,11 +48,18 @@
             <p class="px-3 text-[10px] font-bold text-slate-400 uppercase mb-2">Systems</p>
             <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'db-status' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/db-status}">
                 <span class="material-symbols-outlined">database</span>
-                <span th:class="${'text-sm ' + (activePage == 'db-status' ? 'font-semibold' : 'font-medium')}">Oracle DB Status</span>
+                <span th:class="${'text-sm ' + (activePage == 'db-status' ? 'font-semibold' : 'font-medium')}">Database Status</span>
             </a>
             <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'settings' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/settings}">
                 <span class="material-symbols-outlined">settings</span>
                 <span th:class="${'text-sm ' + (activePage == 'settings' ? 'font-semibold' : 'font-medium')}">Settings</span>
+            </a>
+        </div>
+        <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+            <p class="px-3 text-[10px] font-bold text-slate-400 uppercase mb-2">Documentation</p>
+            <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'architecture' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/architecture}">
+                <span class="material-symbols-outlined">architecture</span>
+                <span th:class="${'text-sm ' + (activePage == 'architecture' ? 'font-semibold' : 'font-medium')}">System Architecture</span>
             </a>
         </div>
     </nav>
@@ -69,6 +84,10 @@
         <div class="flex items-center gap-1.5 border-l border-slate-200 dark:border-slate-800 pl-4">
             <span th:class="${'size-2 rounded-full ' + (stats.dbStatus.contains('Connected') ? 'bg-emerald-500' : 'bg-rose-500')}"></span>
             <span th:text="${stats.dbStatus}">DB: Connected</span>
+        </div>
+        <div class="flex items-center gap-1.5 border-l border-slate-200 dark:border-slate-800 pl-4">
+            <span id="cb-status-dot" th:class="${'size-2 rounded-full ' + (stats.circuitBreakerStatus == 'CLOSED' ? 'bg-emerald-500' : (stats.circuitBreakerStatus == 'HALF_OPEN' ? 'bg-amber-500' : 'bg-rose-500'))}"></span>
+            Circuit: <span id="cb-status-text" th:text="${stats.circuitBreakerStatus}">CLOSED</span>
         </div>
         <div class="flex items-center gap-1.5 border-l border-slate-200 dark:border-slate-800 pl-4">
             <span class="size-2 rounded-full bg-emerald-500"></span>

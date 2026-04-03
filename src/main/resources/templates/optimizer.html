@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html class="dark" lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head('Page')}">
-    <title>Page</title>
+<head th:replace="~{fragments/head :: head('Kafka Optimizer')}">
+    <title>Kafka Optimizer</title>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
 <div class="flex h-screen overflow-hidden">
@@ -34,6 +34,45 @@
 
         <!-- Content -->
         <div class="flex-1 overflow-y-auto p-8 space-y-6">
+            <!-- Current Optimized Values -->
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">max.poll.records</p>
+                    <p class="text-xl font-bold text-primary" th:text="${stats.maxPollRecords}">100</p>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">fetch.min.bytes</p>
+                    <p class="text-xl font-bold text-primary" th:text="${stats.fetchMinBytes}">10240</p>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">fetch.max.wait.ms</p>
+                    <p class="text-xl font-bold text-primary" th:text="${stats.fetchMaxWaitMs}">500</p>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">fetch.max.bytes</p>
+                    <p class="text-xl font-bold text-primary" th:text="${stats.fetchMaxBytes}">52428800</p>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">max.poll.interval.ms</p>
+                    <p class="text-xl font-bold text-primary" th:text="${stats.maxPollIntervalMs}">300000</p>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">concurrency</p>
+                    <p class="text-xl font-bold text-primary" th:text="${stats.concurrency}">6</p>
+                </div>
+            </div>
+
+            <!-- Timeline Chart -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h4 class="text-base font-bold">Optimization Timeline</h4>
+                        <p class="text-xs text-slate-500">Correlation between throughput and PID-tuned parameters (max.poll.records & concurrency)</p>
+                    </div>
+                </div>
+                <div class="h-[350px] w-full" id="optimizer-timeline-chart"></div>
+            </div>
+
             <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
                 <div class="p-6 border-b border-slate-200 dark:border-slate-800">
                     <h4 class="text-base font-bold">Recent Property Optimizations</h4>
@@ -47,7 +86,7 @@
                             <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Property</th>
                             <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center">Old Value</th>
                             <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center">New Value</th>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Reason</th>
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Explication</th>
                         </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -56,7 +95,10 @@
                             <td class="px-6 py-4 text-sm font-mono font-bold text-primary" th:text="${opt.propertyName}">max.poll.records</td>
                             <td class="px-6 py-4 text-sm text-center text-slate-500 line-through" th:text="${opt.oldValue}">100</td>
                             <td class="px-6 py-4 text-sm text-center font-bold text-emerald-500" th:text="${opt.newValue}">500</td>
-                            <td class="px-6 py-4 text-xs text-slate-600 dark:text-slate-400 max-w-xs truncate" th:title="${opt.reason}" th:text="${opt.reason}">Reason for optimization...</td>
+                            <td class="px-6 py-4 text-xs text-slate-600 dark:text-slate-400 max-w-md" th:title="${opt.reason}">
+                                <div class="font-medium text-slate-900 dark:text-slate-200 mb-1" th:text="${opt.explanation}">Explication pédagogique du changement...</div>
+                                <div class="text-[10px] text-slate-400 font-mono" th:text="${opt.reason}">PID optimization detail...</div>
+                            </td>
                         </tr>
                         <tr th:if="${#lists.isEmpty(optimizations)}">
                             <td colspan="5" class="px-6 py-10 text-center text-slate-500 italic">No optimizations recorded yet.</td>
@@ -99,46 +141,141 @@
     </main>
 </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        initThemeToggle();
+<!-- Common Scripts Fragment -->
+<div th:replace="~{fragments/scripts :: common-scripts}"></div>
+
+<script th:inline="javascript">
+    var initialStats = /*[[${stats}]]*/ {};
+    var timelineChart;
+
+    function initTimelineChart() {
+        var options = {
+            series: [
+                {
+                    name: 'Throughput (Msg/s)',
+                    type: 'area',
+                    data: initialStats.successThroughput || []
+                },
+                {
+                    name: 'max.poll.records',
+                    type: 'line',
+                    data: initialStats.maxPollRecordsHistory || []
+                },
+                {
+                    name: 'concurrency',
+                    type: 'line',
+                    data: initialStats.concurrencyHistory || []
+                }
+            ],
+            chart: {
+                height: 350,
+                type: 'line',
+                stacked: false,
+                toolbar: { show: false },
+                animations: { enabled: true, easing: 'linear', dynamicAnimation: { speed: 1000 } }
+            },
+            stroke: {
+                width: [0, 3, 3],
+                curve: 'smooth'
+            },
+            plotOptions: {
+                bar: { columnWidth: '50%' }
+            },
+            fill: {
+                type: 'gradient',
+                gradient: {
+                    inverseColors: false,
+                    shade: 'light',
+                    type: "vertical",
+                    opacityFrom: [0.35, 1, 1],
+                    opacityTo: [0.1, 1, 1],
+                    stops: [0, 90, 100]
+                }
+            },
+            colors: ['#135bec', '#10b981', '#f59e0b'],
+            labels: initialStats.timestamps || [],
+            xaxis: {
+                type: 'datetime',
+                labels: {
+                    style: { colors: '#94a3b8', fontSize: '10px' },
+                    datetimeUTC: false,
+                    format: 'HH:mm:ss'
+                }
+            },
+            yaxis: [
+                {
+                    title: { text: 'Throughput (Msg/s)', style: { color: '#135bec' } },
+                    labels: {
+                        style: { colors: '#94a3b8' },
+                        formatter: function(val) { return val.toFixed(1); }
+                    }
+                },
+                {
+                    opposite: true,
+                    title: { text: 'max.poll.records', style: { color: '#10b981' } },
+                    labels: {
+                        style: { colors: '#94a3b8' }
+                    }
+                },
+                {
+                    opposite: true,
+                    offsetY: 0,
+                    title: { text: 'concurrency', style: { color: '#f59e0b' } },
+                    labels: {
+                        style: { colors: '#94a3b8' },
+                        offsetX: -10
+                    }
+                }
+            ],
+            grid: { borderColor: '#1e293b', strokeDashArray: 4 },
+            tooltip: {
+                theme: 'dark',
+                x: { format: 'HH:mm:ss' }
+            },
+            legend: {
+                show: true,
+                position: 'top',
+                horizontalAlign: 'right',
+                labels: { colors: '#94a3b8' }
+            }
+        };
+
+        timelineChart = new ApexCharts(document.querySelector("#optimizer-timeline-chart"), options);
+        timelineChart.render();
+    }
+
+    // WebSocket Setup
+    var socket = new SockJS('/ws');
+    var stompClient = Stomp.over(socket);
+    stompClient.debug = null;
+
+    stompClient.connect({}, function (frame) {
+        updateWsStatus(true);
+        stompClient.subscribe('/topic/stats', function (statsMessage) {
+            var stats = JSON.parse(statsMessage.body);
+            updateTimeline(stats);
+        });
+    }, function(error) {
+        updateWsStatus(false);
     });
 
-    function initThemeToggle() {
-        var themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
-        var themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
-
-        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            themeToggleLightIcon.classList.remove('hidden');
-        } else {
-            themeToggleDarkIcon.classList.remove('hidden');
+    function updateTimeline(stats) {
+        if (timelineChart) {
+            timelineChart.updateOptions({
+                xaxis: { categories: stats.timestamps }
+            });
+            timelineChart.updateSeries([
+                { name: 'Throughput (Msg/s)', data: stats.successThroughput },
+                { name: 'max.poll.records', data: stats.maxPollRecordsHistory },
+                { name: 'concurrency', data: stats.concurrencyHistory }
+            ]);
         }
-
-        var themeToggleBtn = document.getElementById('theme-toggle');
-
-        themeToggleBtn.addEventListener('click', function() {
-            themeToggleDarkIcon.classList.toggle('hidden');
-            themeToggleLightIcon.classList.toggle('hidden');
-
-            if (localStorage.getItem('color-theme')) {
-                if (localStorage.getItem('color-theme') === 'light') {
-                    document.documentElement.classList.add('dark');
-                    localStorage.setItem('color-theme', 'dark');
-                } else {
-                    document.documentElement.classList.remove('dark');
-                    localStorage.setItem('color-theme', 'light');
-                }
-            } else {
-                if (document.documentElement.classList.contains('dark')) {
-                    document.documentElement.classList.remove('dark');
-                    localStorage.setItem('color-theme', 'light');
-                } else {
-                    document.documentElement.classList.add('dark');
-                    localStorage.setItem('color-theme', 'dark');
-                }
-            }
-        });
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initThemeToggle();
+        initTimelineChart();
+    });
 </script>
 </body>
 </html>

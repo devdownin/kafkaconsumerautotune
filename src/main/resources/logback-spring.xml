@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- Standard Console Appender for development -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            <charset>utf8</charset>
+        </encoder>
+    </appender>
+
+    <springProperty scope="context" name="appName" source="spring.application.name"/>
+    <springProperty scope="context" name="serviceId" source="app.service.id"/>
+    <springProperty scope="context" name="serviceVersion" source="app.service.version"/>
+
+    <!-- JSON Console Appender for production/cloud environments (ELK format) -->
+    <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp>
+                    <fieldName>@timestamp</fieldName>
+                    <timeZone>UTC</timeZone>
+                </timestamp>
+                <pattern>
+                    <pattern>
+                        {
+                          "event": {
+                            "category": "%mdc{eventCategory:-web}",
+                            "kind": "event",
+                            "outcome": "%mdc{eventOutcome:-success}",
+                            "type": "%mdc{eventType:-access}",
+                            "http": {
+                              "method": "%mdc{httpMethod}"
+                            },
+                            "url": {
+                              "path": "%mdc{urlPath}"
+                            },
+                            "kafka": {
+                              "topic": "%mdc{kafkaTopic:-}",
+                              "partition": "%mdc{kafkaPartition:-}",
+                              "offset": "%mdc{kafkaOffset:-}",
+                              "key": "%mdc{kafkaKey:-}",
+                              "eventId": "%mdc{eventId:-}"
+                            }
+                          },
+                          "client": {
+                            "ip": "%mdc{clientIp:-}",
+                            "user_agent": {
+                              "original": "%mdc{userAgent:-}"
+                            }
+                          },
+                          "correlation": {
+                            "id": "%mdc{correlationId:-}",
+                            "traceId": "%mdc{traceId:-}",
+                            "spanId": "%mdc{spanId:-}"
+                          },
+                          "host": {
+                            "hostname": "${HOSTNAME:-unknown}"
+                          },
+                          "process": {
+                            "pid": "${PID}",
+                            "thread": {
+                              "name": "%thread"
+                            }
+                          },
+                          "log": {
+                            "level": "%level",
+                            "logger": "%logger",
+                            "rgpd": "%mdc{rgpd:-false}",
+                            "authentication": "%mdc{authentication:-none}"
+                          },
+                          "message": "%message",
+                          "service": {
+                            "id": "${serviceId:-none}",
+                            "name": "${appName:-kafka-consumer-batch-service}",
+                            "version": "${serviceVersion:-unknown}",
+                            "node": {
+                              "name": "${HOSTNAME:-unknown}"
+                            }
+                          }
+                        }
+                    </pattern>
+                </pattern>
+                <stackTrace>
+                    <fieldName>stack_trace</fieldName>
+                </stackTrace>
+            </providers>
+        </encoder>
+    </appender>
+
+    <!-- File Appender for Loki/Promtail -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH:-./logs}/app.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH:-./logs}/app.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp>
+                    <fieldName>@timestamp</fieldName>
+                    <timeZone>UTC</timeZone>
+                </timestamp>
+                <pattern>
+                    <pattern>
+                        {
+                          "event": {
+                            "category": "%mdc{eventCategory:-web}",
+                            "kind": "event",
+                            "outcome": "%mdc{eventOutcome:-success}",
+                            "type": "%mdc{eventType:-access}",
+                            "http": {
+                              "method": "%mdc{httpMethod}"
+                            },
+                            "url": {
+                              "path": "%mdc{urlPath}"
+                            },
+                            "kafka": {
+                              "topic": "%mdc{kafkaTopic:-}",
+                              "partition": "%mdc{kafkaPartition:-}",
+                              "offset": "%mdc{kafkaOffset:-}",
+                              "key": "%mdc{kafkaKey:-}",
+                              "eventId": "%mdc{eventId:-}"
+                            }
+                          },
+                          "client": {
+                            "ip": "%mdc{clientIp:-}",
+                            "user_agent": {
+                              "original": "%mdc{userAgent:-}"
+                            }
+                          },
+                          "correlation": {
+                            "id": "%mdc{correlationId:-}",
+                            "traceId": "%mdc{traceId:-}",
+                            "spanId": "%mdc{spanId:-}"
+                          },
+                          "host": {
+                            "hostname": "${HOSTNAME:-unknown}"
+                          },
+                          "process": {
+                            "pid": "${PID}",
+                            "thread": {
+                              "name": "%thread"
+                            }
+                          },
+                          "log": {
+                            "level": "%level",
+                            "logger": "%logger",
+                            "rgpd": "%mdc{rgpd:-false}",
+                            "authentication": "%mdc{authentication:-none}"
+                          },
+                          "message": "%message",
+                          "service": {
+                            "id": "${serviceId:-none}",
+                            "name": "${appName:-kafka-consumer-batch-service}",
+                            "version": "${serviceVersion:-unknown}",
+                            "node": {
+                              "name": "${HOSTNAME:-unknown}"
+                            }
+                          }
+                        }
+                    </pattern>
+                </pattern>
+                <stackTrace>
+                    <fieldName>stack_trace</fieldName>
+                </stackTrace>
+            </providers>
+        </encoder>
+    </appender>
+
+    <!-- Profile: dev and local-h2 use standard human-readable logs -->
+    <springProfile name="dev, local-h2">
+        <root level="INFO">
+            <appender-ref ref="JSON_CONSOLE"/>
+            <appender-ref ref="FILE"/>
+        </root>
+    </springProfile>
+
+    <!-- Profile: rec (and any others like prod) use structured JSON logs -->
+    <springProfile name="!dev &amp; !local-h2">
+        <root level="INFO">
+            <appender-ref ref="JSON_CONSOLE"/>
+            <appender-ref ref="FILE"/>
+        </root>
+    </springProfile>
+
+    <!-- Loggers configuration -->
+    <logger name="com.vaut" level="INFO"/>
+    <logger name="org.springframework.kafka" level="INFO"/>
+    <logger name="org.apache.kafka" level="WARN"/>
+
+</configuration>

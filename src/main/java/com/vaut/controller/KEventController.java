@@ -15,6 +15,7 @@ import java.util.List;
 
 /**
  * REST controller for managing generalized Kafka events.
+ * Provides endpoints for paginated access to processed events.
  */
 @RestController
 @RequestMapping("/api/events")
@@ -23,6 +24,13 @@ public class KEventController {
 
     private final KEventRepository repository;
 
+    /**
+     * Retrieves a paginated list of processed events.
+     *
+     * @param page The page number to retrieve (default 0).
+     * @param size The number of events per page (default 10).
+     * @return A Page of KEvent objects.
+     */
     @GetMapping
     public Page<KEvent> getEvents(
             @RequestParam(defaultValue = "0") int page,
@@ -30,6 +38,12 @@ public class KEventController {
         return repository.findAll(PageRequest.of(page, size, Sort.by("id").descending()));
     }
 
+    /**
+     * Retrieves the most recently processed events.
+     *
+     * @param limit The maximum number of recent events to return (default 10).
+     * @return A list of the most recent KEvent objects.
+     */
     @GetMapping("/recent")
     public List<KEvent> getRecentEvents(@RequestParam(defaultValue = "10") int limit) {
         return repository.findAll(PageRequest.of(0, limit, Sort.by("id").descending())).getContent();
