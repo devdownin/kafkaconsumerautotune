@@ -19,7 +19,7 @@ COPY wait-for-db.sh wait-for-db.sh
 RUN chmod +x wait-for-db.sh
 
 # Copy the executable JAR file from the build stage
-COPY --from=build /app/target/kafka-consumer-demo-1.0.1.jar app.jar
+COPY --from=build /app/target/kafka-consumer-demo-*.jar app.jar
 
 # Expose the port the Spring Boot application runs on (default is 8080)
 EXPOSE 8080
