@@ -8,7 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
@@ -55,6 +57,7 @@ public class KafkaTuningService {
     private final KafkaTuningProperties tuningProperties;
     private final KafkaOptimizerService optimizerService;
     private final DashboardService dashboardService;
+    private final MessageSource messageSource;
 
     public KafkaTuningService(DefaultKafkaConsumerFactory<String, String> consumerFactory,
                               KafkaListenerEndpointRegistry registry,
@@ -62,7 +65,8 @@ public class KafkaTuningService {
                               Optional<AdminClient> adminClient,
                               KafkaTuningProperties tuningProperties,
                               KafkaOptimizerService optimizerService,
-                              @Lazy DashboardService dashboardService) {
+                              @Lazy DashboardService dashboardService,
+                              MessageSource messageSource) {
         this.consumerFactory = consumerFactory;
         this.registry = registry;
         this.meterRegistry = meterRegistry;
@@ -70,6 +74,7 @@ public class KafkaTuningService {
         this.tuningProperties = tuningProperties;
         this.optimizerService = optimizerService;
         this.dashboardService = dashboardService;
+        this.messageSource = messageSource;
 
         // Register gauge for smoothed batch duration
         meterRegistry.gauge(AppConstants.METRIC_KAFKA_TUNING_BATCH_DURATION_SMOOTHED,
@@ -170,8 +175,8 @@ public class KafkaTuningService {
                 log.info("AUTO-TUNE [PID]: Adjusting max.poll.records {} -> {} (Error: {})",
                         currentMaxPollRecords, nextMaxPoll, String.format("%.4f", error));
                 String explanation = nextMaxPoll > currentMaxPollRecords ?
-                        "Augmentation de la taille du lot car le traitement est plus rapide que l'objectif. Cela améliore l'efficacité globale." :
-                        "Réduction de la taille du lot car le traitement est trop lent par rapport à l'objectif. Cela permet de stabiliser le temps de réponse.";
+                        messageSource.getMessage("tuning.explanation.increase", null, LocaleContextHolder.getLocale()) :
+                        messageSource.getMessage("tuning.explanation.decrease", null, LocaleContextHolder.getLocale());
                 optimizerService.addOptimization(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, String.valueOf(currentMaxPollRecords), String.valueOf(nextMaxPoll),
                         String.format("PID optimization: error=%.4f, throughput=%.2f msg/s", error, throughput), explanation);
                 currentMaxPollRecords = nextMaxPoll;

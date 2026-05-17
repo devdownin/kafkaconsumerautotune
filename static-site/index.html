@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KafkaConsumerAutoTune - Smart Kafka Consumption</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #1a365d 0%, #2d3748 100%);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-900">
+
+    <!-- Header/Nav -->
+    <nav class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center">
+                    <span class="text-2xl font-bold text-blue-600">KafkaConsumerAutoTune</span>
+                </div>
+                <div class="hidden md:flex space-x-8 items-center">
+                    <a href="#features" class="hover:text-blue-600 transition">Features</a>
+                    <a href="#how-it-works" class="hover:text-blue-600 transition">How it Works</a>
+                    <a href="#architecture" class="hover:text-blue-600 transition">Architecture</a>
+                    <a href="fr/" class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">Français</a>
+                    <a href="https://github.com" class="text-gray-600 hover:text-black transition text-2xl"><i class="fab fa-github"></i></a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="gradient-bg text-white py-20 px-4">
+        <div class="max-w-7xl mx-auto text-center">
+            <h1 class="text-4xl md:text-6xl font-extrabold mb-6 leading-tight">
+                Self-Driving Kafka Consumers
+            </h1>
+            <p class="text-xl md:text-2xl text-blue-100 mb-10 max-w-3xl mx-auto">
+                Stop guessing your Kafka parameters. Let our PID-based Auto-Tuning engine optimize your throughput and latency in real-time.
+            </p>
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <a href="#how-it-works" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-bold text-lg transition shadow-lg">Learn How It Works</a>
+                <a href="https://github.com" class="bg-white/10 hover:bg-white/20 text-white border border-white/30 px-8 py-4 rounded-lg font-bold text-lg transition">View on GitHub</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Value Propositions -->
+    <section id="features" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-16">Why KafkaConsumerAutoTune?</h2>
+            <div class="grid md:grid-cols-3 gap-12">
+                <!-- Feature 1 -->
+                <div class="text-center p-6 rounded-xl border border-gray-100 hover:shadow-xl transition">
+                    <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl">
+                        <i class="fas fa-magic"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4">PID Auto-Tuning</h3>
+                    <p class="text-gray-600">Like a cruise control for your consumer. It dynamically adjusts <code>max.poll.records</code> and <code>concurrency</code> to reach your target processing duration.</p>
+                </div>
+                <!-- Feature 2 -->
+                <div class="text-center p-6 rounded-xl border border-gray-100 hover:shadow-xl transition">
+                    <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4">Battle-Tested Resilience</h3>
+                    <p class="text-gray-600">Built-in Circuit Breakers (Resilience4j) and specialized DLT management ensure your system stays stable even when your downstream services don't.</p>
+                </div>
+                <!-- Feature 3 -->
+                <div class="text-center p-6 rounded-xl border border-gray-100 hover:shadow-xl transition">
+                    <div class="w-16 h-16 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4">Deep Observability</h3>
+                    <p class="text-gray-600">Native Prometheus exporter and real-time WebSocket dashboard. See exactly how the PID controller makes decisions in real-time.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pedagogical Section: The PID Controller -->
+    <section id="how-it-works" class="py-20 bg-gray-50">
+        <div class="max-w-5xl mx-auto px-4">
+            <div class="flex flex-col md:flex-row items-center gap-12">
+                <div class="md:w-1/2">
+                    <h2 class="text-3xl font-bold mb-6">The Magic Behind the Optimization</h2>
+                    <p class="text-lg text-gray-700 mb-4">
+                        Most Kafka consumers are statically configured. But traffic isn't static.
+                        <strong>KafkaConsumerAutoTune</strong> uses a PID (Proportional-Integral-Derivative) controller to solve this.
+                    </p>
+                    <ul class="space-y-4">
+                        <li class="flex items-start">
+                            <span class="text-blue-600 mr-3 font-bold">P:</span>
+                            <span><strong>Proportional</strong> – Reacts to the current error (Difference between actual and target duration).</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-blue-600 mr-3 font-bold">I:</span>
+                            <span><strong>Integral</strong> – Corrects long-term bias from historical errors.</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-blue-600 mr-3 font-bold">D:</span>
+                            <span><strong>Derivative</strong> – Anticipates future changes based on current trends.</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="md:w-1/2 bg-white p-8 rounded-2xl shadow-inner border border-gray-200">
+                    <div class="text-center mb-4 text-sm uppercase tracking-widest text-gray-400 font-semibold">Tuning Logic</div>
+                    <div class="space-y-6">
+                        <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+                            <div class="font-mono text-sm text-blue-800">Target Duration: 2000ms</div>
+                        </div>
+                        <div class="flex justify-between items-center px-4">
+                            <div class="text-xs text-gray-500">Actual: 2500ms</div>
+                            <div class="text-blue-600"><i class="fas fa-arrow-right"></i></div>
+                            <div class="text-xs font-bold text-red-500">Reduce Records</div>
+                        </div>
+                        <div class="flex justify-between items-center px-4">
+                            <div class="text-xs text-gray-500">Actual: 1000ms</div>
+                            <div class="text-blue-600"><i class="fas fa-arrow-right"></i></div>
+                            <div class="text-xs font-bold text-green-500">Increase Records</div>
+                        </div>
+                        <p class="text-xs text-center text-gray-400 italic">Continuous feedback loop every few seconds.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Visual Request Gen -->
+    <section class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <h2 class="text-3xl font-bold mb-8">Visual Request Generation</h2>
+            <p class="text-xl text-gray-600 mb-12 max-w-3xl mx-auto">
+                No more manual JSON crafting for tests. Take a screenshot of your diagram or architecture,
+                and our AI-powered visual engine generates valid test events for your Kafka topics.
+            </p>
+            <div class="inline-block relative">
+                <div class="bg-gray-100 rounded-lg p-2 shadow-lg border border-gray-200">
+                    <div class="bg-white rounded p-4 h-64 w-96 flex items-center justify-center border-2 border-dashed border-gray-300">
+                         <i class="fas fa-image text-gray-300 text-6xl"></i>
+                    </div>
+                </div>
+                <div class="absolute -bottom-4 -right-4 bg-blue-600 text-white p-4 rounded-lg shadow-xl">
+                    <i class="fas fa-cogs mr-2"></i> Generating JSON...
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture CTA -->
+    <section id="architecture" class="py-20 gradient-bg text-white">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <h2 class="text-3xl font-bold mb-8">Ready for Production</h2>
+            <div class="grid md:grid-cols-4 gap-8 mb-12">
+                <div class="bg-white/10 p-6 rounded-lg backdrop-blur-sm">
+                    <div class="text-3xl font-bold mb-2">Java 21</div>
+                    <div class="text-sm text-blue-200">Latest stable runtime</div>
+                </div>
+                <div class="bg-white/10 p-6 rounded-lg backdrop-blur-sm">
+                    <div class="text-3xl font-bold mb-2">Spring Boot</div>
+                    <div class="text-sm text-blue-200">3.5.9 Ecosystem</div>
+                </div>
+                <div class="bg-white/10 p-6 rounded-lg backdrop-blur-sm">
+                    <div class="text-3xl font-bold mb-2">OTEL</div>
+                    <div class="text-sm text-blue-200">OpenTelemetry Native</div>
+                </div>
+                <div class="bg-white/10 p-6 rounded-lg backdrop-blur-sm">
+                    <div class="text-3xl font-bold mb-2">Oracle</div>
+                    <div class="text-sm text-blue-200">Enterprise persistence</div>
+                </div>
+            </div>
+            <a href="https://github.com" class="inline-block bg-white text-blue-900 px-10 py-4 rounded-full font-bold text-xl hover:scale-105 transition transform">
+                Explore the Source Code
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-400 py-12 px-4">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center">
+            <div class="mb-8 md:mb-0">
+                <span class="text-xl font-bold text-white">KafkaConsumerAutoTune</span>
+                <p class="text-sm mt-2">Licensed under Apache 2.0</p>
+            </div>
+            <div class="flex space-x-6">
+                <a href="#" class="hover:text-white transition">Documentation</a>
+                <a href="#" class="hover:text-white transition">Privacy</a>
+                <a href="#" class="hover:text-white transition">Terms</a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>
