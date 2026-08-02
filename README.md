@@ -16,7 +16,7 @@ If you set these values too low, you underutilize your resources. If you set the
 
 **KafkaConsumerAutoTune solves this by automating these settings and simplifying traffic generation.**
 
---
+---
 
 ## Innovation: The "Cruise Control" (PID Controller)
 
@@ -69,17 +69,56 @@ You can't improve what you don't measure. KafkaConsumerAutoTune offers:
 ```bash
 docker-compose up -d
 ```
-This launches: Kafka, Oracle XE, Prometheus, Jaeger, and the KafkaConsumerAutoTune application.
+This launches: Kafka, Oracle XE, Prometheus, Jaeger, Grafana, Loki, and the KafkaConsumerAutoTune
+application. Oracle XE takes a few minutes to initialise on first start; the application waits for
+it via `wait-for-db.sh`.
 
 ### Accessing the tools
-- **KafkaConsumerAutoTune Dashboard**: [http://localhost:8080/dashboard](http://localhost:8080/dashboard)
-- **Kafka Optimizer**: [http://localhost:8080/optimizer](http://localhost:8080/optimizer)
-- **Jaeger (Traces)** : [http://localhost:16686](http://localhost:16686)
+
+Application (port 8080):
+
+| Page | URL | What it shows |
+|---|---|---|
+| Dashboard | [/](http://localhost:8080/) | Throughput, lag, JVM and database health |
+| Optimizer | [/optimizer](http://localhost:8080/optimizer) | History of auto-tuning decisions and why each was made |
+| Consumer groups | [/consumer-groups](http://localhost:8080/consumer-groups) | Group state, members, per-partition lag |
+| DLT management | [/dlt-management](http://localhost:8080/dlt-management) | Failed messages, with retry / edit-and-retry / discard |
+| Message viewer | [/message-viewer](http://localhost:8080/message-viewer) | Recent payloads, with configurable JsonPath blocks |
+| Simulation | [/simulation](http://localhost:8080/simulation) | Traffic generator, including malformed and duplicate records |
+| Metrics | [/metrics](http://localhost:8080/metrics) | All Micrometer meters with trend and threshold status |
+| Settings | [/settings](http://localhost:8080/settings) | Live log-level changes |
+| Architecture | [/architecture](http://localhost:8080/architecture) | C4 diagrams |
+
+Supporting stack:
+
+- **Grafana**: [http://localhost:3000](http://localhost:3000)
+- **Prometheus**: [http://localhost:9090](http://localhost:9090)
+- **Jaeger (traces)**: [http://localhost:16686](http://localhost:16686)
+- **Prometheus scrape endpoint**: [http://localhost:8080/actuator/prometheus](http://localhost:8080/actuator/prometheus)
+
+### Running locally without Docker
+
+The `dev` profile uses an in-memory H2 database and expects a Kafka broker at
+`${KAFKA_BOOTSTRAP_SERVERS:kafkadev:9092}`:
+
+```bash
+./mvnw spring-boot:run
+```
+
+### Running the tests
+
+```bash
+./mvnw verify
+```
+
+This runs the full suite, integration tests included. They use an embedded Kafka broker and H2, so
+no Docker daemon is required.
 
 ---
 
 ## Learn more
 - [Detailed Technical Documentation](DOCUMENTATION.md)
+- [Configuration Reference](docs/configuration.md)
 - [Error Management](docs/error-management.md)
 - [Observability](docs/observability.md)
 - [Contributing Guidelines](CONTRIBUTING.md)

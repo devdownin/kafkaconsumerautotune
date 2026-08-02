@@ -176,7 +176,10 @@ management:
     distribution:
       percentiles-histogram:
         http.server.requests: true
-        kafka.events.batch.duration: true
+        # Le nom réel du timer est préfixé "app." (voir AppConstants). Sans le préfixe la clé ne
+        # correspondait à aucun compteur, donc l'histogramme - et les Exemplars qui en dépendent -
+        # n'étaient jamais activés pour la durée des batchs.
+        app.kafka.events.batch.duration: true
   tracing:
     sampling:
       probability: 1.0

@@ -4,6 +4,7 @@
 KafkaConsumerAutoTune est une application Spring Boot de haute performance conçue pour consommer des messages Kafka en mode batch, les traiter, et les persister. L'application se distingue par son moteur d'**auto-tuning** intelligent basé sur un contrôleur PID qui ajuste dynamiquement les paramètres pour optimiser le débit. Elle intègre une gestion avancée des erreurs (DLT, Fallback), une protection par **Circuit Breaker**, et une pile d'observabilité complète (Loki, Prometheus, Jaeger, Grafana).
 
 **Documents complémentaires :**
+- [Référence de Configuration](docs/configuration.md)
 - [Gestion des Erreurs et Résilience](docs/error-management.md)
 - [Observabilité (Logging, Tracing, Métriques)](docs/observability.md)
 
@@ -47,7 +48,11 @@ Surveille le débit et ajuste les paramètres pour atteindre une cible de **1,2 
 -   **Optimisation Réseau** : Ajuste dynamiquement `fetch.min.bytes`, `fetch.max.wait.ms` et `fetch.max.bytes` en fonction du débit (msg/s) et de la taille moyenne des messages.
 -   **Scaling Horizontal Interne** : Ajuste la `concurrency` (nombre de threads) en fonction de la charge CPU et du lag Kafka, sans dépasser le nombre de partitions.
 -   **Lissage (EMA)** : Applique un coefficient de lissage (alpha=0.2 par défaut) sur la durée des batchs pour éviter les sur-réactions aux pics de latence.
--   **Throttling de Survie** : Si le CPU ou la Mémoire dépassent 90%, le système réduit immédiatement `max.poll.records` de 30% pour éviter un crash.
+-   **Throttling de Survie** : Si le CPU ou la Mémoire dépassent 90%, le système réduit `max.poll.records` de 30% pour éviter un crash.
+-   **Mesure sur intervalle** : La durée des batchs et la taille des messages sont mesurées sur la fenêtre écoulée depuis le cycle précédent, et non sur toute la vie du process. Le contrôleur continue ainsi de réagir aux conditions courantes, au lieu d'une moyenne cumulée qui s'aplatit à mesure que le process tourne.
+-   **Cooldown de redémarrage** : Appliquer un paramètre redémarre le container listener, les changements sont donc soumis à `min-restart-interval-ms` (5 minutes par défaut). Un changement proposé pendant cette fenêtre est abandonné plutôt que mis en file, puis re-proposé au cycle suivant à partir de mesures fraîches. Rien n'est inscrit dans l'état interne tant que la valeur n'a pas atteint la consumer factory : le dashboard et le health indicator `kafkaTuning` décrivent donc toujours ce que le consumer exécute réellement. Le throttling d'urgence est soumis au même cooldown.
+
+L'ensemble des paramètres et leurs valeurs par défaut sont détaillés dans la [Référence de Configuration](docs/configuration.md#2-auto-tuning-kafkatuning).
 
 ### 3.3 Résilience et Circuit Breaker
 Protège la persistance via Resilience4j.
@@ -75,3 +80,47 @@ Protège la persistance via Resilience4j.
 -   **Framework** : Spring Boot 3.5.9.
 -   **Base de données** : Oracle (ou H2 en profil dev).
 -   **Infrastructure** : Docker Compose prêt pour la production (Prometheus, Loki, Jaeger, Grafana).
+
+---
+
+## 6. Build et Tests
+
+```bash
+./mvnw verify            # suite complète, tests d'intégration inclus
+./mvnw spring-boot:run   # exécution locale sur le profil dev (H2 en mémoire)
+```
+
+Les tests d'intégration utilisent un broker Kafka embarqué et H2 plutôt que Testcontainers : aucun
+démon Docker n'est requis. `verify` est ce qu'exécute la CI sur chaque push et chaque pull request.
+
+À noter : l'image Docker se construit avec `-DskipTests`. Elle empaquette un artefact déjà testé et
+ne constitue pas elle-même un garde-fou de test.
+
+---
+
+## 7. Schéma de Base de Données
+
+Le profil Oracle tourne avec `ddl-auto: validate` : le schéma doit correspondre exactement aux
+entités, sinon l'application ne démarre pas. `init.sql` fait référence et est idempotent — il crée
+les tables et séquences manquantes et met à niveau un schéma existant.
+
+### Mise à niveau d'un schéma Oracle existant
+
+Ré-exécutez `init.sql` sur le schéma applicatif. Le script va :
+
+- ajouter `DLT_EVENTS.SEVERITY` et `DLT_EVENTS.ORIGINAL_KEY` si absentes ;
+- convertir `DLT_EVENTS.PAYLOAD` et `DLT_EVENTS.ERROR_MESSAGE` de `VARCHAR2(4000)` vers `CLOB` ;
+- créer `RECOUVRABLE_EVENTS` et `RECOUVRABLE_SEQ` si absentes.
+
+La conversion CLOB reconstruit chaque colonne — ajout d'une CLOB, copie des données, suppression de
+l'originale, renommage — car Oracle refuse un `ALTER TABLE ... MODIFY` direct de `VARCHAR2` vers un
+type LOB (ORA-22858). **Faites une sauvegarde avant de l'exécuter sur une table peuplée.**
+
+### Une faiblesse à connaître
+
+Les profils `dev`, `local-h2` et `test` génèrent leur schéma depuis les entités
+(`ddl-auto: create-drop`), tandis que la production valide contre ce DDL écrit à la main. Rien dans
+la suite de tests n'exerce ce second chemin : un écart entre une entité et `init.sql` ne sera donc
+pas détecté par les tests — il se manifestera par un échec au démarrage, ou par une insertion qui
+échoue seulement lorsqu'une valeur dépasse la largeur déclarée. Vérifiez les deux lors de la
+modification d'une entité.

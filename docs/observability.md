@@ -15,8 +15,26 @@ Chaque log inclut les blocs suivants :
 -   `service` : Identité du service (`id`, `name`, `version`).
 
 ### 1.2 Centralisation avec Loki
-Les logs sont écrits dans un fichier tournant (`/logs/app.log`) via Logback. Un agent **Promtail** scrappe ce fichier en temps réel et expédie les logs vers **Grafana Loki**.
+Les logs sont écrits dans un fichier tournant (`${LOG_PATH:-./logs}/app.log`) via Logback. Un agent **Promtail** scrappe ce fichier en temps réel et expédie les logs vers **Grafana Loki**.
 -   **Corrélation** : Grâce au `traceId` présent dans chaque log, il est possible de retrouver tous les logs associés à une trace spécifique dans Grafana.
+-   **Rotation** : bornée à la fois en durée et en taille — 50 Mo par fichier, 7 jours d'historique, 1 Go au total, archives compressées en `.gz`. Une rotation purement quotidienne laissait une seule journée chargée croître sans limite.
+-   **Format par profil** : `dev` et `local-h2` écrivent sur la console en texte lisible ; les autres profils utilisent le format JSON ECS. Le fichier est toujours en JSON, quel que soit le profil.
+
+---
+
+## 1.3 Métriques applicatives
+
+Tous les compteurs applicatifs sont préfixés `app.` (et donc `app_` une fois exposés à Prometheus).
+
+| Compteur | Type | Description |
+|---|---|---|
+| `app.kafka.events.received.count` | Counter | Messages reçus depuis Kafka |
+| `app.kafka.events.processed` | Counter | Messages persistés avec succès |
+| `app.kafka.events.errors` | Counter | Échecs de traitement, ventilés par `type` (`id_extraction`, `missing_id`, `generic_processing`) |
+| `app.kafka.events.retried` | Counter | Messages rejoués depuis la DLT |
+| `app.kafka.events.batch.duration` | Timer | Durée de traitement d'un batch — l'entrée du contrôleur PID |
+| `app.kafka.event.received.size` | DistributionSummary | Taille des messages en octets, tag `topic` |
+| `app.kafka.tuning.batch.duration.smoothed` | Gauge | Durée de batch lissée (EMA) utilisée par le PID |
 
 ---
 
@@ -52,7 +70,7 @@ management:
   metrics:
     distribution:
       percentiles-histogram:
-        kafka.events.batch.duration: true # Nécessaire pour les Exemplars
+        app.kafka.events.batch.duration: true # Nécessaire pour les Exemplars
   tracing:
     sampling:
       probability: 1.0
@@ -61,8 +79,31 @@ management:
       endpoint: http://otel-collector:4318/v1/traces
 ```
 
+> Le préfixe `app.` est obligatoire : la clé doit correspondre exactement au nom du compteur. Une
+> clé qui ne correspond à aucun compteur est ignorée en silence, sans erreur au démarrage.
+
+### Endpoints Actuator exposés
+
+L'exposition est restreinte à `health,info,prometheus,metrics`. L'application n'ayant **aucune
+authentification**, exposer `"*"` publierait notamment `/actuator/heapdump` — un dump mémoire
+complet, donc les identifiants de connexion et le contenu des messages — ainsi que `/actuator/env`
+et `/actuator/configprops`. Seul `/actuator/prometheus` est réellement consommé, par le scrape
+Prometheus et la page `/metrics`.
+
+Deux health indicators applicatifs s'ajoutent aux indicateurs standards :
+-   `kafkaLag` : compare le lag total aux seuils `app.metrics.thresholds."kafka.lag"`.
+-   `kafkaTuning` : expose les paramètres actuellement appliqués par l'auto-tuning.
+
 ### Alerting
 Des règles d'alerte Prometheus sont définies dans `prometheus-rules.yml` pour surveiller :
 -   Le lag Kafka excessif.
 -   Le taux d'erreur de traitement (> 5%).
 -   La durée anormale des batchs.
+-   L'état du circuit breaker, la charge CPU et l'occupation mémoire.
+
+> **Limite connue** : les trois règles portant sur le lag interrogent `kafka_consumer_group_lag`,
+> une métrique produite par `kafka_exporter` — absent du `docker-compose.yml`. L'application
+> n'expose pas non plus de gauge de lag : elle le calcule pour le dashboard et le health indicator
+> `kafkaLag`, sans l'enregistrer auprès de Micrometer. **Ces alertes ne peuvent donc pas se
+> déclencher en l'état.** Les corriger suppose soit d'ajouter `kafka_exporter` à la stack, soit
+> d'enregistrer une gauge applicative et de réécrire les règles en conséquence.

@@ -15,11 +15,13 @@ L'application adopte une approche de "fail-safe" et de "graceful degradation" :
 
 ### 2.1 Erreurs Transitoires (`TransientException`)
 Ce sont des erreurs temporaires (ex: Timeout DB, indisponibilité réseau).
--   **Traitement** : L'exception est levée jusqu'au container Kafka, déclenchant un re-jeu immédiat au niveau de Kafka (Retry).
+-   **Traitement** : L'exception est levée jusqu'au container Kafka, déclenchant un re-jeu du batch.
+-   **Cadence** : le `DefaultErrorHandler` du listener rejoue le batch `spring.kafka.listener.retry.max-attempts` fois (défaut 3) avec un délai de `retry.back-off-ms` (défaut 2 s) entre chaque tentative. Ce délai est délibéré : rejouer immédiatement ne laisse aucune chance à une base en difficulté de se rétablir.
 
 ### 2.2 Erreurs Permanentes (`PermanentException`)
 Ce sont des erreurs liées au contenu (ex: JSON invalide, violation de contrainte). Le re-traitement échouera systématiquement.
 -   **Traitement** : Le message est immédiatement routé vers la **Dead Letter Topic (DLT)** pour libérer le reste du batch.
+-   **Classification** : `PermanentException` et `JsonProcessingException` sont déclarées non rejouables auprès du `DefaultErrorHandler`. Le consumer les ayant déjà routées en DLT, un re-jeu ne ferait que rejouer un message qui ne peut pas aboutir.
 
 ---
 
@@ -40,16 +42,28 @@ Pour protéger la base de données :
 -   **Circuit Breaker** (Resilience4j) sur le service de persistance.
 -   **Auto-Pause** : Si le circuit s'ouvre, le consommateur Kafka est arrêté (`container.stop()`).
 -   **Auto-Reprise** : Redémarrage automatique dès que le circuit repasse en `HALF_OPEN` ou `CLOSED`.
+-   **Exécution asynchrone** : l'arrêt et le redémarrage sont dispatchés sur un thread dédié. Resilience4j publie les transitions d'état de façon synchrone sur le thread qui les a provoquées — pour ce circuit, le thread listener Kafka lui-même — et `container.stop()` y attendrait le thread en train d'exécuter l'appel.
+
+> **Note sur la reprise** : le circuit ne se referme qu'après `permittedNumberOfCallsInHalfOpenState` appels réussis (défaut 3). Un appel correspond à **un batch**, pas à un message : publier trois messages ne garantit pas trois appels, le consumer restant libre de tous les retourner dans un même poll.
 
 ### 3.4 Throttling d'Urgence
-Si le système détecte une saturation critique (CPU > 90% ou Mémoire > 90%), le moteur d'Auto-Tune réduit immédiatement le `max.poll.records` de 30% pour soulager l'infrastructure avant même que des erreurs ne surviennent.
+Si le système détecte une saturation critique (CPU > 90% ou Mémoire > 90%), le moteur d'Auto-Tune réduit le `max.poll.records` de 30% pour soulager l'infrastructure avant même que des erreurs ne surviennent.
+
+> **Limite connue** : cette réduction reste soumise au cooldown de redémarrage (`min-restart-interval-ms`, défaut 5 minutes). Sous saturation prolongée, la protection peut donc être différée d'autant.
 
 ---
 
 ## 4. Cycle de Vie de la DLT
 
-1.  **Enregistrement** : Les erreurs sont stockées dans la table `DLT_EVENT` et publiées sur Kafka `.dlt`.
-2.  **Gestion Opérateur** : Via l'interface utilisateur, il est possible de :
+1.  **Enregistrement** : Les erreurs sont stockées dans la table `DLT_EVENTS` et publiées sur le topic Kafka défini par `kafka.topic.dlt`.
+2.  **Gestion Opérateur** : Via l'interface utilisateur (`/dlt-management`), il est possible de :
     -   **Retry** : Re-jouer le message.
     -   **Discard** : Abandonner le message.
     -   **Edit & Retry** : Corriger le payload (ex: fixer un JSON) puis re-jouer.
+    -   Ces actions existent aussi en masse (`retry-all`, `discard-all`, sélection multiple).
+
+### 4.1 Garanties du re-jeu
+
+-   **Clé préservée** : la clé Kafka d'origine est stockée (`ORIGINAL_KEY`) et restituée au re-jeu. Sans elle, le message repartirait sur une autre partition et l'ordre par clé serait rompu.
+-   **Accusé de réception attendu** : l'événement n'est marqué `RESOLVED` qu'après acquittement du broker. Le marquer sur un envoi asynchrone non confirmé perdrait le message si l'envoi échouait ensuite.
+-   **En-têtes restitués** : les en-têtes d'origine sont sérialisés en JSON à la mise en DLT et réappliqués au re-jeu.
