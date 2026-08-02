@@ -98,12 +98,14 @@ public class KafkaTuningService {
     private double previousError = 0;
     private double smoothedBatchDuration = -1;
 
-    // Current tuned values
-    private int currentMaxPollRecords = -1;
-    private int currentFetchMinBytes = -1;
-    private int currentFetchMaxWaitMs = -1;
-    private int currentFetchMaxBytes = -1;
-    private int currentMaxPollIntervalMs = -1;
+    // Current tuned values. Written by the tuning scheduler, read by the dashboard and the health
+    // indicator on their own threads, hence volatile. Not synchronized: applying a change restarts
+    // the listener container, and holding a lock across that would stall every dashboard request.
+    private volatile int currentMaxPollRecords = -1;
+    private volatile int currentFetchMinBytes = -1;
+    private volatile int currentFetchMaxWaitMs = -1;
+    private volatile int currentFetchMaxBytes = -1;
+    private volatile int currentMaxPollIntervalMs = -1;
 
     /**
      * The heart of the auto-tuning logic. Runs periodically to evaluate system performance.
@@ -376,7 +378,11 @@ public class KafkaTuningService {
     /**
      * Initializes the current tuning values by reading from the consumer factory's configuration.
      */
-    private void initializeCurrentValues() {
+    private synchronized void initializeCurrentValues() {
+        if (currentMaxPollRecords != -1) {
+            // Another thread got here first
+            return;
+        }
         Map<String, Object> configs = consumerFactory.getConfigurationProperties();
 
         Object mpr = configs.get(ConsumerConfig.MAX_POLL_RECORDS_CONFIG);

@@ -190,10 +190,13 @@ management:
       export:
         enabled: false
   # Exposition des endpoints Actuator pour le monitoring (Prometheus, Health, etc.)
+  # Liste explicite plutôt que "*" : aucune authentification n'est configurée sur l'application,
+  # et "*" publiait notamment /actuator/heapdump (dump mémoire complet, donc identifiants et
+  # payloads de messages) ainsi que /actuator/env et /actuator/configprops.
   endpoints:
     web:
       exposure:
-        include: "*"
+        include: health,info,prometheus,metrics
   endpoint:
     health:
       show-details: always

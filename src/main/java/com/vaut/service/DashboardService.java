@@ -69,8 +69,8 @@ import io.micrometer.core.instrument.Measurement;
 @lombok.extern.slf4j.Slf4j
 public class DashboardService {
 
-    private final KEventRepository eventRepository;
     private final DltEventRepository dltEventRepository;
+    private final EventCountsService eventCountsService;
     private final EntityManager entityManager;
     private final Optional<BuildProperties> buildProperties;
     private final DataSource dataSource;
@@ -532,16 +532,16 @@ public class DashboardService {
      */
     @Cacheable(value = "stats", sync = true)
     public DashboardStatsDTO getStats() {
-        long successCount = eventRepository.count();
-        var dltStats = dltEventRepository.getDltStats(LocalDateTime.now().minusDays(1));
+        EventCountsService.Counts counts = eventCountsService.getCounts();
 
-        long dltCount = dltStats.getTotalCount() != null ? dltStats.getTotalCount() : 0L;
+        long successCount = counts.successCount();
+        long dltCount = counts.dltCount();
         long total = successCount + dltCount;
 
         double successRate = total == 0 ? 100.0 : (double) successCount / total * 100.0;
 
-        long totalDlt24h = dltStats.getCountLast24h() != null ? dltStats.getCountLast24h() : 0L;
-        long unresolvedErrors = dltStats.getUnresolvedCount() != null ? dltStats.getUnresolvedCount() : 0L;
+        long totalDlt24h = counts.countLast24h();
+        long unresolvedErrors = counts.unresolvedCount();
 
         // Optimized: We no longer fetch all events in memory to calculate average
         // For now, we set it to N/A or implement it via a more specific query if needed
@@ -569,8 +569,8 @@ public class DashboardService {
             throughput24h = new ArrayList<>(throughput1m);
         }
 
-        long resolvedCount = dltStats.getResolvedCount() != null ? dltStats.getResolvedCount() : 0L;
-        long discardedCount = dltStats.getDiscardedCount() != null ? dltStats.getDiscardedCount() : 0L;
+        long resolvedCount = counts.resolvedCount();
+        long discardedCount = counts.discardedCount();
 
         String dbStatus = "Connected";
         int activeConnections = 0;

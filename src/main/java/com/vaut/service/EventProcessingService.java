@@ -91,17 +91,15 @@ public class EventProcessingService {
         try {
             Map<String, String> headersMap = new HashMap<>();
             for (Header header : record.headers()) {
-                headersMap.put(header.key(), new String(header.value(), StandardCharsets.UTF_8));
+                // A header may carry a null value, which would fail the String constructor
+                if (header.value() != null) {
+                    headersMap.put(header.key(), new String(header.value(), StandardCharsets.UTF_8));
+                }
             }
             return headersMap.isEmpty() ? null : objectMapper.writeValueAsString(headersMap);
         } catch (Exception e) {
             log.warn("Failed to serialize headers for record at offset {}: {}", record.offset(), e.getMessage());
             return null;
         }
-    }
-
-    public void recordSizeMetric(ConsumerRecord<String, String> record) {
-        int size = record.serializedValueSize() > -1 ? record.serializedValueSize() : (record.value() != null ? record.value().length() : 0);
-        meterRegistry.summary(AppConstants.METRIC_KAFKA_EVENT_RECEIVED_SIZE, "topic", record.topic()).record(size);
     }
 }

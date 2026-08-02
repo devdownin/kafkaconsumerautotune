@@ -36,6 +36,9 @@ public class EventPersistenceService {
     private final FilePersistenceService filePersistenceService;
     private final com.vaut.config.PersistenceProperties persistenceProperties;
 
+    /** Kept well under Oracle's 1000-expression ceiling for IN lists. */
+    private static final int ID_LOOKUP_CHUNK_SIZE = 500;
+
     /**
      * Persists a batch of generalized events.
      * Before saving, it checks the database for existing eventId values to avoid duplicates.
@@ -63,7 +66,7 @@ public class EventPersistenceService {
                                    .map(KEvent::getEventId)
                                    .collect(Collectors.toSet());
 
-        Set<String> existingIds = keventRepository.findExistingEventIds(idsToCheck);
+        Set<String> existingIds = findExistingIdsChunked(idsToCheck);
 
         // seenIds also filters duplicates that appear twice within this same batch. Checking only
         // against the database would let both copies through and break the unique constraint on
@@ -89,5 +92,32 @@ public class EventPersistenceService {
             log.info("No new events to persist in this batch (all duplicates or empty)");
         }
         return newEvents;
+    }
+
+    /**
+     * Runs the idempotency lookup in chunks.
+     *
+     * <p>Oracle rejects an IN list of more than 1000 expressions. Auto-tuning raises
+     * {@code max.poll.records} up to that same figure by default and higher if reconfigured, so a
+     * single-shot query sits right on the limit.</p>
+     */
+    private Set<String> findExistingIdsChunked(Set<String> ids) {
+        if (ids.size() <= ID_LOOKUP_CHUNK_SIZE) {
+            return keventRepository.findExistingEventIds(ids);
+        }
+
+        Set<String> existing = new HashSet<>();
+        Set<String> chunk = new HashSet<>(ID_LOOKUP_CHUNK_SIZE);
+        for (String id : ids) {
+            chunk.add(id);
+            if (chunk.size() == ID_LOOKUP_CHUNK_SIZE) {
+                existing.addAll(keventRepository.findExistingEventIds(chunk));
+                chunk = new HashSet<>(ID_LOOKUP_CHUNK_SIZE);
+            }
+        }
+        if (!chunk.isEmpty()) {
+            existing.addAll(keventRepository.findExistingEventIds(chunk));
+        }
+        return existing;
     }
 }

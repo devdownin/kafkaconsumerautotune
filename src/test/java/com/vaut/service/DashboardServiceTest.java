@@ -81,7 +81,10 @@ class DashboardServiceTest {
         when(circuitBreakerRegistry.circuitBreaker("persistence")).thenReturn(cb);
         when(cb.getState()).thenReturn(io.github.resilience4j.circuitbreaker.CircuitBreaker.State.CLOSED);
 
-        dashboardService = new DashboardService(eventRepository, dltEventRepository, entityManager, Optional.empty(), dataSource, loggingSystem, meterRegistry, Optional.of(adminClient), kafkaProperties, webSocketService, kafkaTuningService, metricThresholdProperties, circuitBreakerRegistry);
+        // Real EventCountsService over the mocked repositories: the counts still come from the
+        // same stubs, they are just fetched through their own (separately cached) bean now.
+        EventCountsService eventCountsService = new EventCountsService(eventRepository, dltEventRepository);
+        dashboardService = new DashboardService(dltEventRepository, eventCountsService, entityManager, Optional.empty(), dataSource, loggingSystem, meterRegistry, Optional.of(adminClient), kafkaProperties, webSocketService, kafkaTuningService, metricThresholdProperties, circuitBreakerRegistry);
     }
 
     @Test
