@@ -92,8 +92,8 @@ BEGIN
         ORIGINAL_PARTITION NUMBER,
         ORIGINAL_OFFSET NUMBER,
         ORIGINAL_KEY VARCHAR2(255),
-        ERROR_MESSAGE VARCHAR2(4000),
-        PAYLOAD VARCHAR2(4000),
+        ERROR_MESSAGE CLOB,
+        PAYLOAD CLOB,
         HEADERS CLOB,
         DHM TIMESTAMP(6),
         STATUS VARCHAR2(255),
@@ -164,6 +164,41 @@ BEGIN
         CREATED_AT TIMESTAMP(6),
         UPDATED_AT TIMESTAMP(6)
     )';
+  END IF;
+END;
+/
+
+-- Migrate DLT_EVENTS.PAYLOAD and ERROR_MESSAGE to CLOB on schemas created before they were
+-- widened. Both columns were VARCHAR2(4000) while the entity declared 10000, so any longer
+-- value failed on insert.
+--
+-- Oracle rejects a direct MODIFY from VARCHAR2 to a LOB type (ORA-22858), so each column is
+-- rebuilt: add a CLOB alongside, copy the data, drop the original, rename into place.
+DECLARE
+  v_count NUMBER;
+
+  PROCEDURE to_clob_column(p_column VARCHAR2) IS
+    v_current VARCHAR2(128);
+  BEGIN
+    SELECT data_type INTO v_current FROM user_tab_columns
+      WHERE table_name = 'DLT_EVENTS' AND column_name = p_column;
+
+    IF v_current <> 'CLOB' THEN
+      EXECUTE IMMEDIATE 'ALTER TABLE DLT_EVENTS ADD (' || p_column || '_MIG CLOB)';
+      EXECUTE IMMEDIATE 'UPDATE DLT_EVENTS SET ' || p_column || '_MIG = ' || p_column;
+      COMMIT;
+      EXECUTE IMMEDIATE 'ALTER TABLE DLT_EVENTS DROP COLUMN ' || p_column;
+      EXECUTE IMMEDIATE 'ALTER TABLE DLT_EVENTS RENAME COLUMN ' || p_column || '_MIG TO ' || p_column;
+    END IF;
+  EXCEPTION
+    -- Column absent: nothing to migrate
+    WHEN NO_DATA_FOUND THEN NULL;
+  END;
+BEGIN
+  SELECT count(*) INTO v_count FROM user_tables WHERE table_name = 'DLT_EVENTS';
+  IF v_count > 0 THEN
+    to_clob_column('PAYLOAD');
+    to_clob_column('ERROR_MESSAGE');
   END IF;
 END;
 /

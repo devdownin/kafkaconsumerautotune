@@ -41,12 +41,18 @@ public class DltEvent {
     @Column(name = "original_key")
     private String originalKey;
 
-    /** Description of the error that caused the failure. */
-    @Column(name = "error_message", length = 10000)
+    /**
+     * Description of the error that caused the failure.
+     * CLOB rather than VARCHAR2: a stack-trace-derived message easily exceeds Oracle's 4000-byte
+     * limit, and the declared length of 10000 was never something the column could hold.
+     */
+    @Lob
+    @Column(name = "error_message", columnDefinition = "CLOB")
     private String errorMessage;
 
     /** The full JSON payload of the failed message. */
-    @Column(name = "payload", length = 10000)
+    @Lob
+    @Column(name = "payload", columnDefinition = "CLOB")
     private String payload;
 
     /** Serialized Kafka headers of the original message. */
