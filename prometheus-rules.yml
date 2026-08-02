@@ -41,10 +41,13 @@ groups:
           summary: "Circuit Breaker 'persistence' is OPEN"
           description: "The database persistence circuit breaker is OPEN on {{ $labels.instance }}. Consumption is likely paused."
 
+  # These query gauges published by the application itself (DashboardService). They previously
+  # referenced kafka_consumer_group_lag and kafka_consumer_group_members, which are produced by
+  # kafka_exporter - not deployed in this stack - so the rules could never fire.
   - name: kafka-alerts
     rules:
       - alert: HighKafkaLag
-        expr: sum by (group, topic) (kafka_consumer_group_lag) > 1000
+        expr: sum by (group, topic) (app_kafka_consumer_lag) > 1000
         for: 2m
         labels:
           severity: warning
@@ -53,7 +56,7 @@ groups:
           description: "Lag for group {{ $labels.group }} on topic {{ $labels.topic }} is {{ $value }} for over 2 minutes."
 
       - alert: CriticalKafkaLag
-        expr: sum by (group, topic) (kafka_consumer_group_lag) > 5000
+        expr: sum by (group, topic) (app_kafka_consumer_lag) > 5000
         for: 1m
         labels:
           severity: critical
@@ -62,7 +65,7 @@ groups:
           description: "Lag for group {{ $labels.group }} on topic {{ $labels.topic }} is {{ $value }} for over 1 minute."
 
       - alert: KafkaConsumerStopped
-        expr: sum by (group) (kafka_consumer_group_members) == 0
+        expr: sum by (group) (app_kafka_consumer_group_members) == 0
         for: 2m
         labels:
           severity: critical

@@ -35,6 +35,8 @@ Tous les compteurs applicatifs sont préfixés `app.` (et donc `app_` une fois e
 | `app.kafka.events.batch.duration` | Timer | Durée de traitement d'un batch — l'entrée du contrôleur PID |
 | `app.kafka.event.received.size` | DistributionSummary | Taille des messages en octets, tag `topic` |
 | `app.kafka.tuning.batch.duration.smoothed` | Gauge | Durée de batch lissée (EMA) utilisée par le PID |
+| `app.kafka.consumer.lag` | Gauge | Lag en messages, tags `group` et `topic` |
+| `app.kafka.consumer.group.members` | Gauge | Membres actifs du groupe, tag `group` |
 
 ---
 
@@ -100,10 +102,18 @@ Des règles d'alerte Prometheus sont définies dans `prometheus-rules.yml` pour 
 -   Le taux d'erreur de traitement (> 5%).
 -   La durée anormale des batchs.
 -   L'état du circuit breaker, la charge CPU et l'occupation mémoire.
+-   L'absence de membres dans le groupe de consommation.
 
-> **Limite connue** : les trois règles portant sur le lag interrogent `kafka_consumer_group_lag`,
-> une métrique produite par `kafka_exporter` — absent du `docker-compose.yml`. L'application
-> n'expose pas non plus de gauge de lag : elle le calcule pour le dashboard et le health indicator
-> `kafkaLag`, sans l'enregistrer auprès de Micrometer. **Ces alertes ne peuvent donc pas se
-> déclencher en l'état.** Les corriger suppose soit d'ajouter `kafka_exporter` à la stack, soit
-> d'enregistrer une gauge applicative et de réécrire les règles en conséquence.
+Les règles Kafka s'appuient sur les gauges publiées par l'application elle-même
+(`app_kafka_consumer_lag`, `app_kafka_consumer_group_members`), rafraîchies toutes les 30 secondes
+par `DashboardService`. Elles interrogeaient auparavant `kafka_consumer_group_lag` et
+`kafka_consumer_group_members`, produites par `kafka_exporter` — absent de cette stack — et ne
+pouvaient donc jamais se déclencher.
+
+Deux comportements sont volontaires dans la publication de ces gauges :
+
+-   **Une série disparue est mise à zéro, pas supprimée.** `KafkaConsumerStopped` matche sur `== 0` :
+    une série qui s'évanouit ne déclencherait jamais l'alerte.
+-   **En cas d'échec de l'AdminClient, les dernières valeurs connues sont conservées.** Un appel
+    d'administration qui échoue est un incident de supervision, pas une panne du consumer ; remettre
+    les compteurs à zéro déclencherait les alertes sur une erreur transitoire de monitoring.

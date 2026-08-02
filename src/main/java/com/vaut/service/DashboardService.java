@@ -112,6 +112,10 @@ public class DashboardService {
     private volatile List<ConsumerGroupDTO> cachedConsumerGroups = Collections.emptyList();
     private final AtomicLong lastKafkaUpdate = new AtomicLong(0);
     private final AtomicLong lastKafkaAttempt = new AtomicLong(0);
+    // Backing values for the lag and membership gauges. A gauge needs a stable reference to poll,
+    // so one holder is registered per series the first time that series is seen.
+    private final Map<GroupTopic, AtomicLong> lagGauges = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, AtomicLong> memberGauges = new java.util.concurrent.ConcurrentHashMap<>();
     private static final long KAFKA_CACHE_DURATION_MS = 30000; // 30 seconds
 
     @Value("${spring.kafka.bootstrap-servers:kafkadev:9093}")
@@ -174,6 +178,8 @@ public class DashboardService {
 
             List<ConsumerGroupDTO> dtos = new ArrayList<>();
             long totalMainLag = 0;
+            Map<GroupTopic, Long> lagByGroupTopic = new java.util.HashMap<>();
+            Map<String, Integer> membersByGroup = new java.util.HashMap<>();
 
             for (String groupId : groups) {
                 ConsumerGroupDescription desc = descriptions.get(groupId);
@@ -206,6 +212,7 @@ public class DashboardService {
                             long latestOffset = latest.offset();
                             long partitionLag = Math.max(0, latestOffset - currentOffset);
                             groupLag += partitionLag;
+                            lagByGroupTopic.merge(new GroupTopic(groupId, tp.topic()), partitionLag, Long::sum);
 
                             partitionLags.add(PartitionLagDTO.builder()
                                     .partition(tp.partition())
@@ -225,6 +232,7 @@ public class DashboardService {
                     int assignedPartitions = (int) desc.members().stream()
                             .flatMap(m -> m.assignment().topicPartitions().stream())
                             .count();
+                    membersByGroup.put(groupId, desc.members().size());
 
                     dtos.add(ConsumerGroupDTO.builder()
                             .groupId(groupId)
@@ -240,12 +248,59 @@ public class DashboardService {
             this.cachedConsumerGroups = dtos;
             this.cachedTotalLag.set(totalMainLag);
             this.lastKafkaUpdate.set(System.currentTimeMillis());
+            publishKafkaGauges(lagByGroupTopic, membersByGroup);
 
         } catch (Exception e) {
             // Keep stale cache on error, but do not fail silently: without this the dashboard
             // simply shows nothing with no indication of why.
+            // The gauges are deliberately left untouched here: zeroing them because the AdminClient
+            // call failed would fire the lag and "no members" alerts on a monitoring failure rather
+            // than on a real outage.
             log.warn("Failed to refresh Kafka consumer group metrics, serving stale values: {}", e.toString());
         }
+    }
+
+    /** Identifies one lag series. */
+    private record GroupTopic(String group, String topic) {}
+
+    /**
+     * Publishes consumer lag and group membership as Micrometer gauges so Prometheus can alert on
+     * them.
+     *
+     * <p>Both values were previously computed for the dashboard only and never registered as
+     * meters, which left the Kafka alert rules querying series that nothing produced.</p>
+     *
+     * <p>Series that were reported before but are absent from this refresh are set to zero rather
+     * than removed: a group that has lost all its members must read 0, not vanish, for the
+     * KafkaConsumerStopped alert to fire.</p>
+     */
+    private void publishKafkaGauges(Map<GroupTopic, Long> lagByGroupTopic, Map<String, Integer> membersByGroup) {
+        lagByGroupTopic.forEach((key, lag) -> lagGauges.computeIfAbsent(key, k -> {
+            AtomicLong holder = new AtomicLong();
+            io.micrometer.core.instrument.Gauge
+                    .builder(AppConstants.METRIC_KAFKA_CONSUMER_LAG, holder, AtomicLong::get)
+                    .description(AppConstants.METRIC_KAFKA_CONSUMER_LAG_DESC)
+                    .tag("group", k.group())
+                    .tag("topic", k.topic())
+                    .register(meterRegistry);
+            return holder;
+        }).set(lag));
+        lagGauges.forEach((key, holder) -> {
+            if (!lagByGroupTopic.containsKey(key)) holder.set(0);
+        });
+
+        membersByGroup.forEach((group, members) -> memberGauges.computeIfAbsent(group, g -> {
+            AtomicLong holder = new AtomicLong();
+            io.micrometer.core.instrument.Gauge
+                    .builder(AppConstants.METRIC_KAFKA_CONSUMER_GROUP_MEMBERS, holder, AtomicLong::get)
+                    .description(AppConstants.METRIC_KAFKA_CONSUMER_GROUP_MEMBERS_DESC)
+                    .tag("group", g)
+                    .register(meterRegistry);
+            return holder;
+        }).set(members));
+        memberGauges.forEach((group, holder) -> {
+            if (!membersByGroup.containsKey(group)) holder.set(0);
+        });
     }
 
     /**

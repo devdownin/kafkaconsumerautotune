@@ -27,6 +27,12 @@ public final class AppConstants {
     /** Smoothed average duration (EMA) of batch processing. */
     public static final String METRIC_KAFKA_TUNING_BATCH_DURATION_SMOOTHED = "app.kafka.tuning.batch.duration.smoothed";
     public static final String METRIC_KAFKA_TUNING_BATCH_DURATION_SMOOTHED_DESC = "Smoothed average duration (EMA) of batch processing";
+    /** Consumer lag, tagged by group and topic. */
+    public static final String METRIC_KAFKA_CONSUMER_LAG = "app.kafka.consumer.lag";
+    public static final String METRIC_KAFKA_CONSUMER_LAG_DESC = "Consumer lag in records, by consumer group and topic";
+    /** Number of active members in a consumer group. */
+    public static final String METRIC_KAFKA_CONSUMER_GROUP_MEMBERS = "app.kafka.consumer.group.members";
+    public static final String METRIC_KAFKA_CONSUMER_GROUP_MEMBERS_DESC = "Number of active members in a consumer group";
 
     /** WebSocket topic for broadcasting new successfully processed events. */
     public static final String WEBSOCKET_TOPIC_EVENTS = "/topic/events";

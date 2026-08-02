@@ -136,8 +136,9 @@ offsets are only unique within a partition.
 
 ## 6. Metric thresholds (`app.metrics.thresholds.*`)
 
-Each key is a **meter name**, mapped to `warning` and `critical` values. They drive the status
-badges on the metrics page, and `kafka.lag` additionally drives the `kafkaLag` health indicator.
+Each key is mapped to `warning` and `critical` values, driving the status badges on the metrics
+page. Keys are matched against **meter names**, with one exception: `kafka.lag` is not a meter name
+but a well-known key read directly by the `kafkaLag` health indicator.
 
 ```yaml
 app:
