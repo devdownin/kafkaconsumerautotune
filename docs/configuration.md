@@ -51,7 +51,7 @@ relative error" — an error of 1.0 (batches take twice the target) moves the ba
 | `min-fetch-min-bytes` | `1024` | Floor for `fetch.min.bytes`. |
 | `max-fetch-min-bytes` | `1048576` | Ceiling for `fetch.min.bytes`. |
 | `fetch-max-bytes-safety-factor` | `1.5` | `fetch.max.bytes` is sized as `max.poll.records × avg message size × this`, floored at 1 MB. |
-| `max-poll-interval-safety-factor` | `3.0` | `max.poll.interval.ms` is sized as `target duration × this`, floored at 30 s. |
+| `max-poll-interval-safety-factor` | `3.0` | `max.poll.interval.ms` is sized as `target duration × this`, floored at both 30 s **and the value configured at startup**. See the note below. |
 | `change-threshold` | `0.1` | A parameter is only changed when the new value differs by at least 10%, or when it hits a bound. Prevents restarts for trivial adjustments. |
 | `min-restart-interval-ms` | `300000` | Cooldown between consumer restarts, guarding against rebalance storms. See below. |
 
@@ -82,6 +82,18 @@ for up to one cooldown period, and that the values reported by the dashboard and
 
 Emergency throttling (below) is subject to the same cooldown. Under sustained CPU or memory
 saturation the protective reduction can therefore be deferred by up to `min-restart-interval-ms`.
+
+### Why max.poll.interval.ms is only ever raised
+
+`target duration × safety factor` is far smaller than any sane configured interval — with the
+defaults, 1200 ms × 3 = 3.6 s against a configured 300 s. Taken literally the rule would therefore
+*cut* the window Kafka allows between polls, down to its 30 s floor, on the very first tuning
+cycle: a batch overrunning 30 s would then drop the consumer out of the group and trigger exactly
+the rebalance storm the rest of the service is built to avoid.
+
+The value is consequently floored at the interval configured at startup. The rule can raise the
+interval — which is what it is for — but never lower it. Raising it in practice requires a batch
+target above 100 s.
 
 ### Emergency throttling
 

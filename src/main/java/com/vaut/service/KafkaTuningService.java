@@ -107,6 +107,12 @@ public class KafkaTuningService {
     private volatile int currentFetchMaxBytes = -1;
     private volatile int currentMaxPollIntervalMs = -1;
 
+    /** The interval as configured at startup; the tuner may raise it but never lower it. */
+    private volatile int initialMaxPollIntervalMs = -1;
+
+    /** Absolute floor for max.poll.interval.ms, regardless of configuration. */
+    private static final int MIN_MAX_POLL_INTERVAL_MS = 30000;
+
     /**
      * The heart of the auto-tuning logic. Runs periodically to evaluate system performance.
      *
@@ -261,9 +267,17 @@ public class KafkaTuningService {
                 newConfigs.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, nextFetchMaxBytes);
             }
 
-            // 6. Adjust max.poll.interval.ms based on target duration
+            // 6. Adjust max.poll.interval.ms based on target duration.
+            // Floored at the configured starting value as well as at 30s. This rule exists to give
+            // a slow batch more headroom before Kafka evicts the consumer, but target × factor is
+            // far below any sane configured interval (with the defaults, 1200ms × 3 = 3.6s against
+            // a configured 300s), so without that floor it did the opposite of its stated purpose:
+            // it cut the eviction threshold to 30s on the very first cycle. A batch overrunning 30s
+            // would then drop the consumer out of the group and trigger the rebalance storm the
+            // rest of this service works to avoid.
             int nextMaxPollInterval = (int) (tuningProperties.getTargetBatchDurationMs() * tuningProperties.getMaxPollIntervalSafetyFactor());
-            nextMaxPollInterval = Math.max(nextMaxPollInterval, 30000); // Minimum 30s
+            nextMaxPollInterval = Math.max(nextMaxPollInterval,
+                    Math.max(MIN_MAX_POLL_INTERVAL_MS, initialMaxPollIntervalMs));
 
             if (shouldUpdate(currentMaxPollIntervalMs, nextMaxPollInterval)) {
                 log.info("AUTO-TUNE: Adjusting max.poll.interval.ms {} -> {}ms", currentMaxPollIntervalMs, nextMaxPollInterval);
@@ -399,6 +413,7 @@ public class KafkaTuningService {
 
         Object mpi = configs.get(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG);
         currentMaxPollIntervalMs = mpi instanceof Number ? ((Number) mpi).intValue() : 300000;
+        initialMaxPollIntervalMs = currentMaxPollIntervalMs;
 
         log.info("Initial tuning values: MaxPollRecords={}, FetchMinBytes={}, FetchMaxWaitMs={}, FetchMaxBytes={}, MaxPollIntervalMs={}",
                 currentMaxPollRecords, currentFetchMinBytes, currentFetchMaxWaitMs, currentFetchMaxBytes, currentMaxPollIntervalMs);
@@ -449,19 +464,26 @@ public class KafkaTuningService {
      * @return The average size in bytes.
      */
     private double getAvgMsgSize() {
-        io.micrometer.core.instrument.DistributionSummary summary = meterRegistry.find(AppConstants.METRIC_KAFKA_EVENT_RECEIVED_SIZE).summary();
-        if (summary == null) return 512.0; // Default to 512 bytes if no data
+        // Summed across every topic-tagged summary rather than picking one: find(...).summary()
+        // returns an arbitrary match, and the interval deltas below would be meaningless if a
+        // different meter were picked between two cycles.
+        var summaries = meterRegistry.find(AppConstants.METRIC_KAFKA_EVENT_RECEIVED_SIZE).summaries();
+        if (summaries.isEmpty()) return 512.0; // Default to 512 bytes if no data
 
-        long count = summary.count();
-        double total = summary.totalAmount();
+        long count = 0;
+        double total = 0;
+        for (io.micrometer.core.instrument.DistributionSummary summary : summaries) {
+            count += summary.count();
+            total += summary.totalAmount();
+        }
         long countDelta = count - lastSizeSummaryCount;
         double totalDelta = total - lastSizeSummaryTotal;
         lastSizeSummaryCount = count;
         lastSizeSummaryTotal = total;
 
         if (countDelta <= 0) {
-            double mean = summary.mean();
-            return mean > 0 ? mean : 512.0;
+            // No message in this window; fall back to the lifetime mean across all summaries
+            return count > 0 ? total / count : 512.0;
         }
         return totalDelta / countDelta;
     }
@@ -498,12 +520,22 @@ public class KafkaTuningService {
         consumerFactory.updateConfigs(newConfigs);
 
         MessageListenerContainer container = registry.getListenerContainer("eventBatchConsumer");
-        if (container != null) {
-            container.stop();
+        if (container == null) {
+            log.warn("Could not find container 'eventBatchConsumer' to restart.");
+            return;
+        }
+
+        // Only bring the container back up if it was up to begin with. An unconditional start()
+        // here would resurrect a consumer that the circuit breaker deliberately paused, sending
+        // traffic back at a database that is still failing.
+        boolean wasRunning = container.isRunning();
+        container.stop();
+        if (wasRunning) {
             container.start();
             log.info("eventBatchConsumer successfully restarted.");
         } else {
-            log.warn("Could not find container 'eventBatchConsumer' to restart.");
+            log.info("New settings stored; eventBatchConsumer left stopped as it was not running "
+                    + "(the circuit breaker will restart it once persistence recovers).");
         }
     }
 

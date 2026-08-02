@@ -8,12 +8,14 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.HashMap;
@@ -23,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -87,6 +90,39 @@ class KafkaTuningServiceTest {
         assertThat(tuningService.getCurrentTuningParameters().get("maxPollRecords"))
                 .isEqualTo(INITIAL_MAX_POLL);
         verify(optimizerService, never()).addOptimization(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void neverLowersMaxPollIntervalBelowTheConfiguredValue() {
+        tuningService.tune();
+
+        // target × factor is 3.6s against a configured 300s, so this rule can only ever compute a
+        // smaller number. Applying it would cut the window Kafka allows between polls from five
+        // minutes to thirty seconds, so a batch overrunning 30s would drop the consumer out of the
+        // group - the opposite of the headroom the rule is described as providing.
+        assertThat((Integer) tuningService.getCurrentTuningParameters().get("maxPollIntervalMs"))
+                .isGreaterThanOrEqualTo(300_000);
+
+        ArgumentCaptor<Map<String, Object>> applied = ArgumentCaptor.forClass(Map.class);
+        verify(consumerFactory).updateConfigs(applied.capture());
+        Object pushed = applied.getValue().get(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG);
+        if (pushed != null) {
+            assertThat(((Number) pushed).intValue()).isGreaterThanOrEqualTo(300_000);
+        }
+    }
+
+    @Test
+    void doesNotRestartAConsumerThatWasDeliberatelyStopped() {
+        // The circuit breaker stops the container when persistence is failing. Applying settings
+        // must not bring it back up: that would push traffic at a database still known to be down.
+        ConcurrentMessageListenerContainer<?, ?> container = mock(ConcurrentMessageListenerContainer.class);
+        when(container.isRunning()).thenReturn(false);
+        when(registry.getListenerContainer("eventBatchConsumer")).thenReturn(container);
+
+        tuningService.tune();
+
+        verify(consumerFactory).updateConfigs(any());
+        verify(container, never()).start();
     }
 
     @Test
