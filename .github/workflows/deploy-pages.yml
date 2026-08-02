@@ -1,5 +1,10 @@
 name: Deploy to GitHub Pages
 
+# NOTE: this workflow and static.yml both publish static-site/ to GitHub Pages, by two different
+# mechanisms - this one pushes to the gh-pages branch, static.yml uses the GitHub Actions Pages
+# deployment. Only one of them matches the repository's configured Pages source; the other is
+# redundant. Both now publish the same content, so neither can clobber the site, but the duplicate
+# should be removed once you confirm which source is selected in Settings > Pages.
 on:
   push:
     branches: [ main, master ]

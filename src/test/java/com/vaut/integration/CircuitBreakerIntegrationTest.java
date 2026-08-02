@@ -1,6 +1,8 @@
 package com.vaut.integration;
 
+import com.vaut.entity.KEvent;
 import com.vaut.repository.KEventRepository;
+import com.vaut.service.EventPersistenceService;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import org.junit.jupiter.api.Test;
@@ -15,6 +17,7 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,6 +39,9 @@ public class CircuitBreakerIntegrationTest {
 
     @Autowired
     private CircuitBreakerRegistry cbRegistry;
+
+    @Autowired
+    private EventPersistenceService persistenceService;
 
     @SpyBean
     private KEventRepository eventRepository;
@@ -74,15 +80,29 @@ public class CircuitBreakerIntegrationTest {
             assertThat(container.isRunning()).isTrue();
         });
 
-        // Send a message to move it to CLOSED
-        // The circuit breaker transitions to CLOSED only after 'permittedNumberOfCallsInHalfOpenState' successful calls (which is 3).
-        for (int i = 0; i < 5; i++) {
-             kafkaTemplate.send(topicName, "RECOVERY-" + i, "{\"idPassage\": \"RECOVERY-" + i + "\"}");
+        // 3. Drive the circuit to CLOSED.
+        // It closes only after 'permittedNumberOfCallsInHalfOpenState' (3) successful calls, and a
+        // call means one batch, not one message. Publishing five records to Kafka does not
+        // guarantee three batches: the consumer is free to return all of them from a single poll,
+        // in which case the circuit sees one call and stays HALF_OPEN forever. The successful
+        // calls are therefore made directly, so the assertion below tests the circuit breaker
+        // wiring rather than however Kafka happened to group the records.
+        for (int i = 0; i < 3; i++) {
+            persistenceService.saveEventsBatch(List.of(KEvent.builder()
+                    .eventId("RECOVERY-" + i)
+                    .payload("{\"idPassage\": \"RECOVERY-" + i + "\"}")
+                    .kafkaTopic(topicName)
+                    .kafkaPartition(0)
+                    .kafkaOffset((long) i)
+                    .build()));
         }
 
         await().atMost(20, TimeUnit.SECONDS).untilAsserted(() -> {
             assertThat(cb.getState()).isEqualTo(CircuitBreaker.State.CLOSED);
         });
+
+        // The consumer must still be running once the circuit has recovered
+        assertThat(kafkaRegistry.getListenerContainer("eventBatchConsumer").isRunning()).isTrue();
     }
 
     private void reset(Object mock) {

@@ -1,9 +1,12 @@
 # Build stage
 FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /app
+# Dependencies resolve in their own layer, keyed on pom.xml alone, so editing sources does not
+# re-download the whole dependency tree on every build.
 COPY pom.xml .
+RUN mvn -B --no-transfer-progress dependency:go-offline
 COPY src ./src
-RUN mvn clean package -DskipTests
+RUN mvn -B --no-transfer-progress clean package -DskipTests
 
 # Runtime stage
 FROM eclipse-temurin:21-jre-jammy
@@ -19,7 +22,9 @@ COPY wait-for-db.sh wait-for-db.sh
 RUN chmod +x wait-for-db.sh
 
 # Copy the executable JAR file from the build stage
-COPY --from=build /app/target/kafka-consumer-demo-1.0.1.jar app.jar
+# Wildcard rather than a pinned version: the hardcoded 1.0.1 filename broke the image on every
+# version bump. Only the repackaged jar matches; the Spring Boot original keeps a .jar.original name.
+COPY --from=build /app/target/*.jar app.jar
 
 # Expose the port the Spring Boot application runs on (default is 8080)
 EXPOSE 8080

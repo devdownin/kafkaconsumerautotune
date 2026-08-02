@@ -1,0 +1,48 @@
+name: CI
+
+# The test suite previously ran nowhere: the only build in CI went through the Dockerfile, which
+# packages with -DskipTests. This workflow is the gate that actually compiles and tests the code.
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Superseded runs on the same branch are pointless once a newer commit exists
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          # Restores ~/.m2/repository keyed on pom.xml; a cold resolve costs about a minute
+          cache: maven
+
+      - name: Build and test
+        run: ./mvnw -B --no-transfer-progress verify
+
+      - name: Upload test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            target/surefire-reports/
+            target/failsafe-reports/
+            target/site/jacoco/
+          retention-days: 7
+          if-no-files-found: ignore

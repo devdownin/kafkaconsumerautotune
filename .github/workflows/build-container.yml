@@ -5,6 +5,14 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: container-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -17,12 +25,17 @@ jobs:
       uses: docker/setup-buildx-action@v3
 
     - name: Build Docker image
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         context: .
         push: false
         tags: kafka-consumer-demo:latest
         load: true
+        # Layer cache: without it every run re-resolved the whole Maven dependency tree from
+        # scratch. Paired with the separate dependency layer in the Dockerfile, a source-only
+        # change now reuses the cached dependencies.
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 
     - name: Extract JAR from Container
       run: |
@@ -35,3 +48,4 @@ jobs:
       with:
         name: kafka-consumer-jar
         path: ./kafka-consumer-demo.jar
+        retention-days: 14

@@ -5,6 +5,10 @@ on:
   # Runs on pushes targeting the default branch
   push:
     branches: ["main"]
+    # Only the marketing site is published, so only its changes need a deployment
+    paths:
+      - 'static-site/**'
+      - '.github/workflows/static.yml'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -36,8 +40,9 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
-          path: '.'
+          # Only the marketing site. This used to upload the entire repository ('.'), publishing
+          # the whole source tree - configuration, SQL schema, compose files - to a public website.
+          path: './static-site'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5

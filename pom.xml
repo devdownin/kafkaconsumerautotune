@@ -285,6 +285,19 @@
 
     </dependencies>
 
+    <!--
+        Target for `mvn deploy`, run by the Maven Package workflow on release. The workflow already
+        referenced a server id of "github" but the matching repository was never declared here, so
+        the deploy step had nothing to publish to.
+    -->
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/devdownin/kafkaconsumerautotune</url>
+        </repository>
+    </distributionManagement>
+
     <build>
         <plugins>
             <!-- Spring Boot Maven Plugin -->
