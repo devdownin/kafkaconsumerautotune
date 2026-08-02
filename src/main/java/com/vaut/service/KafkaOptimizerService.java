@@ -4,9 +4,9 @@ import com.vaut.dto.dashboard.KafkaPropertyOptimization;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Deque;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 /**
  * Service that tracks and maintains a history of Kafka property optimizations.
@@ -15,59 +15,22 @@ import java.util.List;
 @Service
 public class KafkaOptimizerService {
 
-    private final List<KafkaPropertyOptimization> optimizations = new ArrayList<>();
+    private static final int MAX_HISTORY = 50;
+    private static final int RECENT_LIMIT = 10;
 
     /**
-     * Initializes the optimizer service with some initial (mock) data for demonstration.
+     * Written by the tuning scheduler and read by request threads serving the optimizer view, so
+     * the deque is a concurrent one. Newest entries are pushed at the head.
      */
-    public KafkaOptimizerService() {
-        // Initial mock data
-        optimizations.add(KafkaPropertyOptimization.builder()
-                .propertyName("max.poll.records")
-                .oldValue("100")
-                .newValue("450")
-                .reason("PID optimization: error=0.352, throughput=1240.25 msg/s")
-                .explanation("Augmentation de la taille du lot pour optimiser le débit. Le système traite les messages plus vite que l'objectif fixé, nous augmentons donc la charge par lot pour réduire l'overhead des polls.")
-                .timestamp(LocalDateTime.now().minusHours(2))
-                .build());
-
-        optimizations.add(KafkaPropertyOptimization.builder()
-                .propertyName("fetch.min.bytes")
-                .oldValue("10240")
-                .newValue("65536")
-                .reason("Optimizing fetch efficiency for 1240.25 msg/s")
-                .explanation("Optimisation de l'efficacité réseau. En attendant d'avoir plus de données avant de répondre, on réduit le nombre d'allers-retours réseau inutiles.")
-                .timestamp(LocalDateTime.now().minusMinutes(45))
-                .build());
-
-        optimizations.add(KafkaPropertyOptimization.builder()
-                .propertyName("max.poll.interval.ms")
-                .oldValue("300000")
-                .newValue("360000")
-                .reason("Extending poll interval safety for target batch duration of 1200ms")
-                .explanation("Ajustement de la marge de sécurité. Pour éviter que Kafka ne considère le consumer comme mort pendant un traitement long, nous augmentons le délai maximum autorisé entre deux lectures.")
-                .timestamp(LocalDateTime.now().minusMinutes(120))
-                .build());
-
-        optimizations.add(KafkaPropertyOptimization.builder()
-                .propertyName("fetch.max.bytes")
-                .oldValue("52428800")
-                .newValue("62914560")
-                .reason("Scaling fetch size for max.poll.records=450 and avgMsgSize=820.5")
-                .explanation("Adaptation de la mémoire tampon. La taille maximale des données récupérées est augmentée pour s'aligner sur le nombre croissant de messages demandés par lot.")
-                .timestamp(LocalDateTime.now().minusDays(1))
-                .build());
-    }
+    private final Deque<KafkaPropertyOptimization> optimizations = new ConcurrentLinkedDeque<>();
 
     /**
      * Retrieves the most recent optimization events.
      *
-     * @return A list of the 10 most recent KafkaPropertyOptimization objects, sorted by timestamp descending.
+     * @return A list of the 10 most recent KafkaPropertyOptimization objects, most recent first.
      */
     public List<KafkaPropertyOptimization> getRecentOptimizations() {
-        List<KafkaPropertyOptimization> sorted = new ArrayList<>(optimizations);
-        sorted.sort((a, b) -> b.timestamp().compareTo(a.timestamp()));
-        return sorted.stream().limit(10).toList();
+        return optimizations.stream().limit(RECENT_LIMIT).toList();
     }
 
     /**
@@ -80,7 +43,7 @@ public class KafkaOptimizerService {
      * @param explanation A pedagogical explanation of the change.
      */
     public void addOptimization(String property, String oldVal, String newVal, String reason, String explanation) {
-        optimizations.add(0, KafkaPropertyOptimization.builder()
+        optimizations.addFirst(KafkaPropertyOptimization.builder()
                 .propertyName(property)
                 .oldValue(oldVal)
                 .newValue(newVal)
@@ -89,8 +52,8 @@ public class KafkaOptimizerService {
                 .timestamp(LocalDateTime.now())
                 .build());
 
-        if (optimizations.size() > 50) {
-            optimizations.remove(optimizations.size() - 1);
+        while (optimizations.size() > MAX_HISTORY) {
+            optimizations.pollLast();
         }
     }
 }

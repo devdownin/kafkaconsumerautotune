@@ -17,7 +17,9 @@ import org.springframework.kafka.support.Acknowledgment;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -231,6 +233,10 @@ public abstract class AbstractBatchConsumer<T> {
                         .message("Falling back to individual processing for " + entities.size() + " records")
                         .timestamp(java.time.LocalDateTime.now())
                         .build());
+                // Indexed once up front: this fallback resolves an original record per failed entity,
+                // which is a full scan of the batch each time if done by search.
+                Map<String, ConsumerRecord<String, String>> recordsByCoordinates = indexByCoordinates(originalRecords);
+
                 for (T entity : entities) {
                     MDC.put(AppConstants.MDC_KAFKA_TOPIC, getEntityTopic(entity));
                     MDC.put(AppConstants.MDC_KAFKA_PARTITION, String.valueOf(getEntityPartition(entity)));
@@ -247,7 +253,7 @@ public abstract class AbstractBatchConsumer<T> {
                     } catch (Exception ex) {
                         MDC.put(AppConstants.MDC_EVENT_OUTCOME, "failure");
                         log.error("Failed to persist individual entity {}: {}", getEntityId(entity), ex.getMessage());
-                        findOriginalRecord(originalRecords, entity).ifPresentOrElse(
+                        findOriginalRecord(recordsByCoordinates, entity).ifPresentOrElse(
                             record -> {
                                 try {
                                     DltEvent dltEvent = dltService.routeToDlt(record, "Persistence failed: " + ex.getMessage());
@@ -281,16 +287,28 @@ public abstract class AbstractBatchConsumer<T> {
         }
     }
 
-    private Optional<ConsumerRecord<String, String>> findOriginalRecord(List<ConsumerRecord<String, String>> records, T entity) {
+    private Map<String, ConsumerRecord<String, String>> indexByCoordinates(List<ConsumerRecord<String, String>> records) {
+        Map<String, ConsumerRecord<String, String>> index = new HashMap<>();
+        for (ConsumerRecord<String, String> record : records) {
+            index.putIfAbsent(coordinateKey(record.topic(), record.partition(), record.offset()), record);
+        }
+        return index;
+    }
+
+    private Optional<ConsumerRecord<String, String>> findOriginalRecord(
+            Map<String, ConsumerRecord<String, String>> recordsByCoordinates, T entity) {
         String topic = getEntityTopic(entity);
         Integer partition = getEntityPartition(entity);
         Long offset = getEntityOffset(entity);
 
-        return records.stream()
-                .filter(r -> r.topic().equals(topic)
-                        && r.partition() == partition
-                        && r.offset() == offset)
-                .findFirst();
+        if (topic == null || partition == null || offset == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(recordsByCoordinates.get(coordinateKey(topic, partition, offset)));
+    }
+
+    private static String coordinateKey(String topic, int partition, long offset) {
+        return topic + '\0' + partition + '\0' + offset;
     }
 
     private void recordSizeMetric(ConsumerRecord<String, String> record) {

@@ -1,7 +1,9 @@
 logging:
   level:
     root: INFO
-    com.vaut: ERROR
+    # INFO, not ERROR: logging.level takes effect after logback-spring.xml, so ERROR here silenced
+    # the auto-tuning decisions and batch outcomes that logback-spring.xml sets to INFO.
+    com.vaut: INFO
     org.springframework.kafka: INFO
     org.hibernate.SQL: ERROR
     org.apache.kafka: WARN
@@ -86,7 +88,7 @@ app:
       "kafka.lag":
         warning: 1000
         critical: 5000
-      "kafka.events.received.count":
+      "app.kafka.events.received.count":
         warning: 100000
         critical: 500000
       "jvm.memory.used":

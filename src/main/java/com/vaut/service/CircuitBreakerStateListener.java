@@ -4,6 +4,7 @@ import com.vaut.dto.dashboard.SystemEventDTO;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
@@ -11,6 +12,8 @@ import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Service that listens to Circuit Breaker state transitions and controls the Kafka consumer.
@@ -25,6 +28,19 @@ public class CircuitBreakerStateListener {
     private final KafkaListenerEndpointRegistry registry;
     private final CircuitBreakerRegistry circuitBreakerRegistry;
     private final WebSocketService webSocketService;
+
+    /**
+     * Container start/stop is dispatched here rather than run inline. Resilience4j publishes state
+     * transitions synchronously on the thread that caused them, which for the 'persistence' breaker
+     * is the Kafka listener thread itself; calling container.stop() from that thread would block
+     * waiting for the very thread that is executing the call.
+     */
+    private final ExecutorService lifecycleExecutor =
+            Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, "cb-consumer-lifecycle");
+                t.setDaemon(true);
+                return t;
+            });
 
     /**
      * Registers a listener for state transition events on the 'persistence' circuit breaker.
@@ -57,20 +73,32 @@ public class CircuitBreakerStateListener {
             });
     }
 
+    /**
+     * Shuts down the lifecycle executor when the application context closes.
+     */
+    @PreDestroy
+    public void shutdown() {
+        lifecycleExecutor.shutdownNow();
+    }
+
     private void stopConsumer() {
-        MessageListenerContainer container = registry.getListenerContainer("eventBatchConsumer");
-        if (container != null && container.isRunning()) {
-            log.warn("Stopping Kafka consumer 'eventBatchConsumer' due to open circuit breaker");
-            container.stop();
-        }
+        lifecycleExecutor.execute(() -> {
+            MessageListenerContainer container = registry.getListenerContainer("eventBatchConsumer");
+            if (container != null && container.isRunning()) {
+                log.warn("Stopping Kafka consumer 'eventBatchConsumer' due to open circuit breaker");
+                container.stop();
+            }
+        });
     }
 
     private void startConsumer() {
-        MessageListenerContainer container = registry.getListenerContainer("eventBatchConsumer");
-        if (container != null && !container.isRunning()) {
-            log.info("Restarting Kafka consumer 'eventBatchConsumer' (Circuit is {})",
-                    circuitBreakerRegistry.circuitBreaker("persistence").getState());
-            container.start();
-        }
+        lifecycleExecutor.execute(() -> {
+            MessageListenerContainer container = registry.getListenerContainer("eventBatchConsumer");
+            if (container != null && !container.isRunning()) {
+                log.info("Restarting Kafka consumer 'eventBatchConsumer' (Circuit is {})",
+                        circuitBreakerRegistry.circuitBreaker("persistence").getState());
+                container.start();
+            }
+        });
     }
 }

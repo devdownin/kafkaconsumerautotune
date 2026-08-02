@@ -129,7 +129,7 @@ public class SimulationService {
                 record.headers().add(AppConstants.HEADER_CORRELATION_ID, correlationId.getBytes(StandardCharsets.UTF_8));
 
                 kafkaTemplate.send(record);
-                log.info("Simulated message sent with correlationId: {}", correlationId);
+                log.debug("Simulated message sent with correlationId: {}", correlationId);
 
                 processedCount.incrementAndGet();
 
@@ -138,10 +138,16 @@ public class SimulationService {
                     webSocketService.sendSimulationStatus(getStatus());
                 }
 
-                // Throttle control
+                // Throttle control. Pacing is computed against the simulation's start time rather
+                // than by sleeping a fixed amount per message: at rates above 1000 msg/s the
+                // per-message interval rounds below a millisecond, and the send itself takes time
+                // the fixed sleep never accounts for.
                 if (request.getTargetThroughputMsgPerSec() > 0) {
-                    long targetInterval = 1000 / request.getTargetThroughputMsgPerSec();
-                    Thread.sleep(targetInterval);
+                    long dueAt = startTime.get() + (long) ((i + 1) * 1000.0 / request.getTargetThroughputMsgPerSec());
+                    long sleepMs = dueAt - System.currentTimeMillis();
+                    if (sleepMs > 0) {
+                        Thread.sleep(sleepMs);
+                    }
                 } else if (request.getDelayBetweenMessagesMs() > 0) {
                     Thread.sleep(request.getDelayBetweenMessagesMs());
                 }
@@ -158,7 +164,7 @@ public class SimulationService {
         } finally {
             running.set(false);
             webSocketService.sendSimulationStatus(getStatus());
-            log.info("Simulation finished: {}/{}", processedCount.get(), totalMessages);
+            log.info("Simulation finished: {}/{}", processedCount.get(), totalMessages.get());
             MDC.clear();
         }
     }

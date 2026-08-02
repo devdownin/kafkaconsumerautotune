@@ -42,6 +42,11 @@ BEGIN
   IF v_count = 0 THEN
     EXECUTE IMMEDIATE 'CREATE SEQUENCE FLINK_METRIC_SEQ START WITH 1 INCREMENT BY 50';
   END IF;
+
+  SELECT count(*) INTO v_count FROM user_sequences WHERE sequence_name = 'RECOUVRABLE_SEQ';
+  IF v_count = 0 THEN
+    EXECUTE IMMEDIATE 'CREATE SEQUENCE RECOUVRABLE_SEQ START WITH 1 INCREMENT BY 50';
+  END IF;
 END;
 /
 
@@ -86,12 +91,63 @@ BEGIN
         ORIGINAL_TOPIC VARCHAR2(255),
         ORIGINAL_PARTITION NUMBER,
         ORIGINAL_OFFSET NUMBER,
+        ORIGINAL_KEY VARCHAR2(255),
         ERROR_MESSAGE VARCHAR2(4000),
         PAYLOAD VARCHAR2(4000),
         HEADERS CLOB,
         DHM TIMESTAMP(6),
         STATUS VARCHAR2(255),
-        RESOLVED_AT TIMESTAMP(6)
+        RESOLVED_AT TIMESTAMP(6),
+        SEVERITY VARCHAR2(50)
+    )';
+  ELSE
+    -- Bring an existing table up to date: the entity declares these columns, and
+    -- ddl-auto=validate refuses to start without them.
+    SELECT count(*) INTO v_count FROM user_tab_columns
+      WHERE table_name = 'DLT_EVENTS' AND column_name = 'SEVERITY';
+    IF v_count = 0 THEN
+      EXECUTE IMMEDIATE 'ALTER TABLE DLT_EVENTS ADD (SEVERITY VARCHAR2(50))';
+    END IF;
+
+    SELECT count(*) INTO v_count FROM user_tab_columns
+      WHERE table_name = 'DLT_EVENTS' AND column_name = 'ORIGINAL_KEY';
+    IF v_count = 0 THEN
+      EXECUTE IMMEDIATE 'ALTER TABLE DLT_EVENTS ADD (ORIGINAL_KEY VARCHAR2(255))';
+    END IF;
+  END IF;
+
+  -- Backing table for the RecouvrableEvent entity. Hibernate validates every mapped entity at
+  -- startup, so this must exist even though no repository queries it yet.
+  SELECT count(*) INTO v_count FROM user_tables WHERE table_name = 'RECOUVRABLE_EVENTS';
+  IF v_count = 0 THEN
+    EXECUTE IMMEDIATE 'CREATE TABLE RECOUVRABLE_EVENTS (
+        ID NUMBER PRIMARY KEY,
+        ID_PASSAGE VARCHAR2(255) NOT NULL UNIQUE,
+        ENTREE_GARE VARCHAR2(255),
+        ENTREE_VOIE VARCHAR2(255),
+        ENTREE_DHM TIMESTAMP(6),
+        SORTIE_GARE VARCHAR2(255),
+        SORTIE_VOIE VARCHAR2(255),
+        TRAJET_KILOMETRAGE BINARY_DOUBLE,
+        CLASSE_TARIFAIRE_ACQUISITION VARCHAR2(255),
+        CLASSE_TARIFAIRE_CLASSE VARCHAR2(255),
+        PRIX_MONTANT_HT BINARY_DOUBLE,
+        PRIX_TAUX_TVA BINARY_DOUBLE,
+        PRIX_DEVISE VARCHAR2(255),
+        PAIEMENT_MONTANT BINARY_DOUBLE,
+        PAIEMENT_DEVISE VARCHAR2(255),
+        PAIEMENT_TYPE VARCHAR2(255),
+        PAIEMENT_ACQUISITION VARCHAR2(255),
+        SYSTEME VARCHAR2(255),
+        ETAT VARCHAR2(255),
+        DHM TIMESTAMP(6),
+        LOCALISATION_GARE VARCHAR2(255),
+        EQUIPEMENT_NUMERO VARCHAR2(255),
+        EQUIPEMENT_TYPE VARCHAR2(255),
+        KAFKA_TOPIC VARCHAR2(255),
+        KAFKA_PARTITION NUMBER,
+        KAFKA_OFFSET NUMBER,
+        PAYLOAD CLOB
     )';
   END IF;
 

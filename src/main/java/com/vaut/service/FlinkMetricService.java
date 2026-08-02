@@ -62,7 +62,7 @@ public class FlinkMetricService {
     }
 
     public String getQueryTemplate(String type) {
-        return switch (type.toUpperCase()) {
+        return switch (type.toUpperCase(java.util.Locale.ROOT)) {
             case "COUNTER" -> "SELECT COUNT(*) FROM your_table";
             case "GAUGE" -> "SELECT AVG(value_field) FROM your_table";
             case "HISTOGRAM" -> "SELECT window_start, window_end, COUNT(*) FROM TABLE(TUMBLE(TABLE your_table, DESCRIPTOR(ts), INTERVAL '1' MINUTE)) GROUP BY window_start, window_end";

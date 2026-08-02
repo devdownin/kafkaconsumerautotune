@@ -66,6 +66,7 @@ import io.micrometer.core.instrument.Measurement;
  */
 @Service
 @RequiredArgsConstructor
+@lombok.extern.slf4j.Slf4j
 public class DashboardService {
 
     private final KEventRepository eventRepository;
@@ -100,29 +101,32 @@ public class DashboardService {
     private int minuteCounter = 0;
     private double minuteAccumulator = 0;
 
-    private String cachedDbVendor;
-    private String cachedDbSchema;
-    private String cachedDbDriver;
+    // Populated on a request thread, read by others
+    private volatile String cachedDbVendor;
+    private volatile String cachedDbSchema;
+    private volatile String cachedDbDriver;
 
-    // Cache for Kafka Lag to avoid over-polling AdminClient
+    // Cache for Kafka Lag to avoid over-polling AdminClient.
+    // Written by the scheduler, read by request threads.
     private final AtomicLong cachedTotalLag = new AtomicLong(0);
-    private List<ConsumerGroupDTO> cachedConsumerGroups = Collections.emptyList();
+    private volatile List<ConsumerGroupDTO> cachedConsumerGroups = Collections.emptyList();
     private final AtomicLong lastKafkaUpdate = new AtomicLong(0);
+    private final AtomicLong lastKafkaAttempt = new AtomicLong(0);
     private static final long KAFKA_CACHE_DURATION_MS = 30000; // 30 seconds
 
     @Value("${spring.kafka.bootstrap-servers:kafkadev:9093}")
     private String bootstrapServers;
 
-    @Value("${kafka.topic:asf.peage.backoffice.sortie.recouvrable}")
+    @Value("${kafka.topic.name}")
     private String topicName;
 
-    @Value("${spring.kafka.consumer.group-id:ASF.PEAGE.BACKOFFICE.PARTAGE.RECOUVRABLE}")
+    @Value("${spring.kafka.consumer.group-id}")
     private String consumerGroup;
 
     @Value("${spring.kafka.ssl.enabled:false}")
     private boolean sslEnabled;
 
-    @Value("${spring.application:KafkaMonitor}")
+    @Value("${spring.application.name:KafkaMonitor}")
     private String appName;
 
     @Value("${app.edition:Enterprise Edition}")
@@ -159,9 +163,10 @@ public class DashboardService {
      * Uses the AdminClient to query the Kafka cluster.
      */
     @Scheduled(fixedRate = 30000)
-    public void refreshKafkaMetrics() {
+    public synchronized void refreshKafkaMetrics() {
         if (adminClient.isEmpty()) return;
         AdminClient client = adminClient.get();
+        lastKafkaAttempt.set(System.currentTimeMillis());
 
         try {
             List<String> groups = Arrays.asList(consumerGroup, consumerGroup + "-dlt");
@@ -192,8 +197,13 @@ public class DashboardService {
 
                         for (Map.Entry<TopicPartition, OffsetAndMetadata> entry : groupOffsets.entrySet()) {
                             TopicPartition tp = entry.getKey();
+                            var latest = latestOffsets.get(tp);
+                            if (latest == null) {
+                                // Partition disappeared between the two admin calls
+                                continue;
+                            }
                             long currentOffset = entry.getValue().offset();
-                            long latestOffset = latestOffsets.get(tp).offset();
+                            long latestOffset = latest.offset();
                             long partitionLag = Math.max(0, latestOffset - currentOffset);
                             groupLag += partitionLag;
 
@@ -232,8 +242,28 @@ public class DashboardService {
             this.lastKafkaUpdate.set(System.currentTimeMillis());
 
         } catch (Exception e) {
-            // Keep stale cache on error
+            // Keep stale cache on error, but do not fail silently: without this the dashboard
+            // simply shows nothing with no indication of why.
+            log.warn("Failed to refresh Kafka consumer group metrics, serving stale values: {}", e.toString());
         }
+    }
+
+    /**
+     * Refreshes the Kafka cache on demand, but only if it has never been populated and no attempt
+     * was made recently.
+     *
+     * <p>Each refresh makes several AdminClient calls with a 5s timeout apiece. If the cluster is
+     * unreachable, refreshing on every request would add that latency to every dashboard page and
+     * every actuator health check, so an attempt is made at most once per cache window.</p>
+     */
+    private void refreshIfNeverPopulated() {
+        if (adminClient.isEmpty() || lastKafkaUpdate.get() != 0) {
+            return;
+        }
+        if (System.currentTimeMillis() - lastKafkaAttempt.get() < KAFKA_CACHE_DURATION_MS) {
+            return;
+        }
+        refreshKafkaMetrics();
     }
 
     /**
@@ -242,9 +272,7 @@ public class DashboardService {
      * @return A list of ConsumerGroupDTO objects.
      */
     public List<ConsumerGroupDTO> getConsumerGroupsInfo() {
-        if (cachedConsumerGroups.isEmpty() && adminClient.isPresent()) {
-            refreshKafkaMetrics();
-        }
+        refreshIfNeverPopulated();
         return cachedConsumerGroups;
     }
 
@@ -254,9 +282,7 @@ public class DashboardService {
      * @return The total lag as a long.
      */
     public long calculateTotalLag() {
-        if (lastKafkaUpdate.get() == 0 && adminClient.isPresent()) {
-            refreshKafkaMetrics();
-        }
+        refreshIfNeverPopulated();
         return cachedTotalLag.get();
     }
 
@@ -433,7 +459,7 @@ public class DashboardService {
      * @param level The new log level (e.g., DEBUG, INFO).
      */
     public void updateLogLevel(String loggerName, String level) {
-        loggingSystem.setLogLevel(loggerName, LogLevel.valueOf(level.toUpperCase()));
+        loggingSystem.setLogLevel(loggerName, LogLevel.valueOf(level.toUpperCase(java.util.Locale.ROOT)));
     }
 
     /**
@@ -568,7 +594,7 @@ public class DashboardService {
         String dbDriver = cachedDbDriver != null ? cachedDbDriver : "N/A";
 
         try {
-            String validationQuery = dbVendor.toLowerCase().contains("oracle") ? "SELECT 1 FROM DUAL" : "SELECT 1";
+            String validationQuery = dbVendor.toLowerCase(java.util.Locale.ROOT).contains("oracle") ? "SELECT 1 FROM DUAL" : "SELECT 1";
             Query query = entityManager.createNativeQuery(validationQuery);
             query.getSingleResult();
 

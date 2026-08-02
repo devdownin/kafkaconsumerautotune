@@ -11,6 +11,7 @@ import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -64,9 +65,13 @@ public class EventPersistenceService {
 
         Set<String> existingIds = keventRepository.findExistingEventIds(idsToCheck);
 
+        // seenIds also filters duplicates that appear twice within this same batch. Checking only
+        // against the database would let both copies through and break the unique constraint on
+        // event_id, failing the whole batch.
+        Set<String> seenIds = new HashSet<>();
         List<KEvent> newEvents = events.stream()
                 .filter(event -> {
-                    boolean exists = existingIds.contains(event.getEventId());
+                    boolean exists = existingIds.contains(event.getEventId()) || !seenIds.add(event.getEventId());
                     if (exists) {
                         MDC.put(AppConstants.MDC_EVENT_ID, event.getEventId());
                         log.warn("KEvent with eventId {} already exists, skipping", event.getEventId());

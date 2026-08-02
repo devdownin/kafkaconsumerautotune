@@ -32,3 +32,9 @@ logs/
 
 ### VS Code ###
 .vscode/
+
+### Node (tooling only; not part of the Maven build) ###
+node_modules/
+
+### Runtime logs ###
+*.log

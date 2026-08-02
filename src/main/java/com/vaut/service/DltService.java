@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Service for managing the Dead Letter Topic (DLT) flow.
@@ -39,6 +40,9 @@ public class DltService {
 
     @Value("${kafka.topic.dlt}")
     private String dltTopicName;
+
+    /** How long to wait for the broker to acknowledge a republished DLT message. */
+    private static final long SEND_TIMEOUT_SECONDS = 10;
 
     /**
      * Routes a failed message to the Dead Letter Topic (DLT) and prepares it for database persistence.
@@ -61,6 +65,7 @@ public class DltService {
                 .originalTopic(record.topic())
                 .originalPartition(record.partition())
                 .originalOffset(record.offset())
+                .originalKey(record.key())
                 .errorMessage(reason)
                 .payload(record.value())
                 .headers(serializeHeaders(record))
@@ -74,7 +79,9 @@ public class DltService {
         try {
             Map<String, String> headersMap = new HashMap<>();
             for (Header header : record.headers()) {
-                headersMap.put(header.key(), new String(header.value(), StandardCharsets.UTF_8));
+                if (header.value() != null) {
+                    headersMap.put(header.key(), new String(header.value(), StandardCharsets.UTF_8));
+                }
             }
             return headersMap.isEmpty() ? null : objectMapper.writeValueAsString(headersMap);
         } catch (Exception e) {
@@ -112,19 +119,45 @@ public class DltService {
      */
     @Transactional
     public void retryEvent(Long id) {
-        dltEventRepository.findById(id).ifPresent(event -> {
-            if ("UNRESOLVED".equals(event.getStatus())) {
-                log.info("Retrying event {} to topic {}", id, event.getOriginalTopic());
-                ProducerRecord<String, String> record = new ProducerRecord<>(event.getOriginalTopic(), event.getPayload());
-                restoreHeaders(record, event.getHeaders());
-                kafkaTemplate.send(record);
-                meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_RETRIED).increment();
+        dltEventRepository.findById(id).ifPresent(event -> republish(event, event.getPayload(), false));
+    }
 
-                event.setStatus("RESOLVED");
-                event.setResolvedAt(LocalDateTime.now());
-                dltEventRepository.save(event);
-            }
-        });
+    /**
+     * Re-sends an event to its original topic and marks it resolved once the broker has acknowledged.
+     *
+     * @param event The DLT event to republish.
+     * @param payload The payload to send (either the stored one or an operator-supplied replacement).
+     * @param persistPayload Whether the supplied payload should replace the stored one.
+     */
+    private void republish(DltEvent event, String payload, boolean persistPayload) {
+        if (!"UNRESOLVED".equals(event.getStatus())) {
+            return;
+        }
+        log.info("Retrying event {} to topic {}", event.getId(), event.getOriginalTopic());
+        ProducerRecord<String, String> record =
+                new ProducerRecord<>(event.getOriginalTopic(), event.getOriginalKey(), payload);
+        restoreHeaders(record, event.getHeaders());
+
+        try {
+            // Wait for the broker acknowledgement: marking the event resolved on the strength of an
+            // unconfirmed asynchronous send would lose the message if the send subsequently failed.
+            kafkaTemplate.send(record).get(SEND_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while retrying DLT event " + event.getId(), e);
+        } catch (Exception e) {
+            log.error("Failed to republish DLT event {} to topic {}: {}", event.getId(), event.getOriginalTopic(), e.getMessage());
+            throw new IllegalStateException("Failed to republish DLT event " + event.getId(), e);
+        }
+
+        meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_RETRIED).increment();
+
+        event.setStatus("RESOLVED");
+        if (persistPayload) {
+            event.setPayload(payload); // Update with the fixed payload
+        }
+        event.setResolvedAt(LocalDateTime.now());
+        dltEventRepository.save(event);
     }
 
     /**
@@ -135,12 +168,9 @@ public class DltService {
     @Transactional
     public void discardEvent(Long id) {
         dltEventRepository.findById(id).ifPresent(event -> {
-            if ("UNRESOLVED".equals(event.getStatus())) {
-                log.info("Discarding event {}", id);
-                event.setStatus("DISCARDED");
-                event.setResolvedAt(LocalDateTime.now());
-                dltEventRepository.save(event);
-            }
+            log.info("Discarding event {}", id);
+            markDiscarded(event);
+            dltEventRepository.save(event);
         });
     }
 
@@ -149,9 +179,11 @@ public class DltService {
      */
     @Transactional
     public void retryAll() {
+        // The events are already loaded, so they are republished directly rather than re-read one
+        // row at a time through retryEvent(id).
         List<DltEvent> unresolved = dltEventRepository.findByStatus("UNRESOLVED");
         log.info("Retrying all {} unresolved events", unresolved.size());
-        unresolved.forEach(event -> retryEvent(event.getId()));
+        unresolved.forEach(event -> republish(event, event.getPayload(), false));
     }
 
     /**
@@ -161,7 +193,8 @@ public class DltService {
     public void discardAll() {
         List<DltEvent> unresolved = dltEventRepository.findByStatus("UNRESOLVED");
         log.info("Discarding all {} unresolved events", unresolved.size());
-        unresolved.forEach(event -> discardEvent(event.getId()));
+        unresolved.forEach(this::markDiscarded);
+        dltEventRepository.saveAll(unresolved);
     }
 
     /**
@@ -172,7 +205,8 @@ public class DltService {
     @Transactional
     public void bulkRetry(List<Long> ids) {
         log.info("Bulk retrying {} events", ids.size());
-        ids.forEach(this::retryEvent);
+        List<DltEvent> events = dltEventRepository.findAllById(ids);
+        events.forEach(event -> republish(event, event.getPayload(), false));
     }
 
     /**
@@ -183,7 +217,16 @@ public class DltService {
     @Transactional
     public void bulkDiscard(List<Long> ids) {
         log.info("Bulk discarding {} events", ids.size());
-        ids.forEach(this::discardEvent);
+        List<DltEvent> events = dltEventRepository.findAllById(ids);
+        events.forEach(this::markDiscarded);
+        dltEventRepository.saveAll(events);
+    }
+
+    private void markDiscarded(DltEvent event) {
+        if ("UNRESOLVED".equals(event.getStatus())) {
+            event.setStatus("DISCARDED");
+            event.setResolvedAt(LocalDateTime.now());
+        }
     }
 
     /**
@@ -194,19 +237,6 @@ public class DltService {
      */
     @Transactional
     public void retryWithPayload(Long id, String modifiedPayload) {
-        dltEventRepository.findById(id).ifPresent(event -> {
-            if ("UNRESOLVED".equals(event.getStatus())) {
-                log.info("Retrying event {} with MODIFIED payload to topic {}", id, event.getOriginalTopic());
-                ProducerRecord<String, String> record = new ProducerRecord<>(event.getOriginalTopic(), modifiedPayload);
-                restoreHeaders(record, event.getHeaders());
-                kafkaTemplate.send(record);
-                meterRegistry.counter(AppConstants.METRIC_KAFKA_EVENTS_RETRIED).increment();
-
-                event.setStatus("RESOLVED");
-                event.setPayload(modifiedPayload); // Update with the fixed payload
-                event.setResolvedAt(LocalDateTime.now());
-                dltEventRepository.save(event);
-            }
-        });
+        dltEventRepository.findById(id).ifPresent(event -> republish(event, modifiedPayload, true));
     }
 }

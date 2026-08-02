@@ -15,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Service responsible for saving events to the filesystem.
@@ -47,7 +48,11 @@ public class FilePersistenceService {
 
     /**
      * Saves a list of events to individual files on disk.
-     * File naming pattern: [topic]_[offset].[extension]
+     * File naming pattern: [topic]_[partition]_[offset].[extension]
+     *
+     * <p>The partition is part of the name because offsets are only unique within a partition;
+     * naming by topic and offset alone lets a record from one partition overwrite a different
+     * record that happens to share its offset in another.</p>
      *
      * @param events List of events to save.
      */
@@ -56,13 +61,15 @@ public class FilePersistenceService {
             return;
         }
 
-        String format = properties.getFormat().toLowerCase();
+        String format = properties.getFormat().toLowerCase(Locale.ROOT);
         String extension = "json".equals(format) ? "json" : "xml";
         Path traceDir = Paths.get(properties.getTracePath());
+        int saved = 0;
 
         for (KEvent event : events) {
-            String fileName = String.format("%s_%d.%s",
+            String fileName = String.format("%s_%d_%d.%s",
                 event.getKafkaTopic(),
+                event.getKafkaPartition(),
                 event.getKafkaOffset(),
                 extension);
 
@@ -74,11 +81,12 @@ public class FilePersistenceService {
                 } else {
                     xmlMapper.writeValue(filePath.toFile(), event);
                 }
+                saved++;
                 log.debug("Saved event to file: {}", filePath);
             } catch (IOException e) {
                 log.error("Failed to save event {} to file {}: {}", event.getEventId(), filePath, e.getMessage());
             }
         }
-        log.info("Successfully saved {} events to disk in {} format", events.size(), format);
+        log.info("Saved {}/{} events to disk in {} format", saved, events.size(), format);
     }
 }

@@ -24,8 +24,13 @@ import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.util.backoff.FixedBackOff;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.vaut.exception.PermanentException;
 
 import jakarta.persistence.EntityManagerFactory;
 
@@ -103,6 +108,16 @@ public class KafkaConsumerConfig {
  @Value("${spring.kafka.consumer.max-poll-interval-ms:300000}")
  private int maxPollIntervalMs;
 
+ /** Listener threads. Values above the topic's partition count leave threads idle. */
+ @Value("${spring.kafka.listener.concurrency:6}")
+ private int concurrency;
+
+ @Value("${spring.kafka.listener.retry.back-off-ms:2000}")
+ private long retryBackOffMs;
+
+ @Value("${spring.kafka.listener.retry.max-attempts:3}")
+ private long retryMaxAttempts;
+
 // @Value("${spring.kafka.producer.transaction-id-prefix:tx-}")
 // private String producerTransactionIdPrefix;
 
@@ -135,7 +150,7 @@ public class KafkaConsumerConfig {
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, enableAutoCommit);
         props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, sessionTimeoutMs);
         props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, maxPollIntervalMs);
-        props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, isolationLevel.toLowerCase());
+        props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, isolationLevel.toLowerCase(java.util.Locale.ROOT));
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, autoOffsetReset);
 
         if (sslEnabled) {
@@ -191,18 +206,27 @@ public class KafkaConsumerConfig {
     @Bean
     ConcurrentKafkaListenerContainerFactory<String, String> batchFactory(
          ConsumerFactory<String, String> consumerFactory) {
-     
-     ConcurrentKafkaListenerContainerFactory<String, String> factory = 
+
+     ConcurrentKafkaListenerContainerFactory<String, String> factory =
          new ConcurrentKafkaListenerContainerFactory<>();
-     
+
      factory.setConsumerFactory(consumerFactory);
-     factory.setConcurrency(6); // Adjust based on the number of partitions
+     factory.setConcurrency(concurrency);
      factory.setBatchListener(true); // BATCH MODE ENABLED
      factory.getContainerProperties().setObservationEnabled(true);
 
      // Manual acknowledgment mode to ensure at-least-once delivery
      factory.getContainerProperties().setAckMode(AckMode.MANUAL);
-     
+
+     // Without an explicit handler the container retries 10 times back to back with no delay, which
+     // gives a struggling database no time to recover. PermanentException and deserialization
+     // failures are excluded: the consumer already routes those to the DLT itself, so retrying
+     // them only replays a message that cannot succeed.
+     DefaultErrorHandler errorHandler = new DefaultErrorHandler(
+             new FixedBackOff(retryBackOffMs, retryMaxAttempts));
+     errorHandler.addNotRetryableExceptions(PermanentException.class, JsonProcessingException.class);
+     factory.setCommonErrorHandler(errorHandler);
+
      return factory;
  }
 

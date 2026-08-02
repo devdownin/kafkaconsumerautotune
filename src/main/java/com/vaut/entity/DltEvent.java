@@ -37,6 +37,10 @@ public class DltEvent {
     @Column(name = "original_offset")
     private Long originalOffset;
 
+    /** Key of the failed message, preserved so a retry lands on the same partition. */
+    @Column(name = "original_key")
+    private String originalKey;
+
     /** Description of the error that caused the failure. */
     @Column(name = "error_message", length = 10000)
     private String errorMessage;
