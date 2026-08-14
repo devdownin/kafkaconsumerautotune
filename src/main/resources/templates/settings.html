@@ -115,7 +115,7 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                         <tr th:each="log : ${logConfigs}">
-                            <td class="px-6 py-4 text-sm font-mono text-slate-700 dark:text-slate-300" th:text="${log.loggerName}">com.vaut</td>
+                            <td class="px-6 py-4 text-sm font-mono text-slate-700 dark:text-slate-300" th:text="${log.loggerName}">com.compagnonsdudev</td>
                             <td class="px-6 py-4">
                                 <span th:class="${'px-2 py-1 rounded text-[10px] font-bold ' + (log.effectiveLevel == 'DEBUG' ? 'bg-blue-100 text-blue-600' : (log.effectiveLevel == 'ERROR' ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-600'))}" th:text="${log.effectiveLevel}">INFO</span>
                             </td>
