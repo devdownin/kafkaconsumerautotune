@@ -44,7 +44,7 @@ Person(user, "Utilisateur / Opérateur", "Surveille les performances et gère le
 
 System_Boundary(kafkaconsumerautotune_boundary, "Système KafkaConsumerAutoTune") {
     Container(ui, "Interface Web", "Thymeleaf, Tailwind CSS, ApexCharts", "Fournit le dashboard et les outils de gestion DLT.")
-    Container(app, "Application Spring Boot", "Java 21, Spring Boot 3.5", "Gère la logique de consommation, l'auto-tuning (PID+EMA), la résilience et l'export télémétrique.")
+    Container(app, "Application Spring Boot", "Java 25, Spring Boot 3.5", "Gère la logique de consommation, l'auto-tuning (PID+EMA), la résilience et l'export télémétrique.")
 }
 
 System_Boundary(observability_boundary, "Pile d'Observabilité") {
