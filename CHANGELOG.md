@@ -20,6 +20,11 @@ et le projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ### Ajouté
 
+- Publication automatique de l'image sur Docker Hub à la création d'une
+  release, avec dérivation des tags depuis la version (`1.0.1` publie aussi
+  `1.0`, `1` et `latest`), étiquettes OCI et tag par empreinte de commit.
+- Fichier `.dockerignore` : le contexte de build ne transportait jusqu'ici
+  l'intégralité du dépôt, journaux et `node_modules` compris.
 - Workflow d'intégration continue exécutant `mvn verify` sur chaque pull
   request, avec publication des rapports de test et de couverture.
 - Analyse statique CodeQL sur les pushes, les pull requests et selon une

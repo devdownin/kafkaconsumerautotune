@@ -83,6 +83,22 @@ This launches: Kafka, Oracle XE, Prometheus, Jaeger, and the KafkaConsumerAutoTu
 > `DB_PASSWORD` and the `KAFKA_SSL_*` variables from your own secret store; the
 > application reads them from the environment and hardcodes nothing.
 
+### Using the published image
+
+Released versions are published to Docker Hub:
+
+```bash
+docker pull devdownin/kafkaconsumerautotune:latest
+```
+
+Tags follow the release version: `1.0.1` also publishes `1.0`, `1` and
+`latest`. Pre-releases (`1.0.1-rc1`) never take `latest`. Each image is also
+tagged with its full commit SHA if you need to pin an exact build.
+
+The image runs as an unprivileged user and exposes port 8080, with a
+`HEALTHCHECK` on `/actuator/health`. It expects a reachable database — see the
+environment variables in `docker-compose.yml` for the full list.
+
 ### Accessing the tools
 - **KafkaConsumerAutoTune Dashboard**: [http://localhost:8080/dashboard](http://localhost:8080/dashboard)
 - **Kafka Optimizer**: [http://localhost:8080/optimizer](http://localhost:8080/optimizer)
