@@ -186,7 +186,7 @@
     </springProfile>
 
     <!-- Loggers configuration -->
-    <logger name="com.vaut" level="INFO"/>
+    <logger name="com.compagnonsdudev" level="INFO"/>
     <logger name="org.springframework.kafka" level="INFO"/>
     <logger name="org.apache.kafka" level="WARN"/>
 

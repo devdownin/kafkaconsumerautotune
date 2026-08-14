@@ -13,7 +13,7 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.example</groupId>
+    <groupId>com.compagnonsdudev</groupId>
     <artifactId>kafka-consumer-demo</artifactId>
     <version>1.0.1</version>
     <name>Kafka Consumer autotune</name>

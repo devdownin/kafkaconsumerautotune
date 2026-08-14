@@ -1,7 +1,7 @@
 logging:
   level:
     root: INFO
-    com.vaut: ERROR
+    com.compagnonsdudev: ERROR
     org.springframework.kafka: INFO
     org.hibernate.SQL: ERROR
     org.apache.kafka: WARN
