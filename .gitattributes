@@ -1,2 +1,5 @@
 /mvnw text eol=lf
 *.cmd text eol=crlf
+
+# Le site vitrine n'est pas du code applicatif : exclu des statistiques de langage.
+static-site/** linguist-documentation

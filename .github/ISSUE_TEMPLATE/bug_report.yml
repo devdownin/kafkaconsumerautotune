@@ -1,0 +1,58 @@
+name: Rapport de bogue
+description: Signaler un comportement incorrect
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci de prendre le temps de signaler ce problème.
+
+        S'il s'agit d'une **faille de sécurité**, ne l'ouvrez pas ici :
+        suivez la procédure décrite dans [SECURITY.md](../blob/main/SECURITY.md).
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Que se passe-t-il, et qu'attendiez-vous à la place ?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Étapes pour reproduire
+      placeholder: |
+        1. Démarrer la pile avec `docker compose up`
+        2. Publier N messages sur le topic ...
+        3. Observer ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Journaux pertinents
+      description: >
+        Collez les lignes utiles. Pensez à retirer toute donnée sensible.
+      render: text
+
+  - type: input
+    id: version
+    attributes:
+      label: Version du projet
+      placeholder: "1.0.1, ou le SHA du commit"
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environnement
+      placeholder: |
+        - OS :
+        - Java :
+        - Version de Kafka :
+        - Base de données : Oracle / H2
+    validations:
+      required: true

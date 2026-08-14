@@ -1,0 +1,3 @@
+# Propriétaires par défaut de l'ensemble du dépôt.
+# Ils sont automatiquement sollicités pour relire toute pull request.
+*       @devdownin

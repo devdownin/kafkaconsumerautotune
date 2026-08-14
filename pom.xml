@@ -18,6 +18,7 @@
     <version>1.0.1</version>
     <name>Kafka Consumer autotune</name>
     <description>High-performance Kafka consumer with Spring Boot</description>
+    <url>https://github.com/devdownin/kafkaconsumerautotune</url>
 
     <licenses>
         <license>
@@ -26,6 +27,35 @@
             <distribution>repo</distribution>
         </license>
     </licenses>
+
+    <developers>
+        <developer>
+            <id>devdownin</id>
+            <name>Compagnons du Dev</name>
+            <url>https://github.com/devdownin</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:https://github.com/devdownin/kafkaconsumerautotune.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/devdownin/kafkaconsumerautotune.git</developerConnection>
+        <url>https://github.com/devdownin/kafkaconsumerautotune</url>
+        <tag>HEAD</tag>
+    </scm>
+
+    <issueManagement>
+        <system>GitHub Issues</system>
+        <url>https://github.com/devdownin/kafkaconsumerautotune/issues</url>
+    </issueManagement>
+
+    <!-- L'id doit correspondre au server-id configuré par setup-java dans maven-publish.yml. -->
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/devdownin/kafkaconsumerautotune</url>
+        </repository>
+    </distributionManagement>
 
     <properties>
         <java.version>21</java.version>
@@ -339,7 +369,8 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <argLine>-Xmx1024m</argLine>
+                    <!-- @{argLine} préserve l'agent injecté par JaCoCo (prepare-agent). -->
+                    <argLine>@{argLine} -Xmx1024m</argLine>
                 </configuration>
             </plugin>
 

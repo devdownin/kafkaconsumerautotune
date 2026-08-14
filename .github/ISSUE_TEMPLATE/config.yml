@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Faille de sécurité
+    url: https://github.com/devdownin/kafkaconsumerautotune/security/advisories/new
+    about: >
+      Les vulnérabilités se signalent en privé, jamais dans une issue publique.
+  - name: Documentation
+    url: https://github.com/devdownin/kafkaconsumerautotune/tree/main/docs
+    about: Modèles C4, gestion des erreurs et observabilité.
