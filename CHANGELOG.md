@@ -7,6 +7,17 @@ et le projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Modifié
+
+- Les tests d'intégration s'exécutent contre un vrai broker Kafka fourni par
+  Testcontainers (image `apache/kafka` en mode KRaft) au lieu d'un broker
+  embarqué sur port figé, et sont pris en charge par Failsafe en phase
+  `integration-test` sous le suffixe `*IT`. `mvn test` ne conserve que les
+  tests unitaires et passe d'environ 90 à 20 secondes ; `mvn verify` exécute
+  l'ensemble et requiert désormais un démon Docker.
+- JaCoCo instrumente les deux exécuteurs : les relevés de Surefire et de
+  Failsafe sont fusionnés avant le calcul du rapport et le contrôle de seuil.
+
 ### Ajouté
 
 - Workflow d'intégration continue exécutant `mvn verify` sur chaque pull

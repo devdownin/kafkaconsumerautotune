@@ -10,11 +10,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.test.context.EmbeddedKafka;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.time.Duration;
 import java.util.List;
@@ -25,10 +23,11 @@ import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest
-@EmbeddedKafka(partitions = 1, brokerProperties = { "listeners=PLAINTEXT://localhost:9095", "port=9095" })
-@ActiveProfiles("dev")
-public class KafkaConsumerAutoTuneIntegrationTest {
+@TestPropertySource(properties = {
+    "kafka.topic.name=it-main.topic",
+    "kafka.topic.dlt=it-main.topic.dlt"
+})
+public class KafkaConsumerAutoTuneIT extends AbstractKafkaIT {
 
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
