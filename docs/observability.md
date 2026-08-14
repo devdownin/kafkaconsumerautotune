@@ -1,6 +1,6 @@
 # Observabilité : Logging Structuré, Tracing et Métriques
 
-Consotopic intègre une pile d'observabilité complète basée sur le standard **OpenTelemetry (OTel)** et la suite **Grafana (Prometheus, Loki, Tempo/Jaeger)**.
+KafkaConsumerAutoTune intègre une pile d'observabilité complète basée sur le standard **OpenTelemetry (OTel)** et la suite **Grafana (Prometheus, Loki, Tempo/Jaeger)**.
 
 ## 1. Logging Structuré et Centralisé
 
@@ -26,7 +26,7 @@ L'application utilise **Micrometer Tracing** avec un pont **OpenTelemetry** pour
 
 ### 2.1 Fonctionnement
 -   **Propagation** : L'ID de trace est propagé à travers les headers Kafka (via l'API Observation de Spring Kafka).
--   **Exemplars** : Consotopic active les **Exemplars** Prometheus. Cela permet d'associer un `traceId` directement à un point de mesure dans un graphique de métriques. Dans Grafana, un clic sur un "point bleu" dans un graphique de latence permet d'ouvrir instantanément la trace correspondante dans Jaeger.
+-   **Exemplars** : KafkaConsumerAutoTune active les **Exemplars** Prometheus. Cela permet d'associer un `traceId` directement à un point de mesure dans un graphique de métriques. Dans Grafana, un clic sur un "point bleu" dans un graphique de latence permet d'ouvrir instantanément la trace correspondante dans Jaeger.
 
 ---
 

@@ -1,6 +1,6 @@
-# Gestion des Erreurs et Résilience - Consotopic
+# Gestion des Erreurs et Résilience - KafkaConsumerAutoTune
 
-Ce document détaille la stratégie de gestion des erreurs et les mécanismes de résilience mis en œuvre dans l'application Consotopic.
+Ce document détaille la stratégie de gestion des erreurs et les mécanismes de résilience mis en œuvre dans l'application KafkaConsumerAutoTune.
 
 ## 1. Philosophie de Gestion des Erreurs
 

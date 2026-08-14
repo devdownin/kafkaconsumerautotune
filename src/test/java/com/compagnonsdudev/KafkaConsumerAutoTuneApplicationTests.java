@@ -1,15 +1,15 @@
 package com.compagnonsdudev;
 
-import com.compagnonsdudev.ConsotopicApplication;
+import com.compagnonsdudev.KafkaConsumerAutoTuneApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.context.ActiveProfiles;
 
-@SpringBootTest(classes = ConsotopicApplication.class)
+@SpringBootTest(classes = KafkaConsumerAutoTuneApplication.class)
 @EmbeddedKafka(partitions = 1, brokerProperties = { "listeners=PLAINTEXT://localhost:9093", "port=9093" })
 @ActiveProfiles("dev")
-class ConsotopicApplicationTests {
+class KafkaConsumerAutoTuneApplicationTests {
 
 	@Test
 	void contextLoads() {

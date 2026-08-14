@@ -1,12 +1,12 @@
-# Modèles C4 - Consotopic
+# Modèles C4 - KafkaConsumerAutoTune
 
-Ce document présente l'architecture de l'application Consotopic en suivant le modèle C4 (Context, Container, Component) au format **PlantUML**.
+Ce document présente l'architecture de l'application KafkaConsumerAutoTune en suivant le modèle C4 (Context, Container, Component) au format **PlantUML**.
 
 Une version au format **Mermaid** est également disponible : [c4-mermaid.md](c4-mermaid.md).
 
 ## 1. Niveau 1 : Diagramme de Contexte (System Context)
 
-Ce diagramme montre le système Consotopic dans son environnement global.
+Ce diagramme montre le système KafkaConsumerAutoTune dans son environnement global.
 
 ```puml
 @startuml C4_Elements
@@ -15,16 +15,16 @@ Ce diagramme montre le système Consotopic dans son environnement global.
 LAYOUT_WITH_LEGEND()
 
 Person(user, "Utilisateur / Opérateur", "Surveille les performances et gère les erreurs via le dashboard.")
-System(consotopic, "Consotopic", "Application de consommation Kafka haute performance avec auto-tuning intelligent et résilience avancée.")
+System(kafkaconsumerautotune, "KafkaConsumerAutoTune", "Application de consommation Kafka haute performance avec auto-tuning intelligent et résilience avancée.")
 
 System_Ext(kafka, "Kafka", "Flux de messages d'entrée (Message Broker).")
 System_Ext(database, "Base de données", "Stockage persistant des événements et erreurs DLT (Oracle/H2).")
 System_Ext(otel_stack, "Observability Stack", "Pile complète (Loki, Prometheus, Jaeger) pour la supervision, le log centralisé et le tracing.")
 
-Rel(user, consotopic, "Surveille et gère", "HTTPS/WebSocket")
-Rel(consotopic, kafka, "Consomme des messages", "Kafka Protocol")
-Rel(consotopic, database, "Persiste les données", "JDBC")
-Rel(consotopic, otel_stack, "Exporte logs, métriques et traces", "OTLP / File-Scraping")
+Rel(user, kafkaconsumerautotune, "Surveille et gère", "HTTPS/WebSocket")
+Rel(kafkaconsumerautotune, kafka, "Consomme des messages", "Kafka Protocol")
+Rel(kafkaconsumerautotune, database, "Persiste les données", "JDBC")
+Rel(kafkaconsumerautotune, otel_stack, "Exporte logs, métriques et traces", "OTLP / File-Scraping")
 @enduml
 ```
 
@@ -42,7 +42,7 @@ LAYOUT_WITH_LEGEND()
 
 Person(user, "Utilisateur / Opérateur", "Surveille les performances et gère les erreurs.")
 
-System_Boundary(consotopic_boundary, "Système Consotopic") {
+System_Boundary(kafkaconsumerautotune_boundary, "Système KafkaConsumerAutoTune") {
     Container(ui, "Interface Web", "Thymeleaf, Tailwind CSS, ApexCharts", "Fournit le dashboard et les outils de gestion DLT.")
     Container(app, "Application Spring Boot", "Java 21, Spring Boot 3.5", "Gère la logique de consommation, l'auto-tuning (PID+EMA), la résilience et l'export télémétrique.")
 }

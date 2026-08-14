@@ -406,6 +406,37 @@
                             <goal>report</goal>
                         </goals>
                     </execution>
+                    <!--
+                        Plancher, pas objectif. La couverture mesurée est de
+                        71 % d'instructions, mais elle varie d'une exécution à
+                        l'autre : Surefire tue parfois son fork avant que
+                        l'agent JaCoCo n'ait vidé son fichier d'exécution, ce
+                        qui tronque le relevé (57 % observé une fois). Le seuil
+                        est délibérément placé sous le pire relevé constaté afin
+                        d'éviter les échecs intermittents ; à relever une fois
+                        l'arrêt du fork assaini.
+                    -->
+                    <execution>
+                        <id>check-coverage</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.55</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
         </plugins>
