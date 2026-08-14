@@ -4,30 +4,42 @@
     <title>Simulation Simulator</title>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<a class="skip-link" href="#main-content">Skip to content</a>
 <div th:replace="~{fragments/notifications :: notifications}"></div>
 
 <div class="flex h-screen overflow-hidden">
     <div th:replace="~{fragments/sidebar :: sidebar}"></div>
 
-    <main class="flex-1 flex flex-col overflow-hidden">
+    <main id="main-content" tabindex="-1" class="flex-1 flex flex-col overflow-hidden">
         <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
             <div class="flex items-center gap-4">
                 <h2 class="text-lg font-bold">Traffic Simulator</h2>
-                <span id="sim-badge" class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
-                    <span id="sim-dot" class="size-1.5 rounded-full bg-slate-500"></span>
+                <span id="sim-badge" class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-500 text-[10px] font-bold uppercase tracking-wider" aria-live="polite">
+                    <span id="sim-dot" class="size-1.5 rounded-full bg-slate-500" aria-hidden="true"></span>
                     <span id="sim-status-text">Idle</span>
                 </span>
+            </div>
+            <!-- The theme and refresh controls were missing here only: every other
+                 page carries them, so the header behaved differently on this one. -->
+            <div class="flex items-center gap-2">
+                <button type="button" id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" aria-label="Toggle theme">
+                    <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden" aria-hidden="true">dark_mode</span>
+                    <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden" aria-hidden="true">light_mode</span>
+                </button>
+                <button type="button" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()" data-tooltip="Refresh page" aria-label="Refresh page">
+                    <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+                </button>
             </div>
         </header>
 
         <div class="flex-1 overflow-y-auto p-8 space-y-6">
             <!-- Presets Row -->
-            <div class="flex items-center gap-3 overflow-x-auto pb-2 no-scrollbar">
-                <span class="text-xs font-bold text-slate-500 uppercase whitespace-nowrap">Presets:</span>
-                <button onclick="applyPreset('nominal')" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold hover:border-primary transition-colors whitespace-nowrap">Nominal Flow</button>
-                <button onclick="applyPreset('stress')" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold hover:border-rose-500 transition-colors whitespace-nowrap">Stress Test</button>
-                <button onclick="applyPreset('degraded')" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold hover:border-amber-500 transition-colors whitespace-nowrap">Degraded Data</button>
-                <button onclick="applyPreset('idempotency')" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold hover:border-blue-500 transition-colors whitespace-nowrap">Idempotency Check</button>
+            <div class="flex items-center gap-3 overflow-x-auto pb-2 no-scrollbar" role="group" aria-labelledby="presets-label">
+                <span class="text-xs font-bold text-slate-500 uppercase whitespace-nowrap" id="presets-label">Presets:</span>
+                <button type="button" onclick="applyPreset('nominal')" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold hover:border-primary transition-colors whitespace-nowrap">Nominal Flow</button>
+                <button type="button" onclick="applyPreset('stress')" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold hover:border-rose-500 transition-colors whitespace-nowrap">Stress Test</button>
+                <button type="button" onclick="applyPreset('degraded')" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold hover:border-amber-500 transition-colors whitespace-nowrap">Degraded Data</button>
+                <button type="button" onclick="applyPreset('idempotency')" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold hover:border-blue-500 transition-colors whitespace-nowrap">Idempotency Check</button>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -37,15 +49,15 @@
                     <form id="simulation-form" class="space-y-4">
                         <div class="grid grid-cols-2 gap-4">
                             <div class="col-span-2">
-                                <label class="block text-xs font-medium text-slate-500 uppercase mb-1">Total Messages</label>
-                                <input type="number" id="totalMessages" name="totalMessages" value="1000" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm py-2 px-3 focus:ring-1 focus:ring-primary" />
+                                <label class="block text-xs font-medium text-slate-500 uppercase mb-1" for="totalMessages">Total Messages</label>
+                                <input type="number" id="totalMessages" name="totalMessages" value="1000" min="1" required class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm py-2 px-3 focus:ring-1 focus:ring-primary" />
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-slate-500 uppercase mb-1">Target Msg/s</label>
+                                <label class="block text-xs font-medium text-slate-500 uppercase mb-1" for="targetThroughput">Target Msg/s</label>
                                 <input type="number" id="targetThroughput" name="targetThroughput" value="100" min="0" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm py-2 px-3 focus:ring-1 focus:ring-primary" />
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-slate-500 uppercase mb-1">Delay (ms)</label>
+                                <label class="block text-xs font-medium text-slate-500 uppercase mb-1" for="delayBetweenMessagesMs">Delay (ms)</label>
                                 <input type="number" id="delayBetweenMessagesMs" name="delayBetweenMessagesMs" value="0" min="0" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm py-2 px-3 focus:ring-1 focus:ring-primary" />
                             </div>
                         </div>
@@ -53,21 +65,21 @@
                         <div class="space-y-3 pt-2">
                             <div>
                                 <div class="flex justify-between mb-1">
-                                    <label class="block text-xs font-medium text-slate-500 uppercase">Business Errors</label>
+                                    <label class="block text-xs font-medium text-slate-500 uppercase" for="errorPercentage">Business Errors</label>
                                     <span id="val-error" class="text-xs font-bold text-amber-500">5%</span>
                                 </div>
                                 <input type="range" id="errorPercentage" value="5" min="0" max="100" oninput="document.getElementById('val-error').innerText = this.value + '%'" class="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
                             </div>
                             <div>
                                 <div class="flex justify-between mb-1">
-                                    <label class="block text-xs font-medium text-slate-500 uppercase">Malformed JSON</label>
+                                    <label class="block text-xs font-medium text-slate-500 uppercase" for="malformedJsonPercentage">Malformed JSON</label>
                                     <span id="val-malformed" class="text-xs font-bold text-rose-500">2%</span>
                                 </div>
                                 <input type="range" id="malformedJsonPercentage" value="2" min="0" max="100" oninput="document.getElementById('val-malformed').innerText = this.value + '%'" class="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-500" />
                             </div>
                             <div>
                                 <div class="flex justify-between mb-1">
-                                    <label class="block text-xs font-medium text-slate-500 uppercase">Duplicates</label>
+                                    <label class="block text-xs font-medium text-slate-500 uppercase" for="duplicatePercentage">Duplicates</label>
                                     <span id="val-duplicate" class="text-xs font-bold text-blue-500">0%</span>
                                 </div>
                                 <input type="range" id="duplicatePercentage" value="0" min="0" max="100" oninput="document.getElementById('val-duplicate').innerText = this.value + '%'" class="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500" />
@@ -188,28 +200,67 @@
         }, () => updateWsStatus(false));
     }
 
-    function startSimulation() {
-        const data = {
-            totalMessages: parseInt(document.getElementById('totalMessages').value),
-            errorPercentage: parseInt(document.getElementById('errorPercentage').value),
-            malformedJsonPercentage: parseInt(document.getElementById('malformedJsonPercentage').value),
-            delayBetweenMessagesMs: parseInt(document.getElementById('delayBetweenMessagesMs').value),
-            duplicatePercentage: parseInt(document.getElementById('duplicatePercentage').value),
-            targetThroughputMsgPerSec: parseInt(document.getElementById('targetThroughput').value)
-        };
-
-        fetch('/api/simulation/start', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
+    function intValue(id, fallback) {
+        const parsed = parseInt(document.getElementById(id).value, 10);
+        return Number.isFinite(parsed) ? parsed : fallback;
     }
 
-    function stopSimulation() {
-        fetch('/api/simulation/stop', { method: 'POST' });
+    /*
+     * Both calls used to be fire-and-forget: a rejected request or a server error
+     * left the UI showing "Idle" with no explanation.
+     */
+    async function startSimulation() {
+        const total = intValue('totalMessages', 0);
+        if (total <= 0) {
+            showToast('Total messages must be greater than zero', 'error');
+            document.getElementById('totalMessages').focus();
+            return;
+        }
+
+        const data = {
+            totalMessages: total,
+            errorPercentage: intValue('errorPercentage', 0),
+            malformedJsonPercentage: intValue('malformedJsonPercentage', 0),
+            delayBetweenMessagesMs: intValue('delayBetweenMessagesMs', 0),
+            duplicatePercentage: intValue('duplicatePercentage', 0),
+            targetThroughputMsgPerSec: intValue('targetThroughput', 0)
+        };
+
+        const startBtn = document.getElementById('start-btn');
+        startBtn.disabled = true;
+        try {
+            const response = await fetch('/api/simulation/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (!response.ok) {
+                showToast('The simulation could not be started', 'error');
+                startBtn.disabled = false;
+                return;
+            }
+            showToast(`Simulation started: ${total.toLocaleString()} messages`, 'success');
+        } catch (e) {
+            showToast('Network error while starting the simulation', 'error');
+            startBtn.disabled = false;
+        }
+    }
+
+    async function stopSimulation() {
+        try {
+            const response = await fetch('/api/simulation/stop', { method: 'POST' });
+            if (!response.ok) {
+                showToast('The simulation could not be stopped', 'error');
+                return;
+            }
+            showToast('Simulation stopped', 'info');
+        } catch (e) {
+            showToast('Network error while stopping the simulation', 'error');
+        }
     }
 
     function updateUI(status) {
+        if (!status) return;
         document.getElementById('stat-processed').textContent = status.processedMessages.toLocaleString();
         document.getElementById('stat-total').textContent = status.totalMessages.toLocaleString();
         document.getElementById('stat-valid').textContent = status.sentValid.toLocaleString();
@@ -235,7 +286,8 @@
             updateDonut(status);
         } else {
             document.getElementById('sim-badge').className = 'flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-500 text-[10px] font-bold uppercase tracking-wider';
-            document.getElementById('sim-dot').className = 'size-1.5 rounded-full bg-slate-50';
+            // was bg-slate-50: a near-white dot, invisible on the light background
+            document.getElementById('sim-dot').className = 'size-1.5 rounded-full bg-slate-500';
             document.getElementById('sim-status-text').textContent = 'Idle';
             document.getElementById('start-btn').disabled = false;
             document.getElementById('stop-btn').disabled = true;
@@ -266,7 +318,10 @@
         initThemeToggle();
         initWs();
         // Initial status fetch
-        fetch('/api/simulation/status').then(res => res.json()).then(updateUI);
+        fetch('/api/simulation/status')
+            .then(res => res.ok ? res.json() : null)
+            .then(updateUI)
+            .catch(() => showToast('Could not read the current simulation status', 'error'));
     });
 </script>
 </body>

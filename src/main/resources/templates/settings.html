@@ -4,12 +4,13 @@
     <title>Settings</title>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<a class="skip-link" href="#main-content">Skip to content</a>
 <div class="flex h-screen overflow-hidden">
     <!-- Sidebar Navigation -->
     <div th:replace="~{fragments/sidebar :: sidebar}"></div>
 
     <!-- Main Content Area -->
-    <main class="flex-1 flex flex-col overflow-hidden">
+    <main id="main-content" tabindex="-1" class="flex-1 flex flex-col overflow-hidden">
         <!-- Top Navbar -->
         <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
             <div class="flex items-center gap-4">
@@ -17,12 +18,12 @@
             </div>
             <div class="flex items-center gap-6">
                 <div class="flex items-center gap-2">
-                    <button id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500">
-                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden">dark_mode</span>
-                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden">light_mode</span>
+                    <button type="button" id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" aria-label="Toggle theme">
+                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden" aria-hidden="true">dark_mode</span>
+                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden" aria-hidden="true">light_mode</span>
                     </button>
-                    <button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()">
-                        <span class="material-symbols-outlined">refresh</span>
+                    <button type="button" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()" data-tooltip="Refresh page" aria-label="Refresh page">
+                        <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
                     </button>
                 </div>
             </div>
@@ -30,39 +31,39 @@
 
         <!-- Content -->
         <div class="flex-1 overflow-y-auto p-8 space-y-6">
-            <div th:if="${param.success}" class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 px-4 py-3 rounded-lg text-sm font-medium flex items-center gap-3 animate-pulse">
-                <span class="material-symbols-outlined">check_circle</span>
+            <div id="success-banner" role="status" th:if="${param.success}" class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 px-4 py-3 rounded-lg text-sm font-medium flex items-center gap-3">
+                <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
                 Configuration updated successfully.
             </div>
             <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
                 <h4 class="text-base font-bold mb-4">Application Configuration</h4>
                 <div class="space-y-6">
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Kafka Bootstrap Servers</label>
-                        <input type="text" readonly th:value="${stats.kafkaClusterName}" class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono"/>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2" for="cfg-bootstrap-servers">Kafka Bootstrap Servers</label>
+                        <input type="text" readonly id="cfg-bootstrap-servers" th:value="${stats.kafkaClusterName}" class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono"/>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Connection Type</label>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2" for="cfg-connection-type">Connection Type</label>
                         <div class="flex items-center gap-3">
-                            <input type="text" readonly th:value="${stats.kafkaSecurityProtocol == 'SSL' ? 'SSL (Secure)' : 'PLAIN (Unsecured)'}" class="flex-1 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono"/>
+                            <input type="text" readonly id="cfg-connection-type" th:value="${stats.kafkaSecurityProtocol == 'SSL' ? 'SSL (Secure)' : 'PLAIN (Unsecured)'}" class="flex-1 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono"/>
                             <span th:class="${'px-3 py-1.5 rounded-lg text-[10px] font-bold ' + (stats.kafkaSecurityProtocol == 'SSL' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-slate-500/10 text-slate-500 border border-slate-500/20')}" th:text="${stats.kafkaSecurityProtocol == 'SSL' ? 'SSL' : 'PLAIN'}">PLAIN</span>
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Main Topic</label>
-                        <input type="text" readonly th:value="${stats.topicName}" class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono"/>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2" for="cfg-main-topic">Main Topic</label>
+                        <input type="text" readonly id="cfg-main-topic" th:value="${stats.topicName}" class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono"/>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">DLT Topic</label>
-                        <input type="text" readonly th:value="${stats.topicName + '.dlt'}" class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono"/>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2" for="cfg-dlt-topic">DLT Topic</label>
+                        <input type="text" readonly id="cfg-dlt-topic" th:value="${stats.topicName + '.dlt'}" class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono"/>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Consumer Group</label>
-                        <input type="text" readonly th:value="${stats.consumerGroup}" class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono"/>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2" for="cfg-consumer-group">Consumer Group</label>
+                        <input type="text" readonly id="cfg-consumer-group" th:value="${stats.consumerGroup}" class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono"/>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Event ID Extraction Path (JsonPath)</label>
-                        <input type="text" readonly th:value="${stats.idJsonPath}" class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono text-primary font-bold"/>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2" for="cfg-id-json-path">Event ID Extraction Path (JsonPath)</label>
+                        <input type="text" readonly id="cfg-id-json-path" th:value="${stats.idJsonPath}" class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono text-primary font-bold"/>
                     </div>
                 </div>
             </div>
@@ -96,7 +97,7 @@
                     </div>
                 </div>
                 <div class="mt-4 flex items-center gap-2 text-[11px] text-emerald-500 bg-emerald-500/5 p-3 rounded-lg border border-emerald-500/10">
-                    <span class="material-symbols-outlined text-sm">info</span>
+                    <span class="material-symbols-outlined text-sm" aria-hidden="true">info</span>
                     <span>Self-tuning is active. Parameters are adjusted every 60 seconds to maintain optimal throughput.</span>
                 </div>
             </div>
@@ -108,9 +109,9 @@
                     <table class="w-full text-left border-collapse">
                         <thead class="bg-slate-50 dark:bg-slate-800/50">
                         <tr>
-                            <th class="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase">Logger Name</th>
-                            <th class="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase">Effective Level</th>
-                            <th class="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase text-right">Action</th>
+                            <th scope="col" class="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase">Logger Name</th>
+                            <th scope="col" class="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase">Effective Level</th>
+                            <th scope="col" class="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase text-right">Action</th>
                         </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -122,7 +123,7 @@
                             <td class="px-6 py-4 text-right">
                                 <form th:action="@{/settings/logs}" method="POST" class="inline-flex items-center gap-2">
                                     <input type="hidden" name="loggerName" th:value="${log.loggerName}"/>
-                                    <select name="level" class="text-[10px] bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded py-1 px-2 focus:ring-1 focus:ring-primary">
+                                    <select name="level" th:attr="aria-label='Log level for ' + ${log.loggerName}" class="text-[10px] bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded py-1 px-2 focus:ring-1 focus:ring-primary">
                                         <option value="TRACE" th:selected="${log.effectiveLevel == 'TRACE'}">TRACE</option>
                                         <option value="DEBUG" th:selected="${log.effectiveLevel == 'DEBUG'}">DEBUG</option>
                                         <option value="INFO" th:selected="${log.effectiveLevel == 'INFO'}">INFO</option>
@@ -171,7 +172,7 @@
         initThemeToggle();
 
         // Auto-hide success message
-        const successMsg = document.querySelector('.bg-emerald-500\\/10');
+        const successMsg = document.getElementById('success-banner');
         if (successMsg) {
             setTimeout(() => {
                 successMsg.style.transition = 'opacity 0.5s ease';

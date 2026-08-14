@@ -1,75 +1,102 @@
 <!-- Notifications Fragment -->
-<div th:fragment="notifications" id="toast-container" class="fixed bottom-8 right-8 z-[100] flex flex-col gap-3">
+<div th:fragment="notifications" xmlns:th="http://www.thymeleaf.org">
+    <!--
+      aria-live so screen readers announce toasts; pointer-events on the children
+      only, so the (full-width on mobile) stack never blocks clicks underneath.
+    -->
+    <div id="toast-container" role="status" aria-live="polite" aria-atomic="false"
+         class="fixed bottom-8 right-8 z-[100] flex flex-col gap-3 pointer-events-none"></div>
     <script>
+        var TOAST_MAX_VISIBLE = 4;
+
+        var TOAST_STYLES = {
+            SUCCESS: { icon: 'check_circle', color: 'text-emerald-500' },
+            ERROR:   { icon: 'error',        color: 'text-rose-500' },
+            WARNING: { icon: 'warning',      color: 'text-amber-500' },
+            INFO:    { icon: 'info',         color: 'text-primary' }
+        };
+
+        function toastStyle(type) {
+            return TOAST_STYLES[String(type || 'INFO').toUpperCase()] || TOAST_STYLES.INFO;
+        }
+
         function escapeHtml(text) {
             const div = document.createElement('div');
-            div.textContent = text;
+            div.textContent = text == null ? '' : text;
             return div.innerHTML;
         }
 
-        function showToast(event) {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-
-            // Define colors and icons based on type
-            let bgColor = 'bg-white dark:bg-slate-900';
-            let iconColor = 'text-primary';
-            let icon = 'info';
-
-            if (event.type === 'ERROR') {
-                iconColor = 'text-rose-500';
-                icon = 'error';
-            } else if (event.type === 'WARNING') {
-                iconColor = 'text-amber-500';
-                icon = 'warning';
-            } else if (event.type === 'SUCCESS') {
-                iconColor = 'text-emerald-500';
-                icon = 'check_circle';
+        /* Drops the oldest toasts so a burst of system events cannot fill the screen. */
+        function trimToasts(container) {
+            while (container.children.length > TOAST_MAX_VISIBLE) {
+                container.removeChild(container.firstChild);
             }
+        }
 
-            toast.className = `flex items-start gap-4 p-4 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 ${bgColor} min-w-[320px] max-w-[400px] transform translate-x-full transition-transform duration-500 ease-out z-[101]`;
+        function dismissToast(toast) {
+            if (!toast || toast.dataset.dismissed) return;
+            toast.dataset.dismissed = 'true';
+            toast.classList.add('opacity-0', 'translate-x-[150%]');
+            setTimeout(() => toast.remove(), 400);
+        }
 
-            const safeTitle = escapeHtml(event.title);
-            const safeCategory = escapeHtml(event.category);
-            const safeMessage = escapeHtml(event.message);
-            const timeStr = new Date(event.timestamp).toLocaleTimeString();
+        /*
+         * Single toast primitive for the whole UI.
+         *   showToast('Payload copied', 'success')
+         * `type` is one of success | error | warning | info.
+         */
+        function showToast(message, type, options) {
+            const container = document.getElementById('toast-container');
+            if (!container) return null;
+            const opts = options || {};
+            const style = toastStyle(type);
+
+            const toast = document.createElement('div');
+            toast.className = 'pointer-events-auto flex items-start gap-4 p-4 rounded-xl shadow-2xl border ' +
+                'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 min-w-[280px] max-w-[400px] ' +
+                'translate-x-[150%] opacity-0 transition-all duration-300 ease-out';
 
             toast.innerHTML = `
-                <div class="p-2 rounded-lg bg-slate-50 dark:bg-slate-800 ${iconColor}">
-                    <span class="material-symbols-outlined text-xl">${icon}</span>
+                <div class="p-2 rounded-lg bg-slate-50 dark:bg-slate-800 ${style.color} shrink-0">
+                    <span class="material-symbols-outlined text-xl" aria-hidden="true">${style.icon}</span>
                 </div>
-                <div class="flex-1">
-                    <div class="flex items-center gap-2">
-                        <h5 class="text-sm font-bold">${safeTitle}</h5>
-                        <span class="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">${safeCategory}</span>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h5 class="text-sm font-bold">${escapeHtml(opts.title || message)}</h5>
+                        ${opts.category ? `<span class="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">${escapeHtml(opts.category)}</span>` : ''}
                     </div>
-                    <p class="text-xs text-slate-500 mt-1">${safeMessage}</p>
-                    <p class="text-[10px] text-slate-400 mt-2">${timeStr}</p>
+                    ${opts.title ? `<p class="text-xs text-slate-500 mt-1 break-words">${escapeHtml(message)}</p>` : ''}
+                    ${opts.timestamp ? `<p class="text-[10px] text-slate-400 mt-2">${escapeHtml(new Date(opts.timestamp).toLocaleTimeString())}</p>` : ''}
                 </div>
-                <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                    <span class="material-symbols-outlined text-sm">close</span>
+                <button type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 shrink-0" aria-label="Dismiss notification">
+                    <span class="material-symbols-outlined text-sm" aria-hidden="true">close</span>
                 </button>
             `;
+            toast.querySelector('button').addEventListener('click', () => dismissToast(toast));
 
             container.appendChild(toast);
+            trimToasts(container);
 
-            // Trigger animation
-            setTimeout(() => {
-                toast.classList.remove('translate-x-full');
-            }, 100);
+            requestAnimationFrame(() => toast.classList.remove('translate-x-[150%]', 'opacity-0'));
+            setTimeout(() => dismissToast(toast), opts.duration || 6000);
+            return toast;
+        }
 
-            // Auto-remove
-            setTimeout(() => {
-                toast.classList.add('translate-x-[150%]');
-                setTimeout(() => toast.remove(), 500);
-            }, 8000);
+        /* Rich toast for SystemEventDTO messages pushed over /topic/system-events. */
+        function showEventToast(event) {
+            return showToast(event.message, event.type, {
+                title: event.title,
+                category: event.category,
+                timestamp: event.timestamp,
+                duration: 8000
+            });
         }
 
         // Global WebSocket Listener for System Events
         function initSystemNotifications(stompClient) {
             stompClient.subscribe('/topic/system-events', function (message) {
                 const event = JSON.parse(message.body);
-                showToast(event);
+                showEventToast(event);
                 updateSystemStatus(event);
             });
         }

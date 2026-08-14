@@ -4,6 +4,7 @@
     <title>System Architecture</title>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<a class="skip-link" href="#main-content">Skip to content</a>
 <!-- Global Notifications -->
 <div th:replace="~{fragments/notifications :: notifications}"></div>
 
@@ -12,7 +13,7 @@
     <div th:replace="~{fragments/sidebar :: sidebar}"></div>
 
     <!-- Main Content Area -->
-    <main class="flex-1 flex flex-col overflow-hidden">
+    <main id="main-content" tabindex="-1" class="flex-1 flex flex-col overflow-hidden">
         <!-- Top Navbar -->
         <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
             <div class="flex items-center gap-4">
@@ -24,12 +25,12 @@
             </div>
             <div class="flex items-center gap-6">
                 <div class="flex items-center gap-2">
-                    <button id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500">
-                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden">dark_mode</span>
-                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden">light_mode</span>
+                    <button type="button" id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" aria-label="Toggle theme">
+                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden" aria-hidden="true">dark_mode</span>
+                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden" aria-hidden="true">light_mode</span>
                     </button>
-                    <button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()">
-                        <span class="material-symbols-outlined">refresh</span>
+                    <button type="button" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()" data-tooltip="Refresh page" aria-label="Refresh page">
+                        <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
                     </button>
                 </div>
             </div>
@@ -49,7 +50,7 @@
                         This diagram shows the KafkaConsumerAutoTune system in its global environment, its interactions with users and external systems.
                     </p>
                     <div class="bg-slate-950 rounded-lg p-4 flex justify-center overflow-hidden border border-slate-800">
-                        <img src="/C4-N1.svg" alt="C4 Level 1 Diagram" class="max-w-full h-auto">
+                        <img src="/C4-N1.svg" alt="C4 level 1 diagram: KafkaConsumerAutoTune in its system context" class="max-w-full h-auto" decoding="async">
                     </div>
                 </div>
 
@@ -63,7 +64,7 @@
                         This diagram decomposes the KafkaConsumerAutoTune system into logical containers (applications, databases, etc.).
                     </p>
                     <div class="bg-slate-950 rounded-lg p-4 flex justify-center overflow-hidden border border-slate-800">
-                        <img src="/C4-N2.svg" alt="C4 Level 2 Diagram" class="max-w-full h-auto">
+                        <img src="/C4-N2.svg" alt="C4 level 2 diagram: containers making up KafkaConsumerAutoTune" class="max-w-full h-auto" loading="lazy" decoding="async">
                     </div>
                 </div>
             </div>
@@ -78,7 +79,7 @@
                     This diagram shows how the Application Spring Boot is decomposed into components and their interactions.
                 </p>
                 <div class="bg-slate-950 rounded-lg p-4 flex justify-center overflow-hidden border border-slate-800">
-                    <img src="/C4-N3.svg" alt="C4 Level 3 Diagram" class="max-w-full h-auto">
+                    <img src="/C4-N3.svg" alt="C4 level 3 diagram: components inside the Spring Boot application" class="max-w-full h-auto" loading="lazy" decoding="async">
                 </div>
             </div>
         </div>
@@ -88,27 +89,25 @@
     </main>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+<!-- SockJS and Stomp already ship (deferred) from the head fragment. -->
 
 <!-- Common Scripts Fragment -->
 <div th:replace="~{fragments/scripts :: common-scripts}"></div>
 
 <script th:inline="javascript">
-    // WebSocket Setup
-    var socket = new SockJS('/ws');
-    var stompClient = Stomp.over(socket);
-    stompClient.debug = null;
-
-    stompClient.connect({}, function (frame) {
-        updateWsStatus(true);
-        initSystemNotifications(stompClient);
-    }, function(error) {
-        updateWsStatus(false);
-    });
-
     document.addEventListener('DOMContentLoaded', function() {
         initThemeToggle();
+
+        var socket = new SockJS('/ws');
+        var stompClient = Stomp.over(socket);
+        stompClient.debug = null;
+
+        stompClient.connect({}, function (frame) {
+            updateWsStatus(true);
+            initSystemNotifications(stompClient);
+        }, function(error) {
+            updateWsStatus(false);
+        });
     });
 </script>
 </body>

@@ -4,6 +4,7 @@
     <title>Application Metrics</title>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<a class="skip-link" href="#main-content">Skip to content</a>
 <!-- Global Notifications -->
 <div th:replace="~{fragments/notifications :: notifications}"></div>
 
@@ -12,7 +13,7 @@
     <div th:replace="~{fragments/sidebar :: sidebar}"></div>
 
     <!-- Main Content Area -->
-    <main class="flex-1 flex flex-col overflow-hidden">
+    <main id="main-content" tabindex="-1" class="flex-1 flex flex-col overflow-hidden">
         <!-- Top Navbar -->
         <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
             <div class="flex items-center gap-4">
@@ -24,12 +25,12 @@
             </div>
             <div class="flex items-center gap-6">
                 <div class="flex items-center gap-2">
-                    <button id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500">
-                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden">dark_mode</span>
-                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden">light_mode</span>
+                    <button type="button" id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" aria-label="Toggle theme">
+                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden" aria-hidden="true">dark_mode</span>
+                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden" aria-hidden="true">light_mode</span>
                     </button>
-                    <button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()">
-                        <span class="material-symbols-outlined">refresh</span>
+                    <button type="button" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()" data-tooltip="Refresh page" aria-label="Refresh page">
+                        <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
                     </button>
                 </div>
             </div>
@@ -38,8 +39,8 @@
         <!-- Content -->
         <div class="flex-1 overflow-y-auto p-8 space-y-6">
             <!-- WebSocket Status -->
-            <div id="ws-alert" class="hidden bg-rose-500/10 border border-rose-500/20 text-rose-500 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2">
-                <span class="material-symbols-outlined text-sm animate-pulse">cloud_off</span>
+            <div id="ws-alert" role="alert" class="hidden bg-rose-500/10 border border-rose-500/20 text-rose-500 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm animate-pulse" aria-hidden="true">cloud_off</span>
                 Real-time updates disconnected. Attempting to reconnect...
             </div>
 
@@ -228,10 +229,12 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <div class="relative">
-                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
-                            <input type="text" id="metric-search" placeholder="Filter metrics..."
+                            <label class="sr-only" for="metric-search">Filter metrics by name</label>
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" aria-hidden="true">search</span>
+                            <input type="search" id="metric-search" placeholder="Filter metrics..."
                                    class="pl-9 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-xs focus:ring-2 focus:ring-primary w-64">
                         </div>
+                        <label class="sr-only" for="metric-filter">Metric category</label>
                         <select id="metric-filter" class="bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-xs focus:ring-2 focus:ring-primary py-2 px-3">
                             <option value="app" selected>App Specific</option>
                             <option value="kafka">Kafka Metrics</option>
@@ -243,33 +246,38 @@
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
+                            <!--
+                              Sorting lives on a real <button> inside each <th>, so the
+                              columns can be sorted from the keyboard and aria-sort
+                              exposes the current order to assistive technology.
+                            -->
                             <tr class="bg-slate-50 dark:bg-slate-800/50">
-                                <th class="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800 cursor-pointer group/th" onclick="sortMetricsTable(0)">
-                                    <div class="flex items-center gap-1">
+                                <th scope="col" aria-sort="none" data-col="0" class="sortable-th px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800 group/th">
+                                    <button type="button" onclick="sortMetricsTable(0)" class="flex items-center gap-1 uppercase tracking-wider">
                                         Metric Name
-                                        <span class="material-symbols-outlined text-xs opacity-0 group-hover/th:opacity-100 transition-opacity">unfold_more</span>
-                                    </div>
+                                        <span class="sort-icon material-symbols-outlined text-xs opacity-0 group-hover/th:opacity-100 transition-opacity" aria-hidden="true">unfold_more</span>
+                                    </button>
                                 </th>
-                                <th class="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800 cursor-pointer group/th" onclick="sortMetricsTable(1)">
-                                    <div class="flex items-center gap-1">
+                                <th scope="col" aria-sort="none" data-col="1" class="sortable-th px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800 group/th">
+                                    <button type="button" onclick="sortMetricsTable(1)" class="flex items-center gap-1 uppercase tracking-wider">
                                         Type
-                                        <span class="material-symbols-outlined text-xs opacity-0 group-hover/th:opacity-100 transition-opacity">unfold_more</span>
-                                    </div>
+                                        <span class="sort-icon material-symbols-outlined text-xs opacity-0 group-hover/th:opacity-100 transition-opacity" aria-hidden="true">unfold_more</span>
+                                    </button>
                                 </th>
-                                <th class="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800 text-right cursor-pointer group/th" onclick="sortMetricsTable(2)">
-                                    <div class="flex items-center justify-end gap-1">
+                                <th scope="col" aria-sort="none" data-col="2" class="sortable-th px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800 text-right group/th">
+                                    <button type="button" onclick="sortMetricsTable(2)" class="flex items-center justify-end gap-1 w-full uppercase tracking-wider">
                                         Value
-                                        <span class="material-symbols-outlined text-xs opacity-0 group-hover/th:opacity-100 transition-opacity">unfold_more</span>
-                                    </div>
+                                        <span class="sort-icon material-symbols-outlined text-xs opacity-0 group-hover/th:opacity-100 transition-opacity" aria-hidden="true">unfold_more</span>
+                                    </button>
                                 </th>
-                                <th class="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800 cursor-pointer group/th" onclick="sortMetricsTable(3)">
-                                    <div class="flex items-center gap-1">
+                                <th scope="col" aria-sort="none" data-col="3" class="sortable-th px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800 group/th">
+                                    <button type="button" onclick="sortMetricsTable(3)" class="flex items-center gap-1 uppercase tracking-wider">
                                         Unit
-                                        <span class="material-symbols-outlined text-xs opacity-0 group-hover/th:opacity-100 transition-opacity">unfold_more</span>
-                                    </div>
+                                        <span class="sort-icon material-symbols-outlined text-xs opacity-0 group-hover/th:opacity-100 transition-opacity" aria-hidden="true">unfold_more</span>
+                                    </button>
                                 </th>
-                                <th class="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800">Trend</th>
-                                <th class="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800">Description</th>
+                                <th scope="col" class="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800">Trend</th>
+                                <th scope="col" class="px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 dark:border-slate-800">Description</th>
                             </tr>
                         </thead>
                         <tbody id="metrics-table-body">
@@ -305,7 +313,7 @@
                                 </td>
                             </tr>
                             <tr class="no-results-row hidden">
-                                <td colspan="6" class="px-6 py-10 text-center text-slate-500 italic">No metrics found matching your criteria.</td>
+                                <td colspan="6" class="px-6 py-10 text-center text-slate-500 italic">No metrics found matching your criteria. Try widening the category filter.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -332,50 +340,35 @@
     </main>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<!-- SockJS, Stomp and ApexCharts already ship (deferred) from the head fragment. -->
 
 <!-- Common Scripts Fragment -->
 <div th:replace="~{fragments/scripts :: common-scripts}"></div>
 
 <script>
-    var socket = new SockJS('/ws');
-    var stompClient = Stomp.over(socket);
-    stompClient.debug = null; // Disable logging
+    function initWebSocket() {
+        var socket = new SockJS('/ws');
+        var stompClient = Stomp.over(socket);
+        stompClient.debug = null; // Disable logging
 
-    stompClient.connect({}, function (frame) {
-        const wsAlert = document.getElementById('ws-alert');
-        if (wsAlert) wsAlert.classList.add('hidden');
-        updateWsStatus(true);
-        initSystemNotifications(stompClient);
+        stompClient.connect({}, function (frame) {
+            const wsAlert = document.getElementById('ws-alert');
+            if (wsAlert) wsAlert.classList.add('hidden');
+            updateWsStatus(true);
+            initSystemNotifications(stompClient);
 
-        stompClient.subscribe('/topic/metrics', function (message) {
-            var stats = JSON.parse(message.body);
-            updateJvmUI(stats);
+            stompClient.subscribe('/topic/metrics', function (message) {
+                updateJvmUI(JSON.parse(message.body));
+            });
+
+            stompClient.subscribe('/topic/metrics-live', function (message) {
+                updateLiveMetrics(JSON.parse(message.body));
+            });
+        }, function() {
+            const wsAlert = document.getElementById('ws-alert');
+            if (wsAlert) wsAlert.classList.remove('hidden');
+            updateWsStatus(false);
         });
-
-        stompClient.subscribe('/topic/stats', function (message) {
-            var stats = JSON.parse(message.body);
-            updateGlobalStats(stats);
-        });
-
-        stompClient.subscribe('/topic/metrics-live', function (message) {
-            var metrics = JSON.parse(message.body);
-            updateLiveMetrics(metrics);
-        });
-    }, function() {
-        const wsAlert = document.getElementById('ws-alert');
-        if (wsAlert) wsAlert.classList.remove('hidden');
-        updateWsStatus(false);
-    });
-
-    function updateGlobalStats(stats) {
-        if (stats.throughput && stats.throughput.length > 0) {
-            const val = stats.throughput[stats.throughput.length - 1].toFixed(1) + ' Msg/s';
-            const elem = document.getElementById('throughput-val');
-            if (elem) elem.innerText = val;
-        }
     }
 
     var sparklineCharts = {};
@@ -411,10 +404,12 @@
     }
 
     function updateJvmUI(stats) {
-        const usedMb = Math.round(stats.heapUsed / 1024 / 1024);
-        const maxMb = Math.round(stats.heapMax / 1024 / 1024);
-        const commMb = Math.round(stats.heapCommitted / 1024 / 1024);
+        const usedMb = Math.round((stats.heapUsed || 0) / 1024 / 1024);
+        const maxMb = Math.round((stats.heapMax || 0) / 1024 / 1024);
+        const commMb = Math.round((stats.heapCommitted || 0) / 1024 / 1024);
         const pct = maxMb > 0 ? (usedMb * 100 / maxMb) : 0;
+        const processCpu = stats.processCpuLoad || 0;
+        const systemCpu = stats.systemCpuLoad || 0;
 
         const heapSum = document.getElementById('heap-summary');
         if (heapSum) heapSum.innerText = usedMb + ' MB';
@@ -435,21 +430,22 @@
         if (peakThreadVal) peakThreadVal.innerText = stats.peakThreadCount;
 
         const cpuSum = document.getElementById('cpu-summary');
-        if (cpuSum) cpuSum.innerText = stats.processCpuLoad.toFixed(1) + '%';
+        if (cpuSum) cpuSum.innerText = processCpu.toFixed(1) + '%';
         const procCpuVal = document.getElementById('process-cpu-val');
-        if (procCpuVal) procCpuVal.innerText = stats.processCpuLoad.toFixed(1) + '%';
+        if (procCpuVal) procCpuVal.innerText = processCpu.toFixed(1) + '%';
         const procCpuProg = document.getElementById('process-cpu-progress');
-        if (procCpuProg) procCpuProg.style.width = stats.processCpuLoad + '%';
+        if (procCpuProg) procCpuProg.style.width = processCpu + '%';
         const sysCpuVal = document.getElementById('system-cpu-val');
-        if (sysCpuVal) sysCpuVal.innerText = stats.systemCpuLoad.toFixed(1) + '%';
+        if (sysCpuVal) sysCpuVal.innerText = systemCpu.toFixed(1) + '%';
         const sysCpuProg = document.getElementById('system-cpu-progress');
-        if (sysCpuProg) sysCpuProg.style.width = stats.systemCpuLoad + '%';
+        if (sysCpuProg) sysCpuProg.style.width = systemCpu + '%';
     }
 
     document.addEventListener('DOMContentLoaded', function() {
         initThemeToggle();
         initMetricFilters();
         initSparklines();
+        initWebSocket();
     });
 
     function initSparklines() {
@@ -532,7 +528,12 @@
         }
 
         if (searchInput && filterSelect) {
-            searchInput.addEventListener('input', filterTable);
+            // Debounced: the table can hold hundreds of meter rows.
+            let debounce;
+            searchInput.addEventListener('input', function () {
+                clearTimeout(debounce);
+                debounce = setTimeout(filterTable, 150);
+            });
             filterSelect.addEventListener('change', filterTable);
             filterTable(); // Initial filter
         }
@@ -573,15 +574,16 @@
 
         sortDirections[colIndex] = !asc;
 
-        // Update UI icons
-        const headers = document.querySelectorAll('th.cursor-pointer');
-        headers.forEach((th, idx) => {
-            const icon = th.querySelector('.material-symbols-outlined');
-            if (idx === colIndex) {
+        // Update the sort affordance and expose the order via aria-sort.
+        document.querySelectorAll('.sortable-th').forEach(th => {
+            const icon = th.querySelector('.sort-icon');
+            if (Number(th.dataset.col) === colIndex) {
+                th.setAttribute('aria-sort', asc ? 'ascending' : 'descending');
                 icon.innerText = asc ? 'arrow_drop_up' : 'arrow_drop_down';
                 icon.classList.remove('opacity-0');
                 icon.classList.add('opacity-100', 'text-primary');
             } else {
+                th.setAttribute('aria-sort', 'none');
                 icon.innerText = 'unfold_more';
                 icon.classList.add('opacity-0');
                 icon.classList.remove('opacity-100', 'text-primary');
