@@ -25,8 +25,30 @@ Thank you for your interest in contributing to **KafkaConsumerAutoTune**! We wel
 - Create a new branch for your feature or bugfix (`git checkout -b feature/my-new-feature`).
 - Ensure your code follows the existing style and conventions.
 - **Tests are mandatory:** Include unit or integration tests for any new logic.
-- Run tests locally using `./mvnw clean verify`.
 - Submit a pull request with a detailed description of your changes.
+
+## Running the tests
+
+The suite is split in two tiers, and the split is enforced by naming.
+
+| Command | Runs | Needs Docker | Typical duration |
+| --- | --- | --- | --- |
+| `./mvnw test` | Unit tests (`*Test.java`, Surefire) | No | ~20 s |
+| `./mvnw verify` | Everything, plus the coverage gate | **Yes** | ~2 min |
+
+**Unit tests** are pure Mockito or sliced Spring tests (`@WebMvcTest`). They
+start no broker and no database, so they stay fast enough to run on every save.
+
+**Integration tests** (`*IT.java`, Failsafe) boot the full application context
+against a **real Kafka broker** started by Testcontainers — an `apache/kafka`
+container in KRaft mode, not an embedded broker. They therefore require a
+running Docker daemon. All of them extend `AbstractKafkaIT`, which starts one
+container shared by the whole test JVM; each class isolates itself with its own
+topics rather than with its own broker.
+
+If `./mvnw verify` fails on `Coverage checks have not been met` with a ratio
+near 0.27, the integration tests did not run — check that Docker is available.
+The coverage floor is computed on unit and integration tests combined.
 
 ## Key Areas of Interest
 

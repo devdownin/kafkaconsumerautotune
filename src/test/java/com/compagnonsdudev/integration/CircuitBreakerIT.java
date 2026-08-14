@@ -6,13 +6,11 @@ import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.MessageListenerContainer;
-import org.springframework.kafka.test.context.EmbeddedKafka;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
@@ -23,10 +21,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doThrow;
 
-@SpringBootTest
-@EmbeddedKafka(partitions = 1, brokerProperties = { "listeners=PLAINTEXT://localhost:9096", "port=9096" })
-@ActiveProfiles("dev")
-public class CircuitBreakerIntegrationTest {
+@TestPropertySource(properties = {
+    "kafka.topic.name=it-circuit.topic",
+    "kafka.topic.dlt=it-circuit.topic.dlt"
+})
+public class CircuitBreakerIT extends AbstractKafkaIT {
 
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;

@@ -256,12 +256,6 @@
             <scope>test</scope>
         </dependency>
 
-        <dependency>
-            <groupId>org.springframework.kafka</groupId>
-            <artifactId>spring-kafka-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-
         <!-- H2 pour tests et profil dev -->
         <dependency>
             <groupId>com.h2database</groupId>
@@ -378,6 +372,11 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <!-- Agent JaCoCo dédié aux tests d'intégration, sans quoi
+                         leur couverture ne serait pas comptabilisée. -->
+                    <argLine>@{failsafeArgLine}</argLine>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
@@ -394,17 +393,63 @@
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.14</version>
                 <executions>
+                    <!-- Agent des tests unitaires : alimente target/jacoco.exec -->
                     <execution>
                         <goals>
                             <goal>prepare-agent</goal>
                         </goals>
                     </execution>
+                    <!-- Agent des tests d'intégration : fichier distinct, pour
+                         que les deux exécuteurs ne se marchent pas dessus. -->
+                    <execution>
+                        <id>prepare-agent-integration</id>
+                        <goals>
+                            <goal>prepare-agent-integration</goal>
+                        </goals>
+                        <configuration>
+                            <propertyName>failsafeArgLine</propertyName>
+                        </configuration>
+                    </execution>
+                    <!-- Rapport des seuls tests unitaires, disponible dès
+                         mvn test pour qui n'exécute pas la suite complète. -->
                     <execution>
                         <id>report</id>
                         <phase>test</phase>
                         <goals>
                             <goal>report</goal>
                         </goals>
+                    </execution>
+                    <!-- Les trois exécutions suivantes se déroulent en phase
+                         verify, dans l'ordre de déclaration : fusion des deux
+                         relevés, rapport consolidé, puis contrôle du seuil. -->
+                    <execution>
+                        <id>merge-coverage</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>merge</goal>
+                        </goals>
+                        <configuration>
+                            <fileSets>
+                                <fileSet>
+                                    <directory>${project.build.directory}</directory>
+                                    <includes>
+                                        <include>jacoco.exec</include>
+                                        <include>jacoco-it.exec</include>
+                                    </includes>
+                                </fileSet>
+                            </fileSets>
+                            <destFile>${project.build.directory}/jacoco-merged.exec</destFile>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>report-merged</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                        <configuration>
+                            <dataFile>${project.build.directory}/jacoco-merged.exec</dataFile>
+                        </configuration>
                     </execution>
                     <!--
                         Plancher, pas objectif. La couverture mesurée est de
@@ -423,6 +468,7 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
+                            <dataFile>${project.build.directory}/jacoco-merged.exec</dataFile>
                             <rules>
                                 <rule>
                                     <element>BUNDLE</element>

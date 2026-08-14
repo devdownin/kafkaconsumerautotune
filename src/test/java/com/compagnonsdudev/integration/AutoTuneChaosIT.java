@@ -5,10 +5,8 @@ import com.compagnonsdudev.repository.KEventRepository;
 import com.compagnonsdudev.service.KafkaTuningService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.SpyBean;
-import org.springframework.kafka.test.context.EmbeddedKafka;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -22,10 +20,11 @@ import static org.mockito.Mockito.doAnswer;
  * Chaos Engineering Test for Kafka Auto-Tuning.
  * Simulates system degradation (latency) to verify the robustness of the PID controller.
  */
-@SpringBootTest
-@EmbeddedKafka(partitions = 3, brokerProperties = { "listeners=PLAINTEXT://localhost:9097", "port=9097" })
-@ActiveProfiles("dev")
-public class AutoTuneChaosTest {
+@TestPropertySource(properties = {
+    "kafka.topic.name=it-chaos.topic",
+    "kafka.topic.dlt=it-chaos.topic.dlt"
+})
+public class AutoTuneChaosIT extends AbstractKafkaIT {
 
     @Autowired
     private KafkaTuningService tuningService;

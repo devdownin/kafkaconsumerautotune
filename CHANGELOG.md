@@ -7,8 +7,24 @@ et le projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Modifié
+
+- Les tests d'intégration s'exécutent contre un vrai broker Kafka fourni par
+  Testcontainers (image `apache/kafka` en mode KRaft) au lieu d'un broker
+  embarqué sur port figé, et sont pris en charge par Failsafe en phase
+  `integration-test` sous le suffixe `*IT`. `mvn test` ne conserve que les
+  tests unitaires et passe d'environ 90 à 20 secondes ; `mvn verify` exécute
+  l'ensemble et requiert désormais un démon Docker.
+- JaCoCo instrumente les deux exécuteurs : les relevés de Surefire et de
+  Failsafe sont fusionnés avant le calcul du rapport et le contrôle de seuil.
+
 ### Ajouté
 
+- Publication automatique de l'image sur Docker Hub à la création d'une
+  release, avec dérivation des tags depuis la version (`1.0.1` publie aussi
+  `1.0`, `1` et `latest`), étiquettes OCI et tag par empreinte de commit.
+- Fichier `.dockerignore` : le contexte de build ne transportait jusqu'ici
+  l'intégralité du dépôt, journaux et `node_modules` compris.
 - Workflow d'intégration continue exécutant `mvn verify` sur chaque pull
   request, avec publication des rapports de test et de couverture.
 - Analyse statique CodeQL sur les pushes, les pull requests et selon une

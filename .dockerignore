@@ -1,0 +1,33 @@
+# Le Dockerfile ne copie que pom.xml et src/, mais tout le reste du contexte
+# est transféré au démon à chaque build et invalide le cache inutilement.
+
+.git
+.github
+.mvn/wrapper/maven-wrapper.jar
+target/
+logs/
+*.log
+
+# Documentation et site vitrine : sans effet sur l'image produite.
+docs/
+static-site/
+grafana/
+*.md
+
+# Pile de démonstration locale.
+docker-compose.yml
+prometheus.yml
+prometheus-rules.yml
+promtail-config.yaml
+otel-collector-config.yaml
+init.sql
+
+# Outillage hors sujet pour une image Java.
+node_modules/
+package.json
+package-lock.json
+
+# Environnements de développement.
+.idea/
+.vscode/
+*.iml
