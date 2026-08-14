@@ -204,9 +204,9 @@
     </div>
 </div>
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+<link rel="stylesheet" th:href="@{/vendor/css/prism-tomorrow-1.29.0.min.css}">
+<script defer th:src="@{/vendor/js/prism-core-1.29.0.min.js}"></script>
+<script defer th:src="@{/vendor/js/prism-sql-1.29.0.min.js}"></script>
 
 <div th:replace="~{fragments/scripts :: common-scripts}"></div>
 <script>

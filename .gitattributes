@@ -3,3 +3,11 @@
 
 # Le site vitrine n'est pas du code applicatif : exclu des statistiques de langage.
 static-site/** linguist-documentation
+
+# Bibliothèques tierces embarquées : ni normalisation de fins de ligne sur les
+# fichiers minifiés, ni comptage dans les statistiques de langage, ni bruit dans
+# les diffs. Voir src/main/resources/static/vendor/README.md.
+src/main/resources/static/vendor/** linguist-vendored
+*.woff2 binary
+src/main/resources/static/vendor/js/*.js -text -diff
+src/main/resources/static/vendor/css/*.css -text -diff
