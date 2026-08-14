@@ -38,12 +38,22 @@ All thirteen are fixed. Details of the approach are in the code comments at each
 | Removed the dead page-specific `<head>` block in `message-viewer` | It was silently dropped by `th:replace` on `<head>`, so the whole Prism theme + inline CSS had been duplicated into the body to compensate |
 | Removed Prism from `dlt-management` | Two scripts were downloaded and never used — the payload editor is a plain `<textarea>` |
 | Replaced the `ui-avatars.com` avatar with locally rendered initials | One fewer third-party request **per page load**, and the OS user name is no longer sent to an external service |
-| `preconnect` for the four third-party origins | The TLS handshakes start alongside HTML parsing instead of after it |
+| `preconnect` for the one remaining third-party origin (Tailwind) | Its TLS handshake starts alongside HTML parsing instead of after it. The other three origins are gone entirely |
 | `defer` on SockJS / Stomp / ApexCharts / Prism | They no longer block parsing. Pages that bootstrapped a WebSocket from an inline script were moved into `DOMContentLoaded`, which is what makes `defer` safe here |
-| Subset the Material Symbols font with `icon_names=` | The full icon font is ~3.5 MB; the UI uses 45 glyphs. Verified against the rendered HTML of every page, so nothing falls back to literal text |
+| Subset the Material Symbols font with `icon_names=` | The full icon font is ~3.5 MB; the UI uses 57 icons and the subset weighs 20 KB. Verified glyph by glyph against the font's own ligature table, so nothing falls back to literal text |
+| Vendored every third-party asset except Tailwind (see §4) | Fonts, SockJS, Stomp, ApexCharts and Prism are served by the application. Removes three external origins, pins versions that could previously shift under us, and makes the UI work air-gapped apart from Tailwind |
 
-Net effect: 7 → 6 downloads on a typical page, 12 → 9 on `message-viewer`, 9 → 6 on
-`dlt-management` and `metrics`, with the largest single asset drastically smaller.
+Net effect on request count: 7 → 6 on a typical page, 12 → 9 on `message-viewer`,
+9 → 6 on `dlt-management` and `metrics`. More significant than the count is what
+those requests now cost: four third-party origins became one, so a cold page load
+performs a single external DNS + TLS handshake instead of four, and every other
+asset rides the connection the HTML already arrived on. The largest asset also
+shrank by two orders of magnitude — the icon font went from ~3.5 MB to 20 KB.
+
+Self-serving the assets means they no longer arrive with a CDN's cache headers, so
+`spring.web.resources.cache` sets a one-day `Cache-Control` on the static tree.
+Without it, vendoring would have *cost* a conditional request per asset per
+navigation and been a net regression on repeat visits.
 
 ### Runtime
 
@@ -102,10 +112,15 @@ irreversible — now ask for confirmation. Only the Flink metric delete had one 
    unsuitable for production. Replacing it means introducing a Node build step
    (`tailwindcss` CLI → a single small `app.css` served from `static/`), which is a
    build-pipeline change rather than a UI change. This is the largest remaining
-   performance item by a wide margin.
-2. **The UI cannot run offline / air-gapped.** Every asset comes from a third-party
-   CDN with no Subresource Integrity attributes. Vendoring them under
-   `src/main/resources/static/` would fix both the availability and the integrity gap.
+   performance item by a wide margin, and it now also blocks item 2: Tailwind is
+   the last asset keeping the UI from working fully offline.
+2. ~~**The UI cannot run offline / air-gapped.**~~ **Mostly resolved.** Fonts,
+   SockJS, Stomp, ApexCharts and Prism now live under
+   `src/main/resources/static/vendor/` and are served by the application; see the
+   README there for how to refresh them. Tailwind is the sole remaining external
+   asset, and it cannot be vendored meaningfully without item 1 — its CDN build
+   *is* the compiler. So a disconnected install now renders and functions, but
+   comes up unstyled.
 3. **Server-side pagination.** `dlt-management` renders 25 rows and `message-viewer`
    20, both capped in the controller; filtering and sorting happen entirely client
    side. Fine at that size, but the "Showing N recent errors" label is easy to
@@ -124,3 +139,10 @@ one returns 200, including the error page with no `stats` in the model, which is
 regression from item 1. The icon subset was cross-checked against the icons present in
 the rendered HTML of every page, not just against the templates, so icons injected
 from JavaScript are covered.
+
+For the vendoring pass, a second temporary test re-rendered the pages, asserted that
+no page still names `jsdelivr`, `cdnjs`, `fonts.googleapis.com` or `fonts.gstatic.com`,
+and then requested every `/vendor/...` URL those pages reference — 26 assets, all
+served with 200, plus the three font binaries the stylesheets point at. The icon
+subset was additionally checked against the ligature table inside the generated
+`woff2`: all 57 icons the templates use resolve to a real glyph.

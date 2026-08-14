@@ -71,6 +71,18 @@ spring:
         generate_statistics: false
         format_sql: false
 
+  # Les ressources du tableau de bord (polices, bibliothèques JS) sont servies
+  # par l'application depuis static/vendor/ et non plus par un CDN. Sans
+  # en-tête de cache, le navigateur revaliderait chaque fichier à chaque
+  # navigation : une journée de cache supprime ces allers-retours tout en
+  # bornant la fraîcheur si l'un de ces fichiers est régénéré.
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          max-age: 1d
+          cache-public: true
+
 # Configuration de l'application (UI & Business)
 app:
   persistence:

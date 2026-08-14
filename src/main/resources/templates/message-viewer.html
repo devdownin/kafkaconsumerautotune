@@ -10,7 +10,7 @@
   whole <head>, so anything declared there is dropped before rendering. It used
   to be declared in both places, which downloaded the Prism theme twice.
 -->
-<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet"/>
+<link th:href="@{/vendor/css/prism-okaidia-1.29.0.min.css}" rel="stylesheet"/>
 <style>
     .serif-title { font-family: 'Georgia', serif; }
     .category-active { border-left: 4px solid #135bec; background: rgba(19, 91, 236, 0.1); }
@@ -214,8 +214,10 @@
     </main>
 </div>
 
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<!-- Prism core plus the one grammar this page needs, instead of the CDN
+     bundle that also carries markup, CSS and JavaScript grammars. -->
+<script defer th:src="@{/vendor/js/prism-core-1.29.0.min.js}"></script>
+<script defer th:src="@{/vendor/js/prism-json-1.29.0.min.js}"></script>
 
 <!-- Common Scripts Fragment -->
 <div th:replace="~{fragments/scripts :: common-scripts}"></div>
