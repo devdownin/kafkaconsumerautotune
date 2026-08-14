@@ -37,7 +37,7 @@ C4Container
 
     Container_Boundary(kafkaconsumerautotune_boundary, "Système KafkaConsumerAutoTune") {
         Container(ui, "Interface Web", "Thymeleaf, Tailwind CSS", "Fournit le dashboard et les outils de gestion DLT.")
-        Container(app, "Application Spring Boot", "Java 21, Spring Boot 3.5", "Logique de consommation, auto-tuning (PID+EMA), résilience et export télémétrique.")
+        Container(app, "Application Spring Boot", "Java 25, Spring Boot 3.5", "Logique de consommation, auto-tuning (PID+EMA), résilience et export télémétrique.")
     }
 
     Container_Boundary(otel_boundary, "Pile d'Observabilité") {

@@ -9,6 +9,12 @@ et le projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ### Modifié
 
+- Le projet compile et s'exécute sur Java 25. La montée de l'image d'exécution
+  en `eclipse-temurin:25-jre` avait laissé la compilation sur JDK 21 : le
+  bytecode produit tournait sur une JVM quatre versions plus récente que celle
+  qui l'avait compilé, sans qu'aucun test ne couvre cet écart. Le `pom`, les
+  trois workflows et l'étage de build du `Dockerfile` sont désormais alignés.
+
 - Les tests d'intégration s'exécutent contre un vrai broker Kafka fourni par
   Testcontainers (image `apache/kafka` en mode KRaft) au lieu d'un broker
   embarqué sur port figé, et sont pris en charge par Failsafe en phase

@@ -3,7 +3,7 @@
 [![CI](https://github.com/devdownin/kafkaconsumerautotune/actions/workflows/ci.yml/badge.svg)](https://github.com/devdownin/kafkaconsumerautotune/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/devdownin/kafkaconsumerautotune/actions/workflows/codeql.yml/badge.svg)](https://github.com/devdownin/kafkaconsumerautotune/actions/workflows/codeql.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Java 21](https://img.shields.io/badge/Java-21-orange.svg)](https://openjdk.org/projects/jdk/21/)
+[![Java 25](https://img.shields.io/badge/Java-25-orange.svg)](https://openjdk.org/projects/jdk/25/)
 
 Welcome to **KafkaConsumerAutoTune**, a reference implementation of a high-performance Kafka consumer for Spring Boot. More than just a consumption tool, KafkaConsumerAutoTune is designed as a self-adaptive system capable of optimizing its own performance in real-time.
 
@@ -68,7 +68,7 @@ You can't improve what you don't measure. KafkaConsumerAutoTune offers:
 
 ### Prerequisites
 - Docker and Docker Compose
-- Java 21 (if you want to compile locally)
+- Java 25 (if you want to compile locally)
 
 ### Launch the complete stack
 ```bash
