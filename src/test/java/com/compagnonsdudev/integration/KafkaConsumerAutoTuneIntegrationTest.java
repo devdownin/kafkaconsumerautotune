@@ -28,7 +28,7 @@ import static org.mockito.Mockito.*;
 @SpringBootTest
 @EmbeddedKafka(partitions = 1, brokerProperties = { "listeners=PLAINTEXT://localhost:9095", "port=9095" })
 @ActiveProfiles("dev")
-public class ConsotopicIntegrationTest {
+public class KafkaConsumerAutoTuneIntegrationTest {
 
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;

@@ -1,41 +1,41 @@
-# Modèles C4 (Mermaid) - Consotopic
+# Modèles C4 (Mermaid) - KafkaConsumerAutoTune
 
-Ce document présente l'architecture de l'application Consotopic en suivant le modèle C4 (Context, Container, Component) au format Mermaid.
+Ce document présente l'architecture de l'application KafkaConsumerAutoTune en suivant le modèle C4 (Context, Container, Component) au format Mermaid.
 
 ## 1. Niveau 1 : Diagramme de Contexte (System Context)
 
-Ce diagramme montre le système Consotopic dans son environnement global.
+Ce diagramme montre le système KafkaConsumerAutoTune dans son environnement global.
 
 ```mermaid
 C4Context
-    title Diagramme de Contexte pour le système Consotopic
+    title Diagramme de Contexte pour le système KafkaConsumerAutoTune
 
     Person(user, "Utilisateur / Opérateur", "Surveille les performances et gère les erreurs via le dashboard.")
-    System(consotopic, "Consotopic", "Application de consommation Kafka haute performance avec auto-tuning intelligent et résilience avancée.")
+    System(kafkaconsumerautotune, "KafkaConsumerAutoTune", "Application de consommation Kafka haute performance avec auto-tuning intelligent et résilience avancée.")
 
     System_Ext(kafka, "Kafka", "Flux de messages d'entrée (Message Broker).")
     System_Ext(database, "Base de données", "Stockage persistant des événements et erreurs DLT (Oracle/H2).")
     System_Ext(otel_stack, "Observability Stack", "Pile complète (Loki, Prometheus, Jaeger) pour la supervision, le log centralisé et le tracing.")
 
-    Rel(user, consotopic, "Surveille et gère", "HTTPS/WebSocket")
-    Rel(consotopic, kafka, "Consomme des messages", "Kafka Protocol")
-    Rel(consotopic, database, "Persiste les données", "JDBC")
-    Rel(consotopic, otel_stack, "Exporte logs, métriques et traces", "OTLP / File-Scraping")
+    Rel(user, kafkaconsumerautotune, "Surveille et gère", "HTTPS/WebSocket")
+    Rel(kafkaconsumerautotune, kafka, "Consomme des messages", "Kafka Protocol")
+    Rel(kafkaconsumerautotune, database, "Persiste les données", "JDBC")
+    Rel(kafkaconsumerautotune, otel_stack, "Exporte logs, métriques et traces", "OTLP / File-Scraping")
 ```
 
 ---
 
 ## 2. Niveau 2 : Diagramme de Conteneur (Container)
 
-Ce diagramme décompose le système Consotopic en conteneurs logiques et inclut la pile d'observabilité.
+Ce diagramme décompose le système KafkaConsumerAutoTune en conteneurs logiques et inclut la pile d'observabilité.
 
 ```mermaid
 C4Container
-    title Diagramme de Conteneur pour le système Consotopic
+    title Diagramme de Conteneur pour le système KafkaConsumerAutoTune
 
     Person(user, "Utilisateur / Opérateur", "Surveille les performances et gère les erreurs.")
 
-    Container_Boundary(consotopic_boundary, "Système Consotopic") {
+    Container_Boundary(kafkaconsumerautotune_boundary, "Système KafkaConsumerAutoTune") {
         Container(ui, "Interface Web", "Thymeleaf, Tailwind CSS", "Fournit le dashboard et les outils de gestion DLT.")
         Container(app, "Application Spring Boot", "Java 21, Spring Boot 3.5", "Logique de consommation, auto-tuning (PID+EMA), résilience et export télémétrique.")
     }
