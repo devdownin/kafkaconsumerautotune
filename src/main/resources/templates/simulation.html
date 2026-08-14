@@ -231,11 +231,11 @@
         try {
             const response = await fetch('/api/simulation/start', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                 body: JSON.stringify(data)
             });
             if (!response.ok) {
-                showToast('The simulation could not be started', 'error');
+                showToast(await serverMessage(response, 'The simulation could not be started'), 'error');
                 startBtn.disabled = false;
                 return;
             }
@@ -248,14 +248,37 @@
 
     async function stopSimulation() {
         try {
-            const response = await fetch('/api/simulation/stop', { method: 'POST' });
+            const response = await fetch('/api/simulation/stop', {
+                method: 'POST',
+                headers: { 'Accept': 'application/json' }
+            });
             if (!response.ok) {
-                showToast('The simulation could not be stopped', 'error');
+                showToast(await serverMessage(response, 'The simulation could not be stopped'), 'error');
                 return;
             }
             showToast('Simulation stopped', 'info');
         } catch (e) {
             showToast('Network error while stopping the simulation', 'error');
+        }
+    }
+
+    /*
+     * Turns the ApiError body into something worth reading. Server-side
+     * validation reports the offending fields, which is more useful than a
+     * generic failure notice.
+     */
+    async function serverMessage(response, fallback) {
+        try {
+            const body = await response.json();
+            if (body.fieldErrors) {
+                const details = Object.entries(body.fieldErrors)
+                    .map(([field, problem]) => `${field} ${problem}`)
+                    .join(', ');
+                if (details) return `Invalid parameters: ${details}`;
+            }
+            return body.message || fallback;
+        } catch (e) {
+            return fallback;
         }
     }
 

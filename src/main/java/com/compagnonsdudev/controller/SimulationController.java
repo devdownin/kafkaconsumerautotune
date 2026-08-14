@@ -4,6 +4,7 @@ import com.compagnonsdudev.dto.simulation.SimulationRequestDTO;
 import com.compagnonsdudev.dto.simulation.SimulationStatusDTO;
 import com.compagnonsdudev.service.DashboardService;
 import com.compagnonsdudev.service.SimulationService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -27,7 +28,7 @@ public class SimulationController {
 
     @PostMapping("/api/simulation/start")
     @ResponseBody
-    public ResponseEntity<String> startSimulation(@RequestBody SimulationRequestDTO request) {
+    public ResponseEntity<String> startSimulation(@Valid @RequestBody SimulationRequestDTO request) {
         simulationService.startSimulation(request);
         return ResponseEntity.ok("Simulation started");
     }
