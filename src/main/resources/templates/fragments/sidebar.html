@@ -1,91 +1,93 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!--
+  Single navigation entry. Factored out so the active-state classes, the
+  aria-current flag and the icon markup are defined exactly once.
+  `url` is resolved by the caller with @{...} so the context path is preserved.
+-->
+<a th:fragment="nav-link(url, icon, label, page)"
+   th:href="${url}"
+   th:attr="aria-current=${activePage == page ? 'page' : null}"
+   th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == page ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}">
+    <span class="material-symbols-outlined" aria-hidden="true" th:text="${icon}">dashboard</span>
+    <span th:class="${'text-sm ' + (activePage == page ? 'font-semibold' : 'font-medium')}" th:text="${label}">Dashboard</span>
+</a>
+
 <!-- Sidebar Navigation Fragment -->
-<aside th:fragment="sidebar" class="w-64 border-r border-slate-200 dark:border-slate-800 flex flex-col bg-white dark:bg-background-dark shrink-0">
-    <div class="p-6 border-b border-slate-200 dark:border-slate-800">
-        <div class="flex items-center gap-3">
-            <div class="bg-primary rounded-lg p-1.5 text-white">
-                <span class="material-symbols-outlined">hub</span>
-            </div>
-            <div>
-                <h1 class="text-sm font-bold leading-none" th:text="${stats.appName}">KafkaMonitor</h1>
-                <p class="text-[10px] text-slate-500 uppercase tracking-widest mt-1 font-semibold" th:text="${stats.appEdition}">Enterprise Edition</p>
-            </div>
-        </div>
-    </div>
-    <nav class="flex-1 p-4 flex flex-col gap-2">
-        <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'dashboard' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/}">
-            <span class="material-symbols-outlined">dashboard</span>
-            <span th:class="${'text-sm ' + (activePage == 'dashboard' ? 'font-semibold' : 'font-medium')}">Dashboard</span>
-        </a>
-        <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'message-viewer' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/message-viewer}">
-            <span class="material-symbols-outlined">visibility</span>
-            <span th:class="${'text-sm ' + (activePage == 'message-viewer' ? 'font-semibold' : 'font-medium')}">Message Viewer</span>
-        </a>
-        <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'consumer-groups' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/consumer-groups}">
-            <span class="material-symbols-outlined">group_work</span>
-            <span th:class="${'text-sm ' + (activePage == 'consumer-groups' ? 'font-semibold' : 'font-medium')}">Consumer Groups</span>
-        </a>
-        <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'dlt' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/dlt-management}">
-            <span class="material-symbols-outlined">error_outline</span>
-            <span th:class="${'text-sm ' + (activePage == 'dlt' ? 'font-semibold' : 'font-medium')}">DLT Management</span>
-        </a>
-        <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'simulation' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/simulation}">
-            <span class="material-symbols-outlined">rocket_launch</span>
-            <span th:class="${'text-sm ' + (activePage == 'simulation' ? 'font-semibold' : 'font-medium')}">Traffic Simulator</span>
-        </a>
-        <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'metrics' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/metrics}">
-            <span class="material-symbols-outlined">monitoring</span>
-            <span th:class="${'text-sm ' + (activePage == 'metrics' ? 'font-semibold' : 'font-medium')}">Application Metrics</span>
-        </a>
-        <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'flink-metrics' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/flink-metrics}">
-            <span class="material-symbols-outlined">query_stats</span>
-            <span th:class="${'text-sm ' + (activePage == 'flink-metrics' ? 'font-semibold' : 'font-medium')}">Flink Metrics</span>
-        </a>
-        <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'optimizer' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/optimizer}">
-            <span class="material-symbols-outlined">auto_fix_high</span>
-            <span th:class="${'text-sm ' + (activePage == 'optimizer' ? 'font-semibold' : 'font-medium')}">Kafka Optimizer</span>
-        </a>
-        <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
-            <p class="px-3 text-[10px] font-bold text-slate-400 uppercase mb-2">Systems</p>
-            <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'db-status' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/db-status}">
-                <span class="material-symbols-outlined">database</span>
-                <span th:class="${'text-sm ' + (activePage == 'db-status' ? 'font-semibold' : 'font-medium')}">Database Status</span>
-            </a>
-            <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'settings' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/settings}">
-                <span class="material-symbols-outlined">settings</span>
-                <span th:class="${'text-sm ' + (activePage == 'settings' ? 'font-semibold' : 'font-medium')}">Settings</span>
-            </a>
-        </div>
-        <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
-            <p class="px-3 text-[10px] font-bold text-slate-400 uppercase mb-2">Documentation</p>
-            <a th:class="${'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ' + (activePage == 'architecture' ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800')}" th:href="@{/architecture}">
-                <span class="material-symbols-outlined">architecture</span>
-                <span th:class="${'text-sm ' + (activePage == 'architecture' ? 'font-semibold' : 'font-medium')}">System Architecture</span>
-            </a>
-        </div>
-    </nav>
-    <div class="p-4 border-t border-slate-200 dark:border-slate-800">
-        <div class="flex items-center gap-3 p-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-            <div class="size-8 bg-slate-300 dark:bg-slate-700 rounded-full bg-cover bg-center" th:style="'background-image: url(\'https://ui-avatars.com/api/?name=' + ${stats.systemUser} + '&background=random\')'"></div>
-            <div class="overflow-hidden">
-                <p class="text-xs font-bold truncate" th:text="${stats.systemUser}">System Administrator</p>
-                <p class="text-[10px] text-slate-500">Session Active</p>
+<!-- display:contents keeps the aside element a direct flex child of the page shell. -->
+<div th:fragment="sidebar" class="contents">
+    <!-- Below lg the sidebar becomes off-canvas; these two controls drive it. -->
+    <button id="sidebar-toggle" type="button" onclick="toggleSidebar()"
+            class="hidden fixed top-3.5 left-3 z-[80] p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 shadow-sm"
+            aria-controls="app-sidebar" aria-expanded="false" aria-label="Open navigation menu">
+        <span class="material-symbols-outlined" aria-hidden="true">menu</span>
+    </button>
+    <div id="sidebar-overlay" onclick="toggleSidebar()" class="hidden fixed inset-0 z-[60] bg-slate-900/50 backdrop-blur-sm"></div>
+
+    <aside id="app-sidebar" class="w-64 border-r border-slate-200 dark:border-slate-800 flex flex-col bg-white dark:bg-background-dark shrink-0">
+        <div class="p-6 border-b border-slate-200 dark:border-slate-800">
+            <div class="flex items-center gap-3">
+                <div class="bg-primary rounded-lg p-1.5 text-white">
+                    <span class="material-symbols-outlined" aria-hidden="true">hub</span>
+                </div>
+                <div>
+                    <h1 class="text-sm font-bold leading-none" th:text="${stats.appName}">KafkaMonitor</h1>
+                    <p class="text-[10px] text-slate-500 uppercase tracking-widest mt-1 font-semibold" th:text="${stats.appEdition}">Enterprise Edition</p>
+                </div>
             </div>
         </div>
-    </div>
-</aside>
+        <nav class="flex-1 p-4 flex flex-col gap-2 overflow-y-auto" aria-label="Main navigation">
+            <a th:replace="~{fragments/sidebar :: nav-link(@{/}, 'dashboard', 'Dashboard', 'dashboard')}"></a>
+            <a th:replace="~{fragments/sidebar :: nav-link(@{/message-viewer}, 'visibility', 'Message Viewer', 'message-viewer')}"></a>
+            <a th:replace="~{fragments/sidebar :: nav-link(@{/consumer-groups}, 'group_work', 'Consumer Groups', 'consumer-groups')}"></a>
+            <a th:replace="~{fragments/sidebar :: nav-link(@{/dlt-management}, 'error_outline', 'DLT Management', 'dlt')}"></a>
+            <a th:replace="~{fragments/sidebar :: nav-link(@{/simulation}, 'rocket_launch', 'Traffic Simulator', 'simulation')}"></a>
+            <a th:replace="~{fragments/sidebar :: nav-link(@{/metrics}, 'monitoring', 'Application Metrics', 'metrics')}"></a>
+            <a th:replace="~{fragments/sidebar :: nav-link(@{/flink-metrics}, 'query_stats', 'Flink Metrics', 'flink-metrics')}"></a>
+            <a th:replace="~{fragments/sidebar :: nav-link(@{/optimizer}, 'auto_fix_high', 'Kafka Optimizer', 'optimizer')}"></a>
+            <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-2">
+                <p class="px-3 text-[10px] font-bold text-slate-400 uppercase mb-2" id="nav-systems-label">Systems</p>
+                <a th:replace="~{fragments/sidebar :: nav-link(@{/db-status}, 'database', 'Database Status', 'db-status')}"></a>
+                <a th:replace="~{fragments/sidebar :: nav-link(@{/settings}, 'settings', 'Settings', 'settings')}"></a>
+            </div>
+            <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-2">
+                <p class="px-3 text-[10px] font-bold text-slate-400 uppercase mb-2">Documentation</p>
+                <a th:replace="~{fragments/sidebar :: nav-link(@{/architecture}, 'architecture', 'System Architecture', 'architecture')}"></a>
+            </div>
+        </nav>
+        <div class="p-4 border-t border-slate-200 dark:border-slate-800">
+            <div class="flex items-center gap-3 p-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                <!--
+                  Rendered locally instead of fetching an avatar from ui-avatars.com:
+                  removes a third-party request per page load and stops leaking the
+                  OS user name to an external service.
+                -->
+                <div class="size-8 shrink-0 bg-primary/10 text-primary rounded-full flex items-center justify-center text-xs font-bold uppercase"
+                     aria-hidden="true"
+                     th:text="${#strings.isEmpty(stats.systemUser) ? '?' : #strings.toUpperCase(#strings.substring(stats.systemUser, 0, 1))}">S</div>
+                <div class="overflow-hidden">
+                    <p class="text-xs font-bold truncate" th:text="${stats.systemUser}">System Administrator</p>
+                    <p class="text-[10px] text-slate-500">Session Active</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+</div>
 
 <!-- Footer Status Fragment -->
-<footer th:fragment="footer-status" class="h-10 bg-white dark:bg-background-dark border-t border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 shrink-0">
-    <div class="flex items-center gap-4 text-[11px] font-medium text-slate-500">
-        <div class="flex items-center gap-1.5">
-            <span id="ws-status-dot" class="size-2 rounded-full bg-slate-400 animate-pulse" data-tooltip="WebSocket Status"></span>
+<footer th:fragment="footer-status" class="h-10 bg-white dark:bg-background-dark border-t border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 shrink-0 overflow-x-auto no-scrollbar">
+    <div class="flex items-center gap-4 text-[11px] font-medium text-slate-500 whitespace-nowrap">
+        <div class="flex items-center gap-1.5" data-tooltip="Live update channel (WebSocket)">
+            <span id="ws-status-dot" class="size-2 rounded-full bg-slate-400 animate-pulse"></span>
             <span id="ws-status-text">WS: Connecting</span>
         </div>
         <div class="flex items-center gap-1.5 border-l border-slate-200 dark:border-slate-800 pl-4">
             <span th:class="${'size-2 rounded-full ' + (stats.dbStatus.contains('Connected') ? 'bg-emerald-500' : 'bg-rose-500')}"></span>
             <span th:text="${stats.dbStatus}">DB: Connected</span>
         </div>
-        <div class="flex items-center gap-1.5 border-l border-slate-200 dark:border-slate-800 pl-4">
+        <div class="flex items-center gap-1.5 border-l border-slate-200 dark:border-slate-800 pl-4" data-tooltip="Persistence circuit breaker state">
             <span id="cb-status-dot" th:class="${'size-2 rounded-full ' + (stats.circuitBreakerStatus == 'CLOSED' ? 'bg-emerald-500' : (stats.circuitBreakerStatus == 'HALF_OPEN' ? 'bg-amber-500' : 'bg-rose-500'))}"></span>
             Circuit: <span id="cb-status-text" th:text="${stats.circuitBreakerStatus}">CLOSED</span>
         </div>
@@ -99,19 +101,10 @@
             SSL Cert: <span id="ssl-status-text" class="text-slate-700 dark:text-slate-300 ml-1" th:text="${stats.sslCertExpiryDays + ' days left'}">365 days left</span>
         </div>
     </div>
-    <div class="text-[11px] font-medium text-slate-400" id="last-refreshed">
+    <div class="text-[11px] font-medium text-slate-400 whitespace-nowrap pl-4" id="last-refreshed">
         <span th:text="${stats.appVersion}">v1.0.0</span> • Last refreshed: <span id="footer-time">--:--:--</span>
-        <script>
-            function updateFooterTime() {
-                const now = new Date();
-                const timeStr = now.getHours().toString().padStart(2, '0') + ':' +
-                                now.getMinutes().toString().padStart(2, '0') + ':' +
-                                now.getSeconds().toString().padStart(2, '0');
-                const elem = document.getElementById('footer-time');
-                if (elem) elem.innerText = timeStr;
-            }
-            setInterval(updateFooterTime, 1000);
-            updateFooterTime();
-        </script>
     </div>
 </footer>
+
+</body>
+</html>

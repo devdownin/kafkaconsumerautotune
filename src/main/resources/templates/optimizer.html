@@ -4,12 +4,13 @@
     <title>Kafka Optimizer</title>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<a class="skip-link" href="#main-content">Skip to content</a>
 <div class="flex h-screen overflow-hidden">
     <!-- Sidebar Navigation -->
     <div th:replace="~{fragments/sidebar :: sidebar}"></div>
 
     <!-- Main Content Area -->
-    <main class="flex-1 flex flex-col overflow-hidden">
+    <main id="main-content" tabindex="-1" class="flex-1 flex flex-col overflow-hidden">
         <!-- Top Navbar -->
         <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
             <div class="flex items-center gap-4">
@@ -21,12 +22,12 @@
             </div>
             <div class="flex items-center gap-6">
                 <div class="flex items-center gap-2">
-                    <button id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500">
-                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden">dark_mode</span>
-                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden">light_mode</span>
+                    <button type="button" id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" aria-label="Toggle theme">
+                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden" aria-hidden="true">dark_mode</span>
+                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden" aria-hidden="true">light_mode</span>
                     </button>
-                    <button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()">
-                        <span class="material-symbols-outlined">refresh</span>
+                    <button type="button" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()" data-tooltip="Refresh page" aria-label="Refresh page">
+                        <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
                     </button>
                 </div>
             </div>
@@ -82,11 +83,11 @@
                     <table class="w-full text-left border-collapse">
                         <thead class="bg-slate-50 dark:bg-slate-800/50">
                         <tr>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Timestamp</th>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Property</th>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center">Old Value</th>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center">New Value</th>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Explication</th>
+                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Timestamp</th>
+                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Property</th>
+                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center">Old Value</th>
+                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center">New Value</th>
+                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Explanation</th>
                         </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -244,37 +245,39 @@
         timelineChart.render();
     }
 
-    // WebSocket Setup
-    var socket = new SockJS('/ws');
-    var stompClient = Stomp.over(socket);
-    stompClient.debug = null;
+    // WebSocket setup. Runs on DOMContentLoaded because SockJS/Stomp are deferred.
+    function initWebSocket() {
+        var socket = new SockJS('/ws');
+        var stompClient = Stomp.over(socket);
+        stompClient.debug = null;
 
-    stompClient.connect({}, function (frame) {
-        updateWsStatus(true);
-        stompClient.subscribe('/topic/stats', function (statsMessage) {
-            var stats = JSON.parse(statsMessage.body);
-            updateTimeline(stats);
+        stompClient.connect({}, function (frame) {
+            updateWsStatus(true);
+            stompClient.subscribe('/topic/stats', function (statsMessage) {
+                updateTimeline(JSON.parse(statsMessage.body));
+            });
+        }, function(error) {
+            updateWsStatus(false);
         });
-    }, function(error) {
-        updateWsStatus(false);
-    });
+    }
 
     function updateTimeline(stats) {
-        if (timelineChart) {
-            timelineChart.updateOptions({
-                xaxis: { categories: stats.timestamps }
-            });
-            timelineChart.updateSeries([
+        if (!timelineChart) return;
+        // Axis and series in one call: two calls meant two full chart re-renders.
+        timelineChart.updateOptions({
+            xaxis: { categories: stats.timestamps },
+            series: [
                 { name: 'Throughput (Msg/s)', data: stats.successThroughput },
                 { name: 'max.poll.records', data: stats.maxPollRecordsHistory },
                 { name: 'concurrency', data: stats.concurrencyHistory }
-            ]);
-        }
+            ]
+        }, false, false);
     }
 
     document.addEventListener('DOMContentLoaded', function() {
         initThemeToggle();
         initTimelineChart();
+        initWebSocket();
     });
 </script>
 </body>

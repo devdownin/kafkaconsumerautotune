@@ -4,12 +4,13 @@
     <title>Consumer Groups</title>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<a class="skip-link" href="#main-content">Skip to content</a>
 <div class="flex h-screen overflow-hidden">
     <!-- Sidebar Navigation -->
     <div th:replace="~{fragments/sidebar :: sidebar}"></div>
 
     <!-- Main Content Area -->
-    <main class="flex-1 flex flex-col overflow-hidden">
+    <main id="main-content" tabindex="-1" class="flex-1 flex flex-col overflow-hidden">
         <!-- Top Navbar -->
         <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
             <div class="flex items-center gap-4">
@@ -21,12 +22,12 @@
             </div>
             <div class="flex items-center gap-6">
                 <div class="flex items-center gap-2">
-                    <button id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500">
-                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden">dark_mode</span>
-                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden">light_mode</span>
+                    <button type="button" id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" aria-label="Toggle theme">
+                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden" aria-hidden="true">dark_mode</span>
+                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden" aria-hidden="true">light_mode</span>
                     </button>
-                    <button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()">
-                        <span class="material-symbols-outlined">refresh</span>
+                    <button type="button" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()" data-tooltip="Refresh page" aria-label="Refresh page">
+                        <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
                     </button>
                 </div>
             </div>
@@ -43,12 +44,12 @@
                     <table class="w-full text-left border-collapse">
                         <thead class="bg-slate-50 dark:bg-slate-800/50">
                         <tr>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Group ID</th>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">State</th>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center">Members</th>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center">Partitions</th>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-right">Total Lag</th>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center w-20">Actions</th>
+                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Group ID</th>
+                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">State</th>
+                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center">Members</th>
+                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center">Partitions</th>
+                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-right">Total Lag</th>
+                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center w-20">Actions</th>
                         </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -64,8 +65,12 @@
                                 <td th:class="${'px-6 py-4 text-right text-sm font-mono ' + (group.lag > 1000 ? 'text-amber-500 font-bold' : 'text-slate-500')}"
                                     th:text="${#numbers.formatInteger(group.lag, 0, 'WHITESPACE')}">8 421</td>
                                 <td class="px-6 py-4 text-center">
-                                    <button th:onclick="'toggleDetails(' + ${iterStat.index} + ')'" class="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-slate-500 transition-colors">
-                                        <span th:id="'icon-' + ${iterStat.index}" class="material-symbols-outlined transition-transform">expand_more</span>
+                                    <button type="button" th:onclick="'toggleDetails(' + ${iterStat.index} + ')'"
+                                            th:id="'toggle-' + ${iterStat.index}"
+                                            th:attr="aria-controls='details-' + ${iterStat.index},aria-label='Show partition breakdown for ' + ${group.groupId}"
+                                            aria-expanded="false"
+                                            class="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-slate-500 transition-colors">
+                                        <span th:id="'icon-' + ${iterStat.index}" class="material-symbols-outlined transition-transform" aria-hidden="true">expand_more</span>
                                     </button>
                                 </td>
                             </tr>
@@ -121,14 +126,11 @@
     function toggleDetails(index) {
         const detailsRow = document.getElementById('details-' + index);
         const icon = document.getElementById('icon-' + index);
+        const toggle = document.getElementById('toggle-' + index);
 
-        if (detailsRow.classList.contains('hidden')) {
-            detailsRow.classList.remove('hidden');
-            icon.style.transform = 'rotate(180deg)';
-        } else {
-            detailsRow.classList.add('hidden');
-            icon.style.transform = 'rotate(0deg)';
-        }
+        const expanded = detailsRow.classList.toggle('hidden') === false;
+        icon.style.transform = expanded ? 'rotate(180deg)' : 'rotate(0deg)';
+        if (toggle) toggle.setAttribute('aria-expanded', String(expanded));
     }
 
     document.addEventListener('DOMContentLoaded', function() {

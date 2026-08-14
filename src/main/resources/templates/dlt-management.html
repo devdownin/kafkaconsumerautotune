@@ -5,42 +5,50 @@
     <title>DLT Error Management</title>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<a class="skip-link" href="#main-content">Skip to content</a>
+<!-- Global Notifications (provides the toast container and showToast) -->
+<div th:replace="~{fragments/notifications :: notifications}"></div>
+
 <div class="flex h-screen overflow-hidden">
     <!-- Sidebar Navigation -->
     <div th:replace="~{fragments/sidebar :: sidebar}"></div>
 
     <!-- Main Content Area -->
-    <main class="flex-1 flex flex-col overflow-hidden">
+    <main id="main-content" tabindex="-1" class="flex-1 flex flex-col overflow-hidden">
         <!-- Top Navbar -->
         <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
             <div class="flex items-center gap-4">
                 <h2 class="text-lg font-bold">DLT Error Management</h2>
                 <span class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-500 text-[10px] font-bold uppercase tracking-wider">
-                    <span class="size-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                    <span class="size-1.5 rounded-full bg-rose-500 animate-pulse" aria-hidden="true"></span>
                     Action Needed
                 </span>
             </div>
             <div class="flex items-center gap-6">
                 <div class="flex items-center gap-2">
-                    <div class="relative inline-block text-left group">
-                        <button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" title="Export DLT Data">
-                            <span class="material-symbols-outlined">download</span>
+                    <!-- Click-driven (not hover-only) so the menu is reachable by keyboard. -->
+                    <div class="relative inline-block text-left" id="export-menu-wrapper">
+                        <button type="button" id="export-menu-button" onclick="toggleExportMenu()"
+                                class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500"
+                                aria-haspopup="true" aria-expanded="false" aria-controls="export-menu"
+                                data-tooltip="Export DLT data" aria-label="Export DLT data">
+                            <span class="material-symbols-outlined" aria-hidden="true">download</span>
                         </button>
-                        <div class="hidden group-hover:block absolute right-0 mt-0 w-36 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-30 overflow-hidden">
-                            <button onclick="exportDlt('csv')" class="w-full text-left px-4 py-2.5 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-2">
-                                <span class="material-symbols-outlined text-sm text-slate-400">description</span> CSV Format
+                        <div id="export-menu" class="hidden absolute right-0 mt-1 w-36 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-30 overflow-hidden">
+                            <button type="button" onclick="exportDlt('csv')" class="w-full text-left px-4 py-2.5 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-2">
+                                <span class="material-symbols-outlined text-sm text-slate-400" aria-hidden="true">description</span> CSV Format
                             </button>
-                            <button onclick="exportDlt('json')" class="w-full text-left px-4 py-2.5 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-2">
-                                <span class="material-symbols-outlined text-sm text-slate-400">code</span> JSON Format
+                            <button type="button" onclick="exportDlt('json')" class="w-full text-left px-4 py-2.5 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-2">
+                                <span class="material-symbols-outlined text-sm text-slate-400" aria-hidden="true">code</span> JSON Format
                             </button>
                         </div>
                     </div>
-                    <button id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500">
-                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden">dark_mode</span>
-                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden">light_mode</span>
+                    <button type="button" id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" aria-label="Toggle theme">
+                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden" aria-hidden="true">dark_mode</span>
+                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden" aria-hidden="true">light_mode</span>
                     </button>
-                    <button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()" title="Refresh">
-                        <span class="material-symbols-outlined">refresh</span>
+                    <button type="button" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()" data-tooltip="Refresh page" aria-label="Refresh page">
+                        <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
                     </button>
                 </div>
             </div>
@@ -48,8 +56,8 @@
 
         <!-- Content -->
         <div class="flex-1 overflow-y-auto p-8 space-y-6">
-            <div th:if="${param.success}" class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 px-4 py-3 rounded-lg text-sm font-medium flex items-center gap-3 animate-pulse">
-                <span class="material-symbols-outlined">check_circle</span>
+            <div id="success-banner" th:if="${param.success}" role="status" class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 px-4 py-3 rounded-lg text-sm font-medium flex items-center gap-3">
+                <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
                 <span th:if="${param.success[0] == 'retried'}">Event successfully sent back to original topic.</span>
                 <span th:if="${param.success[0] == 'discarded'}">Event successfully discarded.</span>
                 <span th:if="${param.success[0] == 'retried-all'}">All unresolved events have been sent back to their original topics.</span>
@@ -77,52 +85,66 @@
             <!-- Toolbar & Main View Container -->
             <div class="flex flex-col lg:flex-row gap-6 items-start">
                 <!-- Main Table Section -->
-                <div class="flex-1 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
-                    <!-- ToolBar -->
-                    <div class="flex flex-wrap items-center justify-between gap-4 p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                <div class="flex-1 w-full min-w-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <!-- ToolBar. `relative` anchors the bulk-actions overlay, which
+                         previously escaped to the page corner. -->
+                    <div class="relative flex flex-wrap items-center justify-between gap-4 p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
                         <!-- Bulk Actions Toolbar (Hidden by default) -->
-                        <div id="bulk-toolbar" class="hidden absolute inset-x-0 top-0 bg-primary text-white p-4 z-20 rounded-t-xl flex items-center justify-between">
-                            <div class="flex items-center gap-4">
+                        <div id="bulk-toolbar" class="hidden absolute inset-x-0 top-0 bottom-0 bg-primary text-white px-4 z-20 flex items-center justify-between">
+                            <div class="flex items-center gap-4 flex-wrap">
                                 <span class="text-sm font-bold"><span id="selected-count">0</span> items selected</span>
                                 <div class="h-4 w-px bg-white/20"></div>
                                 <div class="flex gap-2">
-                                    <button onclick="submitBulk('retry')" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold transition-all">
-                                        <span class="material-symbols-outlined text-sm">replay</span> Retry Selected
+                                    <button type="button" onclick="submitBulk('retry')" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold transition-all">
+                                        <span class="material-symbols-outlined text-sm" aria-hidden="true">replay</span> Retry Selected
                                     </button>
-                                    <button onclick="submitBulk('discard')" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold transition-all">
-                                        <span class="material-symbols-outlined text-sm">delete</span> Discard Selected
+                                    <button type="button" onclick="submitBulk('discard')" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold transition-all">
+                                        <span class="material-symbols-outlined text-sm" aria-hidden="true">delete</span> Discard Selected
                                     </button>
                                 </div>
                             </div>
-                            <button onclick="clearSelection()" class="p-1 hover:bg-white/10 rounded">
-                                <span class="material-symbols-outlined">close</span>
+                            <button type="button" onclick="clearSelection()" class="p-1 hover:bg-white/10 rounded" aria-label="Clear selection">
+                                <span class="material-symbols-outlined" aria-hidden="true">close</span>
                             </button>
                         </div>
 
-                        <div class="flex gap-4 flex-wrap items-center">
-                            <select id="filter-error-type" onchange="filterEvents()" class="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-sm rounded-lg focus:ring-primary px-4 py-2 cursor-pointer min-w-[160px]">
-                                <option value="all">All Error Types</option>
-                                <option value="parsing">JSON Parsing</option>
-                                <option value="validation">Validation</option>
-                            </select>
-                            <input type="text" id="filter-topic" oninput="filterEvents()" placeholder="Filter by topic..." class="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-sm rounded-lg focus:ring-primary px-4 py-2 w-48">
+                        <div class="flex gap-3 flex-wrap items-center">
+                            <div>
+                                <label class="sr-only" for="filter-error-type">Error type</label>
+                                <select id="filter-error-type" class="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-sm rounded-lg focus:ring-primary px-4 py-2 cursor-pointer min-w-[160px]">
+                                    <option value="all">All Error Types</option>
+                                    <option value="parsing">JSON Parsing</option>
+                                    <option value="validation">Validation</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="sr-only" for="filter-topic">Filter by topic</label>
+                                <input type="search" id="filter-topic" placeholder="Filter by topic..." class="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-sm rounded-lg focus:ring-primary px-4 py-2 w-48">
+                            </div>
+                            <div>
+                                <label class="sr-only" for="filter-partition">Filter by partition</label>
+                                <input type="number" min="0" id="filter-partition" placeholder="Partition" class="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-sm rounded-lg focus:ring-primary px-4 py-2 w-28">
+                            </div>
 
-                            <div class="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-2"></div>
+                            <div class="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
 
-                            <form th:action="@{/dlt-management/retry-all}" method="POST" class="inline">
+                            <!-- Both bulk endpoints are irreversible: confirm before posting. -->
+                            <form th:action="@{/dlt-management/retry-all}" method="POST" class="inline"
+                                  onsubmit="return confirm('Send every unresolved DLT event back to its original topic?')">
                                 <button type="submit" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-bold transition-colors">
-                                    <span class="material-symbols-outlined text-sm">replay</span>
+                                    <span class="material-symbols-outlined text-sm" aria-hidden="true">replay</span>
                                     Retry All
                                 </button>
                             </form>
-                            <form th:action="@{/dlt-management/discard-all}" method="POST" class="inline">
+                            <form th:action="@{/dlt-management/discard-all}" method="POST" class="inline"
+                                  onsubmit="return confirm('Discard every unresolved DLT event? This cannot be undone.')">
                                 <button type="submit" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 text-xs font-bold transition-colors">
-                                    <span class="material-symbols-outlined text-sm">delete_sweep</span>
+                                    <span class="material-symbols-outlined text-sm" aria-hidden="true">delete_sweep</span>
                                     Discard All
                                 </button>
                             </form>
                         </div>
-                        <div class="text-slate-500 text-sm">
+                        <div class="text-slate-500 text-sm" aria-live="polite">
                             Showing <span class="text-slate-900 dark:text-white font-bold" id="showing-count" th:text="${#lists.size(dltEvents)}">0</span> recent errors
                         </div>
                     </div>
@@ -131,21 +153,24 @@
                         <table class="w-full text-left border-collapse">
                             <thead>
                             <tr class="bg-slate-50 dark:bg-slate-800/50">
-                                <th class="px-6 py-4 w-10">
+                                <th scope="col" class="px-6 py-4 w-10">
+                                    <label class="sr-only" for="select-all">Select all events</label>
                                     <input type="checkbox" id="select-all" onclick="toggleSelectAll()" class="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary size-4">
                                 </th>
-                                <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Timestamp</th>
-                                <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Topic</th>
-                                <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Partition</th>
-                                <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Offset</th>
-                                <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Error Type</th>
-                                <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-right">Actions</th>
+                                <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Timestamp</th>
+                                <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Topic</th>
+                                <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Partition</th>
+                                <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Offset</th>
+                                <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Severity</th>
+                                <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-right">Actions</th>
                             </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group" th:each="event : ${dltEvents}" th:onclick="'inspectEvent(event, ' + ${event.id} + ')'">
-                                <td class="px-6 py-4" onclick="event.stopPropagation()">
-                                    <input type="checkbox" th:value="${event.id}" name="event-selection" onchange="updateSelection()" class="event-checkbox rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary size-4">
+                            <tbody id="dlt-table-body" class="divide-y divide-slate-100 dark:divide-slate-800">
+                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group dlt-row" th:each="event : ${dltEvents}" th:data-id="${event.id}">
+                                <td class="px-6 py-4">
+                                    <input type="checkbox" th:value="${event.id}" name="event-selection" onchange="updateSelection()"
+                                           th:attr="aria-label='Select event at offset ' + ${event.originalOffset}"
+                                           class="event-checkbox rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary size-4">
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500" th:text="${#temporals.format(event.dhm, 'yyyy-MM-dd HH:mm:ss')}">2023-10-27 14:22:15</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium" th:text="${event.originalTopic}">orders.v1</td>
@@ -155,11 +180,11 @@
                                     <span th:class="${'px-2 py-1 rounded text-[10px] font-bold uppercase ' + (event.severity == 'HIGH' ? 'bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400' : 'bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400')}" th:text="${event.severity}">MEDIUM</span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
-                                    <button class="text-primary font-bold hover:underline">Inspect</button>
+                                    <button type="button" class="inspect-btn text-primary font-bold hover:underline" th:data-id="${event.id}">Inspect</button>
                                 </td>
                             </tr>
-                            <tr th:if="${#lists.isEmpty(dltEvents)}">
-                                <td colspan="6" class="px-6 py-10 text-center text-slate-500">No DLT events found.</td>
+                            <tr id="dlt-empty-row" th:if="${#lists.isEmpty(dltEvents)}">
+                                <td colspan="7" class="px-6 py-10 text-center text-slate-500">No DLT events found.</td>
                             </tr>
                             </tbody>
                         </table>
@@ -167,14 +192,15 @@
                 </div>
 
                 <!-- Side Inspection Panel -->
-                <aside class="w-full lg:w-[450px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col h-fit sticky top-0 shadow-lg" id="inspection-panel" style="display: none;">
+                <aside class="w-full lg:w-[450px] shrink-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex-col h-fit sticky top-0 shadow-lg hidden"
+                       id="inspection-panel" aria-labelledby="inspection-title">
                     <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 rounded-t-xl">
                         <div>
-                            <h3 class="text-base font-bold">Inspection Details</h3>
+                            <h3 class="text-base font-bold" id="inspection-title">Inspection Details</h3>
                             <p class="text-[10px] text-slate-500 uppercase tracking-widest mt-1">Offset: <span id="inspect-offset" class="font-mono">-</span></p>
                         </div>
-                        <button class="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors text-slate-500" onclick="hideInspection()">
-                            <span class="material-symbols-outlined">close</span>
+                        <button type="button" class="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors text-slate-500" onclick="hideInspection()" aria-label="Close inspection panel">
+                            <span class="material-symbols-outlined" aria-hidden="true">close</span>
                         </button>
                     </div>
                     <div class="p-6 space-y-6">
@@ -202,37 +228,40 @@
                         </div>
                         <div>
                             <div class="flex justify-between items-center mb-2">
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Raw Payload (Editable)</p>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest" for="inspect-payload-editor">Raw Payload (Editable)</label>
                                 <div class="flex gap-3">
-                                    <button onclick="beautifyJson()" class="text-[10px] text-primary font-bold uppercase hover:underline flex items-center gap-1">
-                                        <span class="material-symbols-outlined text-xs">auto_fix_high</span> Format
+                                    <button type="button" onclick="beautifyJson()" class="text-[10px] text-primary font-bold uppercase hover:underline flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-xs" aria-hidden="true">auto_fix_high</span> Format
                                     </button>
-                                    <button onclick="copyPayloadToClipboard()" class="text-[10px] text-primary font-bold uppercase hover:underline flex items-center gap-1">
-                                        <span class="material-symbols-outlined text-xs">content_copy</span> Copy
+                                    <button type="button" onclick="copyPayloadToClipboard()" class="text-[10px] text-primary font-bold uppercase hover:underline flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-xs" aria-hidden="true">content_copy</span> Copy
                                     </button>
                                 </div>
                             </div>
                             <div class="relative group">
-                                <textarea id="inspect-payload-editor" class="w-full h-[240px] bg-slate-950 text-emerald-500 font-mono text-xs p-3 rounded-lg border border-slate-800 focus:ring-1 focus:ring-primary focus:border-primary leading-relaxed resize-none transition-all"></textarea>
-                                <div id="json-valid-badge" class="absolute bottom-3 right-3 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">Valid JSON</div>
-                                <div id="json-invalid-badge" class="hidden absolute bottom-3 right-3 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter bg-rose-500/10 text-rose-500 border border-rose-500/20">Invalid JSON</div>
+                                <textarea id="inspect-payload-editor" spellcheck="false" aria-describedby="json-status"
+                                          class="w-full h-[240px] bg-slate-950 text-emerald-500 font-mono text-xs p-3 rounded-lg border border-slate-800 focus:ring-1 focus:ring-primary focus:border-primary leading-relaxed resize-none transition-all"></textarea>
+                                <div id="json-status" aria-live="polite">
+                                    <div id="json-valid-badge" class="absolute bottom-3 right-3 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">Valid JSON</div>
+                                    <div id="json-invalid-badge" class="hidden absolute bottom-3 right-3 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter bg-rose-500/10 text-rose-500 border border-rose-500/20">Invalid JSON</div>
+                                </div>
                             </div>
                         </div>
                         <div class="flex flex-col gap-3 pt-2">
-                            <button id="save-retry-btn" onclick="saveAndRetry()" class="w-full flex items-center justify-center rounded-lg h-10 bg-emerald-600 text-white text-sm font-bold shadow-sm hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                                <span class="material-symbols-outlined mr-2 text-xl">save</span>
-                                Save & Retry (Modified)
+                            <button type="button" id="save-retry-btn" onclick="saveAndRetry()" class="w-full flex items-center justify-center rounded-lg h-10 bg-emerald-600 text-white text-sm font-bold shadow-sm hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                <span class="material-symbols-outlined mr-2 text-xl" aria-hidden="true">save</span>
+                                Save &amp; Retry (Modified)
                             </button>
                             <div class="flex gap-3">
                                 <form id="retry-form" method="POST" class="flex-1">
-                                    <button type="submit" class="w-full flex items-center justify-center rounded-lg h-10 bg-primary text-white text-sm font-bold shadow-sm hover:bg-primary/90 transition-all">
-                                        <span class="material-symbols-outlined mr-2 text-xl">replay</span>
+                                    <button type="submit" class="w-full flex items-center justify-center rounded-lg h-10 bg-primary text-white text-sm font-bold shadow-sm hover:bg-primary-dark transition-all">
+                                        <span class="material-symbols-outlined mr-2 text-xl" aria-hidden="true">replay</span>
                                         Retry
                                     </button>
                                 </form>
-                                <form id="discard-form" method="POST" class="flex-1">
+                                <form id="discard-form" method="POST" class="flex-1" onsubmit="return confirm('Discard this event? This cannot be undone.')">
                                 <button type="submit" class="w-full flex items-center justify-center rounded-lg h-10 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-bold border border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-200 dark:hover:border-rose-500/20 transition-all">
-                                    <span class="material-symbols-outlined mr-2 text-xl">delete</span>
+                                    <span class="material-symbols-outlined mr-2 text-xl" aria-hidden="true">delete</span>
                                     Discard
                                 </button>
                                 </form>
@@ -248,126 +277,239 @@
     </main>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
-
 <!-- Common Scripts Fragment -->
 <div th:replace="~{fragments/scripts :: common-scripts}"></div>
 
 <script th:inline="javascript">
     /*<![CDATA[*/
     var dltEvents = /*[[${dltEvents}]]*/ [];
-
-    // WebSocket Setup
-    var socket = new SockJS('/ws');
-    var stompClient = Stomp.over(socket);
-
-    stompClient.connect({}, function (frame) {
-        stompClient.subscribe('/topic/stats', function (statsMessage) {
-            var stats = JSON.parse(statsMessage.body);
-            updateStats(stats);
-        });
-        stompClient.subscribe('/topic/dlt', function (dltMessage) {
-            var event = JSON.parse(dltMessage.body);
-            dltEvents.unshift(event);
-            if (dltEvents.length > 50) dltEvents.pop();
-            filterEvents();
-        });
-    });
-
-    function updateStats(stats) {
-        const totalDltElem = document.getElementById('total-dlt-count-24h');
-        if (totalDltElem) totalDltElem.innerText = stats.totalDlt24h.toLocaleString('en-US');
-        const unresolvedElem = document.getElementById('unresolved-errors');
-        if (unresolvedElem) unresolvedElem.innerText = stats.unresolvedErrors.toLocaleString('en-US');
-        const avgResolutionElem = document.getElementById('avg-resolution-time');
-        if (avgResolutionElem) avgResolutionElem.innerText = stats.avgResolutionTime;
-    }
     /*]]>*/
 
-    document.addEventListener('DOMContentLoaded', function() {
+    var currentInspectedId = null;
+    /* Survives re-renders: renderTable() rebuilds the rows from scratch. */
+    var selectedIds = new Set();
+
+    document.addEventListener('DOMContentLoaded', function () {
         initThemeToggle();
+        initFilters();
+        initWebSocket();
 
-        // JSON validation for editor
+        document.getElementById('dlt-table-body').addEventListener('click', onTableClick);
+
         const editor = document.getElementById('inspect-payload-editor');
-        if (editor) {
-            editor.addEventListener('input', validateJson);
-        }
+        if (editor) editor.addEventListener('input', validateJson);
 
-        // Auto-hide success message
-        const successMsg = document.querySelector('.bg-emerald-500\\/10');
+        // Auto-hide the post-redirect confirmation banner.
+        const successMsg = document.getElementById('success-banner');
         if (successMsg) {
             setTimeout(() => {
                 successMsg.style.transition = 'opacity 0.5s ease';
                 successMsg.style.opacity = '0';
                 setTimeout(() => successMsg.remove(), 500);
-            }, 3000);
+            }, 4000);
         }
+
+        document.addEventListener('click', function (e) {
+            const wrapper = document.getElementById('export-menu-wrapper');
+            if (wrapper && !wrapper.contains(e.target)) closeExportMenu();
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') { closeExportMenu(); hideInspection(); }
+        });
     });
 
+    // SockJS/Stomp are deferred, so the connection is opened after parsing.
+    function initWebSocket() {
+        var socket = new SockJS('/ws');
+        var stompClient = Stomp.over(socket);
+        stompClient.debug = null;
 
-    var currentInspectedId = null;
+        stompClient.connect({}, function () {
+            updateWsStatus(true);
+            stompClient.subscribe('/topic/stats', function (statsMessage) {
+                updateStats(JSON.parse(statsMessage.body));
+            });
+            stompClient.subscribe('/topic/dlt', function (dltMessage) {
+                var event = JSON.parse(dltMessage.body);
+                dltEvents.unshift(event);
+                if (dltEvents.length > 50) dltEvents.pop();
+                filterEvents();
+            });
+        }, function () {
+            updateWsStatus(false);
+        });
+    }
 
-    function inspectEvent(e, id) {
-        if (e) e.stopPropagation();
-        var event = dltEvents.find(e => e.id === id);
-        if (event) {
-            currentInspectedId = id;
-            document.getElementById('retry-form').action = '/dlt-management/' + event.id + '/retry';
-            document.getElementById('discard-form').action = '/dlt-management/' + event.id + '/discard';
+    function updateStats(stats) {
+        const totalDltElem = document.getElementById('total-dlt-count-24h');
+        if (totalDltElem && stats.totalDlt24h != null) totalDltElem.innerText = stats.totalDlt24h.toLocaleString('en-US');
+        const unresolvedElem = document.getElementById('unresolved-errors');
+        if (unresolvedElem && stats.unresolvedErrors != null) unresolvedElem.innerText = stats.unresolvedErrors.toLocaleString('en-US');
+        const avgResolutionElem = document.getElementById('avg-resolution-time');
+        if (avgResolutionElem) avgResolutionElem.innerText = stats.avgResolutionTime;
+    }
 
-            document.getElementById('inspect-offset').innerText = event.originalOffset;
-            document.getElementById('inspect-partition').innerText = event.originalPartition;
-            document.getElementById('inspect-error').innerText = event.errorMessage;
+    /* ---------------------------------------------------------------- Filters */
 
-            // Dynamic Severity from Backend
-            const severityElem = document.getElementById('inspect-severity');
-            severityElem.innerText = event.severity || 'MEDIUM';
-            if (event.severity === 'HIGH') {
-                severityElem.className = 'text-sm font-medium text-rose-500';
-            } else {
-                severityElem.className = 'text-sm font-medium text-amber-500';
-            }
+    function initFilters() {
+        let debounce;
+        const rerun = () => { clearTimeout(debounce); debounce = setTimeout(filterEvents, 150); };
+        document.getElementById('filter-error-type').addEventListener('change', filterEvents);
+        document.getElementById('filter-topic').addEventListener('input', rerun);
+        document.getElementById('filter-partition').addEventListener('input', rerun);
+    }
 
-            // Format JSON if possible
-            let payload = event.payload;
-            try {
-                payload = JSON.stringify(JSON.parse(payload), null, 2);
-            } catch (err) {}
+    function matchesFilters(event) {
+        const errorType = document.getElementById('filter-error-type').value;
+        const topic = document.getElementById('filter-topic').value.trim().toLowerCase();
+        const partition = document.getElementById('filter-partition').value.trim();
 
-            const editor = document.getElementById('inspect-payload-editor');
-            editor.value = payload;
-            validateJson();
+        const isValidation = (event.errorMessage || '').includes('Validation');
+        const matchesType = errorType === 'all' ||
+            (errorType === 'parsing' && !isValidation) ||
+            (errorType === 'validation' && isValidation);
+        const matchesTopic = !topic || (event.originalTopic || '').toLowerCase().includes(topic);
+        const matchesPartition = !partition || String(event.originalPartition) === partition;
 
-            // Populate Headers
-            const headersContainer = document.getElementById('inspect-headers');
-            headersContainer.innerHTML = '';
-            if (event.headers) {
-                try {
-                    const headersMap = JSON.parse(event.headers);
-                    Object.entries(headersMap).forEach(([k, v]) => {
-                        const badge = document.createElement('div');
-                        badge.className = 'flex flex-col px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 min-w-[120px]';
-                        badge.innerHTML = `
-                            <span class="text-[8px] font-bold text-slate-400 uppercase truncate" title="${k}">${k}</span>
-                            <span class="text-[10px] font-medium text-slate-700 dark:text-slate-300 truncate" title="${v}">${v}</span>
-                        `;
-                        headersContainer.appendChild(badge);
-                    });
-                } catch (e) {
-                    headersContainer.innerHTML = '<span class="text-xs text-slate-500 italic">Error parsing headers</span>';
-                }
-            } else {
-                headersContainer.innerHTML = '<span class="text-xs text-slate-500 italic">No headers present</span>';
-            }
+        return matchesType && matchesTopic && matchesPartition;
+    }
 
-            document.getElementById('inspection-panel').style.display = 'flex';
+    function filterEvents() {
+        renderTable(dltEvents.filter(matchesFilters));
+    }
 
-            // Highlight active row
-            document.querySelectorAll('tbody tr').forEach(tr => tr.classList.remove('bg-primary/5', 'ring-1', 'ring-primary/20'));
-            const activeRow = e ? e.currentTarget : null;
-            if (activeRow) activeRow.classList.add('bg-primary/5', 'ring-1', 'ring-primary/20');
+    /* ----------------------------------------------------------------- Table */
+
+    function formatTimestamp(value) {
+        const date = new Date(value);
+        if (isNaN(date.getTime())) return '-';
+        const pad = (n) => String(n).padStart(2, '0');
+        return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' +
+               pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());
+    }
+
+    function severityClass(severity) {
+        return severity === 'HIGH'
+            ? 'bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400'
+            : 'bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400';
+    }
+
+    /*
+     * Rebuilds the body from the given events. The previous implementation
+     * emitted six cells for a seven-column table (dropping the checkbox), which
+     * shifted every value one column left and silently disabled bulk selection.
+     */
+    function renderTable(events) {
+        const tbody = document.getElementById('dlt-table-body');
+        tbody.innerHTML = '';
+        document.getElementById('showing-count').innerText = events.length;
+
+        if (events.length === 0) {
+            const empty = document.createElement('tr');
+            empty.id = 'dlt-empty-row';
+            empty.innerHTML = '<td colspan="7" class="px-6 py-10 text-center text-slate-500">No DLT events found.</td>';
+            tbody.appendChild(empty);
+            updateSelection();
+            return;
         }
+
+        const fragment = document.createDocumentFragment();
+        events.forEach(event => {
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group dlt-row';
+            row.dataset.id = event.id;
+            const checked = selectedIds.has(String(event.id)) ? ' checked' : '';
+            row.innerHTML = `
+                <td class="px-6 py-4">
+                    <input type="checkbox" value="${event.id}" name="event-selection" onchange="updateSelection()"${checked}
+                           aria-label="Select event at offset ${escapeHtml(event.originalOffset)}"
+                           class="event-checkbox rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary size-4">
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${escapeHtml(formatTimestamp(event.dhm))}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">${escapeHtml(event.originalTopic)}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${escapeHtml(event.originalPartition)}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-500">${escapeHtml(event.originalOffset)}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${severityClass(event.severity)}">${escapeHtml(event.severity || 'MEDIUM')}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
+                    <button type="button" class="inspect-btn text-primary font-bold hover:underline" data-id="${event.id}">Inspect</button>
+                </td>
+            `;
+            fragment.appendChild(row);
+        });
+        tbody.appendChild(fragment);
+        updateSelection();
+    }
+
+    /* One delegated listener instead of an inline handler per row. */
+    function onTableClick(e) {
+        if (e.target.closest('input[type="checkbox"]')) return;
+        const row = e.target.closest('.dlt-row');
+        if (!row) return;
+        inspectEvent(Number(row.dataset.id), row);
+    }
+
+    /* ------------------------------------------------------------ Inspection */
+
+    function inspectEvent(id, row) {
+        const event = dltEvents.find(e => e.id === id);
+        if (!event) return;
+
+        currentInspectedId = id;
+        document.getElementById('retry-form').action = '/dlt-management/' + event.id + '/retry';
+        document.getElementById('discard-form').action = '/dlt-management/' + event.id + '/discard';
+
+        document.getElementById('inspect-offset').innerText = event.originalOffset;
+        document.getElementById('inspect-partition').innerText = event.originalPartition;
+        document.getElementById('inspect-error').innerText = event.errorMessage;
+
+        const severityElem = document.getElementById('inspect-severity');
+        severityElem.innerText = event.severity || 'MEDIUM';
+        severityElem.className = 'text-sm font-medium ' + (event.severity === 'HIGH' ? 'text-rose-500' : 'text-amber-500');
+
+        let payload = event.payload;
+        try {
+            payload = JSON.stringify(JSON.parse(payload), null, 2);
+        } catch (err) { /* leave the raw payload as-is when it is not JSON */ }
+
+        document.getElementById('inspect-payload-editor').value = payload;
+        validateJson();
+
+        const headersContainer = document.getElementById('inspect-headers');
+        headersContainer.innerHTML = '';
+        if (event.headers) {
+            try {
+                const headersMap = JSON.parse(event.headers);
+                Object.entries(headersMap).forEach(([k, v]) => {
+                    const badge = document.createElement('div');
+                    badge.className = 'flex flex-col px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 min-w-[120px] max-w-full';
+                    badge.innerHTML = `
+                        <span class="text-[8px] font-bold text-slate-400 uppercase truncate" title="${escapeHtml(k)}">${escapeHtml(k)}</span>
+                        <span class="text-[10px] font-medium text-slate-700 dark:text-slate-300 truncate" title="${escapeHtml(v)}">${escapeHtml(v)}</span>
+                    `;
+                    headersContainer.appendChild(badge);
+                });
+            } catch (e) {
+                headersContainer.innerHTML = '<span class="text-xs text-slate-500 italic">Error parsing headers</span>';
+            }
+        } else {
+            headersContainer.innerHTML = '<span class="text-xs text-slate-500 italic">No headers present</span>';
+        }
+
+        const panel = document.getElementById('inspection-panel');
+        panel.classList.remove('hidden');
+        panel.classList.add('flex');
+
+        document.querySelectorAll('.dlt-row').forEach(tr => tr.classList.remove('bg-primary/5', 'ring-1', 'ring-primary/20'));
+        if (row) row.classList.add('bg-primary/5', 'ring-1', 'ring-primary/20');
+    }
+
+    function hideInspection() {
+        const panel = document.getElementById('inspection-panel');
+        panel.classList.add('hidden');
+        panel.classList.remove('flex');
+        document.querySelectorAll('.dlt-row').forEach(tr => tr.classList.remove('bg-primary/5', 'ring-1', 'ring-primary/20'));
     }
 
     function validateJson() {
@@ -376,22 +518,15 @@
         const invalidBadge = document.getElementById('json-invalid-badge');
         const saveBtn = document.getElementById('save-retry-btn');
 
-        try {
-            JSON.parse(editor.value);
-            validBadge.classList.remove('hidden');
-            invalidBadge.classList.add('hidden');
-            saveBtn.disabled = false;
-            editor.classList.remove('border-rose-500');
-            editor.classList.add('text-emerald-500');
-            editor.classList.remove('text-rose-500');
-        } catch (e) {
-            validBadge.classList.add('hidden');
-            invalidBadge.classList.remove('hidden');
-            saveBtn.disabled = true;
-            editor.classList.add('border-rose-500');
-            editor.classList.remove('text-emerald-500');
-            editor.classList.add('text-rose-500');
-        }
+        let valid = true;
+        try { JSON.parse(editor.value); } catch (e) { valid = false; }
+
+        validBadge.classList.toggle('hidden', !valid);
+        invalidBadge.classList.toggle('hidden', valid);
+        saveBtn.disabled = !valid;
+        editor.classList.toggle('border-rose-500', !valid);
+        editor.classList.toggle('text-emerald-500', valid);
+        editor.classList.toggle('text-rose-500', !valid);
     }
 
     function beautifyJson() {
@@ -400,7 +535,7 @@
             editor.value = JSON.stringify(JSON.parse(editor.value), null, 4);
             validateJson();
         } catch (e) {
-            showToast('Cannot format: Invalid JSON', 'error');
+            showToast('Cannot format: invalid JSON', 'error');
         }
     }
 
@@ -411,7 +546,7 @@
         const saveBtn = document.getElementById('save-retry-btn');
         const originalText = saveBtn.innerHTML;
         saveBtn.disabled = true;
-        saveBtn.innerHTML = '<span class="material-symbols-outlined animate-spin mr-2">sync</span> Processing...';
+        saveBtn.innerHTML = '<span class="material-symbols-outlined animate-spin mr-2" aria-hidden="true">sync</span> Processing...';
 
         try {
             const response = await fetch(`/dlt-management/${currentInspectedId}/retry-with-payload`, {
@@ -422,85 +557,61 @@
 
             if (response.ok) {
                 window.location.href = '/dlt-management?success=retried';
-            } else {
-                showToast('Error retrying event', 'error');
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = originalText;
+                return;
             }
+            showToast('Error retrying event', 'error');
         } catch (e) {
-            showToast('Network error', 'error');
-            saveBtn.disabled = false;
-            saveBtn.innerHTML = originalText;
+            showToast('Network error while retrying event', 'error');
         }
-    }
-
-    function hideInspection() {
-        document.getElementById('inspection-panel').style.display = 'none';
-    }
-
-    function filterEvents() {
-        const errorType = document.getElementById('filter-error-type').value;
-        const topic = document.getElementById('filter-topic').value.toLowerCase();
-        const partition = document.getElementById('filter-partition').value;
-
-        const filtered = dltEvents.filter(event => {
-            const matchesType = errorType === 'all' ||
-                (errorType === 'parsing' && !event.errorMessage.includes('Validation')) ||
-                (errorType === 'validation' && event.errorMessage.includes('Validation'));
-            const matchesTopic = !topic || event.originalTopic.toLowerCase().includes(topic);
-            const matchesPartition = !partition || event.originalPartition.toString() === partition;
-
-            return matchesType && matchesTopic && matchesPartition;
-        });
-
-        renderTable(filtered);
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalText;
     }
 
     function copyPayloadToClipboard() {
         const payload = document.getElementById('inspect-payload-editor').value;
-        navigator.clipboard.writeText(payload).then(() => {
-            showToast('Payload copied to clipboard', 'success');
-        });
+        navigator.clipboard.writeText(payload)
+            .then(() => showToast('Payload copied to clipboard', 'success'))
+            .catch(() => showToast('Clipboard access denied', 'error'));
     }
 
-    // Selection Logic
+    /* ------------------------------------------------------------- Selection */
+
     function toggleSelectAll() {
         const selectAll = document.getElementById('select-all');
-        const checkboxes = document.querySelectorAll('.event-checkbox');
-        checkboxes.forEach(cb => cb.checked = selectAll.checked);
+        document.querySelectorAll('.event-checkbox').forEach(cb => cb.checked = selectAll.checked);
         updateSelection();
     }
 
     function updateSelection() {
-        const checkboxes = document.querySelectorAll('.event-checkbox:checked');
+        selectedIds = new Set(
+            Array.from(document.querySelectorAll('.event-checkbox:checked')).map(cb => cb.value)
+        );
         const toolbar = document.getElementById('bulk-toolbar');
-        const countElem = document.getElementById('selected-count');
+        document.getElementById('selected-count').innerText = selectedIds.size;
+        toolbar.classList.toggle('hidden', selectedIds.size === 0);
 
-        countElem.innerText = checkboxes.length;
-
-        if (checkboxes.length > 0) {
-            toolbar.classList.remove('hidden');
-        } else {
-            toolbar.classList.add('hidden');
-            document.getElementById('select-all').checked = false;
-        }
+        const boxes = document.querySelectorAll('.event-checkbox');
+        const selectAll = document.getElementById('select-all');
+        selectAll.checked = boxes.length > 0 && selectedIds.size === boxes.length;
+        selectAll.indeterminate = selectedIds.size > 0 && selectedIds.size < boxes.length;
     }
 
     function clearSelection() {
         document.querySelectorAll('.event-checkbox').forEach(cb => cb.checked = false);
-        document.getElementById('select-all').checked = false;
         updateSelection();
     }
 
     function submitBulk(action) {
-        const selectedIds = Array.from(document.querySelectorAll('.event-checkbox:checked')).map(cb => cb.value);
-        if (selectedIds.length === 0) return;
+        const ids = Array.from(selectedIds);
+        if (ids.length === 0) return;
+        if (action === 'discard' && !confirm(`Discard ${ids.length} selected event(s)? This cannot be undone.`)) return;
+        if (action === 'retry' && !confirm(`Send ${ids.length} selected event(s) back to their original topics?`)) return;
 
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = action === 'retry' ? '/dlt-management/bulk-retry' : '/dlt-management/bulk-discard';
 
-        selectedIds.forEach(id => {
+        ids.forEach(id => {
             const input = document.createElement('input');
             input.type = 'hidden';
             input.name = 'ids';
@@ -512,40 +623,29 @@
         form.submit();
     }
 
-    function showToast(message, type = 'info') {
-        const container = document.getElementById('toast-container');
-        if (!container) return;
-        const toast = document.createElement('div');
-        toast.className = `flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl text-sm font-bold text-white transition-all duration-300 translate-y-20 opacity-0`;
-        const colors = { success: 'bg-emerald-500', error: 'bg-rose-500', info: 'bg-primary' };
-        const icons = { success: 'check_circle', error: 'error', info: 'info' };
-        toast.classList.add(colors[type]);
-        toast.innerHTML = `<span class="material-symbols-outlined">${icons[type]}</span><span>${message}</span>`;
-        container.appendChild(toast);
-        requestAnimationFrame(() => { toast.classList.remove('translate-y-20', 'opacity-0'); });
-        setTimeout(() => {
-            toast.classList.add('opacity-0', 'translate-y-4');
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
+    /* ---------------------------------------------------------------- Export */
+
+    function toggleExportMenu() {
+        const menu = document.getElementById('export-menu');
+        const button = document.getElementById('export-menu-button');
+        const open = menu.classList.toggle('hidden') === false;
+        button.setAttribute('aria-expanded', String(open));
+    }
+
+    function closeExportMenu() {
+        const menu = document.getElementById('export-menu');
+        if (!menu || menu.classList.contains('hidden')) return;
+        menu.classList.add('hidden');
+        document.getElementById('export-menu-button').setAttribute('aria-expanded', 'false');
     }
 
     function exportDlt(format) {
-        if (dltEvents.length === 0) {
-            showToast("No data to export", "error");
+        closeExportMenu();
+        const dataToExport = dltEvents.filter(matchesFilters);
+        if (dataToExport.length === 0) {
+            showToast('No data to export', 'error');
             return;
         }
-
-        // Get filtered events based on current UI state
-        const errorType = document.getElementById('filter-error-type').value;
-        const topic = document.getElementById('filter-topic').value.toLowerCase();
-
-        const dataToExport = dltEvents.filter(event => {
-            const matchesType = errorType === 'all' ||
-                (errorType === 'parsing' && !event.errorMessage.includes('Validation')) ||
-                (errorType === 'validation' && event.errorMessage.includes('Validation'));
-            const matchesTopic = !topic || event.originalTopic.toLowerCase().includes(topic);
-            return matchesType && matchesTopic;
-        });
 
         if (format === 'csv') {
             const headers = ["ID", "Timestamp", "Topic", "Partition", "Offset", "Status", "Error Message"];
@@ -558,70 +658,28 @@
                     e.originalPartition,
                     e.originalOffset,
                     e.status,
-                    `"${e.errorMessage.replace(/"/g, '""')}"`
+                    `"${(e.errorMessage || '').replace(/"/g, '""')}"`
                 ].join(","))
             ].join("\n");
-            downloadFile(csvContent, `dlt_export_${new Date().getTime()}.csv`, 'text/csv');
+            downloadFile(csvContent, `dlt_export_${Date.now()}.csv`, 'text/csv');
         } else {
-            const jsonContent = JSON.stringify(dataToExport, null, 4);
-            downloadFile(jsonContent, `dlt_export_${new Date().getTime()}.json`, 'application/json');
+            downloadFile(JSON.stringify(dataToExport, null, 4), `dlt_export_${Date.now()}.json`, 'application/json');
         }
-        showToast(`Exported ${dataToExport.length} items to ${format.toUpperCase()}`, "success");
+        showToast(`Exported ${dataToExport.length} items to ${format.toUpperCase()}`, 'success');
     }
 
     function downloadFile(content, fileName, contentType) {
         const blob = new Blob([content], { type: contentType });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", fileName);
+        link.href = url;
+        link.download = fileName;
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-    }
-
-    function renderTable(events) {
-        const tbody = document.querySelector('tbody');
-        tbody.innerHTML = '';
-
-        if (events.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-10 text-center text-slate-500">No DLT events found.</td></tr>';
-            document.getElementById('showing-count').innerText = '0';
-            return;
-        }
-
-        events.forEach(event => {
-            const row = document.createElement('tr');
-            row.className = 'hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group';
-            row.onclick = () => inspectEvent(null, event.id);
-
-            const errorType = event.errorMessage.includes('Validation') ? 'Validation' : 'Parsing';
-            const date = new Date(event.dhm);
-            const formattedDate = date.getFullYear() + '-' +
-                                ('0' + (date.getMonth() + 1)).slice(-2) + '-' +
-                                ('0' + date.getDate()).slice(-2) + ' ' +
-                                ('0' + date.getHours()).slice(-2) + ':' +
-                                ('0' + date.getMinutes()).slice(-2) + ':' +
-                                ('0' + date.getSeconds()).slice(-2);
-
-            const severityClass = event.severity === 'HIGH' ? 'bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400' : 'bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400';
-
-            row.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${formattedDate}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">${event.originalTopic}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${event.originalPartition}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-500">${event.originalOffset}</td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${severityClass}">${event.severity || 'MEDIUM'}</span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
-                    <button class="text-primary font-bold hover:underline">Inspect</button>
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
-        document.getElementById('showing-count').innerText = events.length;
+        // Release the blob instead of leaking it for the lifetime of the page.
+        setTimeout(() => URL.revokeObjectURL(url), 0);
     }
 </script>
 </body>

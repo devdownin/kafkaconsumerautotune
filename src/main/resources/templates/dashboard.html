@@ -4,6 +4,7 @@
     <title>Dashboard</title>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<a class="skip-link" href="#main-content">Skip to content</a>
 <!-- Global Notifications -->
 <div th:replace="~{fragments/notifications :: notifications}"></div>
 
@@ -12,7 +13,7 @@
     <div th:replace="~{fragments/sidebar :: sidebar}"></div>
 
     <!-- Main Content Area -->
-    <main class="flex-1 flex flex-col overflow-hidden">
+    <main id="main-content" tabindex="-1" class="flex-1 flex flex-col overflow-hidden">
         <!-- Top Navbar -->
         <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
             <div class="flex items-center gap-4">
@@ -24,23 +25,20 @@
             </div>
             <div class="flex items-center gap-6">
                 <div class="relative hidden lg:block group">
-                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
-                    <input id="dashboard-search" oninput="toggleSearchClear(); filterDashboardTable()" class="bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm pl-10 pr-10 py-1.5 w-64 focus:ring-1 focus:ring-primary placeholder:text-slate-500" placeholder="Search by event ID or topic..." type="text"/>
-                    <button id="search-clear" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                        <span class="material-symbols-outlined text-sm">cancel</span>
+                    <label class="sr-only" for="dashboard-search">Search recent activity</label>
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" aria-hidden="true">search</span>
+                    <input id="dashboard-search" class="bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm pl-10 pr-10 py-1.5 w-64 focus:ring-1 focus:ring-primary placeholder:text-slate-500" placeholder="Search by event ID or topic..." type="search"/>
+                    <button type="button" id="search-clear" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" aria-label="Clear search">
+                        <span class="material-symbols-outlined text-sm" aria-hidden="true">cancel</span>
                     </button>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 relative">
-                        <span class="material-symbols-outlined">notifications</span>
-                        <span class="absolute top-2 right-2 size-2 bg-rose-500 rounded-full border-2 border-white dark:border-background-dark"></span>
+                    <button type="button" id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" aria-label="Toggle theme">
+                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden" aria-hidden="true">dark_mode</span>
+                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden" aria-hidden="true">light_mode</span>
                     </button>
-                    <button id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500">
-                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden">dark_mode</span>
-                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden">light_mode</span>
-                    </button>
-                    <button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()" data-tooltip="Refresh page">
-                        <span class="material-symbols-outlined">refresh</span>
+                    <button type="button" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()" data-tooltip="Refresh page" aria-label="Refresh page">
+                        <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
                     </button>
                 </div>
             </div>
@@ -48,10 +46,10 @@
         <!-- Dashboard Content -->
         <div class="flex-1 overflow-y-auto p-8 space-y-6">
             <!-- Circuit Breaker Alert -->
-            <div id="cb-alert" th:class="${'bg-rose-500/10 border border-rose-500/20 text-rose-500 px-6 py-4 rounded-xl flex items-center justify-between ' + (stats.circuitBreakerStatus == 'OPEN' ? '' : 'hidden')}">
+            <div id="cb-alert" role="alert" th:class="${'bg-rose-500/10 border border-rose-500/20 text-rose-500 px-6 py-4 rounded-xl flex items-center justify-between ' + (stats.circuitBreakerStatus == 'OPEN' ? '' : 'hidden')}">
                 <div class="flex items-center gap-4">
                     <div class="p-2 bg-rose-500/20 rounded-lg">
-                        <span class="material-symbols-outlined animate-pulse">database_off</span>
+                        <span class="material-symbols-outlined animate-pulse" aria-hidden="true">database_off</span>
                     </div>
                     <div>
                         <h4 class="text-sm font-bold uppercase tracking-tight">Database Connectivity Alert</h4>
@@ -64,10 +62,10 @@
             </div>
 
             <!-- Fallback Mode Alert -->
-            <div id="fallback-alert" class="bg-amber-500/10 border border-amber-500/20 text-amber-500 px-6 py-4 rounded-xl flex items-center justify-between hidden">
+            <div id="fallback-alert" role="alert" class="bg-amber-500/10 border border-amber-500/20 text-amber-500 px-6 py-4 rounded-xl flex items-center justify-between hidden">
                 <div class="flex items-center gap-4">
                     <div class="p-2 bg-amber-500/20 rounded-lg">
-                        <span class="material-symbols-outlined animate-spin">sync_problem</span>
+                        <span class="material-symbols-outlined animate-spin" aria-hidden="true">sync_problem</span>
                     </div>
                     <div>
                         <h4 class="text-sm font-bold uppercase tracking-tight">Individual Fallback Mode Active</h4>
@@ -153,7 +151,7 @@
                             <p class="text-xs text-slate-500">Real-time messages processed per second (Msg/s)</p>
                         </div>
                         <div class="flex items-center gap-2">
-                             <span class="text-[10px] font-bold text-slate-400 uppercase">Duration:</span>
+                             <label class="text-[10px] font-bold text-slate-400 uppercase" for="throughput-duration">Duration:</label>
                              <select id="throughput-duration" onchange="updateThroughputDuration(this.value)" class="bg-slate-50 dark:bg-slate-800 border-none rounded text-xs py-1 px-3 focus:ring-1 focus:ring-primary cursor-pointer">
                                 <option value="10m">Last 10 minutes</option>
                                 <option value="24h">Last 24 hours</option>
@@ -208,13 +206,13 @@
                     <table class="w-full text-left border-collapse">
                         <thead class="bg-slate-50 dark:bg-slate-800/50">
                         <tr>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Status</th>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Topic</th>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Event ID / Error</th>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Offset</th>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Partition</th>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Oracle ID</th>
-                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-right">Timestamp</th>
+                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Status</th>
+                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Topic</th>
+                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Event ID / Error</th>
+                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Offset</th>
+                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Partition</th>
+                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Oracle ID</th>
+                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-right">Timestamp</th>
                         </tr>
                         </thead>
                         <tbody id="events-table-body" class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -253,33 +251,34 @@
 
 <script th:inline="javascript">
     var initialStats = /*[[${stats}]]*/ {};
-    var currentStats = initialStats;
 
-    // WebSocket Setup
-    var socket = new SockJS('/ws');
-    var stompClient = Stomp.over(socket);
-    stompClient.debug = null;
+    // WebSocket setup. Runs on DOMContentLoaded because SockJS/Stomp are deferred.
+    function initWebSocket() {
+        var socket = new SockJS('/ws');
+        var stompClient = Stomp.over(socket);
+        stompClient.debug = null;
 
-    stompClient.connect({}, function (frame) {
-        updateWsStatus(true);
-        initSystemNotifications(stompClient);
+        stompClient.connect({}, function (frame) {
+            updateWsStatus(true);
+            initSystemNotifications(stompClient);
 
-        stompClient.subscribe('/topic/events', function (eventMessage) {
-            var events = JSON.parse(eventMessage.body);
-            updateDashboard(events);
+            stompClient.subscribe('/topic/events', function (eventMessage) {
+                var events = JSON.parse(eventMessage.body);
+                updateDashboard(events);
+            });
+            stompClient.subscribe('/topic/stats', function (statsMessage) {
+                var stats = JSON.parse(statsMessage.body);
+                updateStats(stats);
+            });
+            stompClient.subscribe('/topic/dlt', function (dltMessage) {
+                var dltEvent = JSON.parse(dltMessage.body);
+                updateDashboardWithDlt(dltEvent);
+                pulseDltCounter();
+            });
+        }, function(error) {
+            updateWsStatus(false);
         });
-        stompClient.subscribe('/topic/stats', function (statsMessage) {
-            var stats = JSON.parse(statsMessage.body);
-            updateStats(stats);
-        });
-        stompClient.subscribe('/topic/dlt', function (dltMessage) {
-            var dltEvent = JSON.parse(dltMessage.body);
-            updateDashboardWithDlt(dltEvent);
-            pulseDltCounter();
-        });
-    }, function(error) {
-        updateWsStatus(false);
-    });
+    }
 
     var throughputChart, donutChart;
     var currentDuration = '10m';
@@ -407,6 +406,8 @@
     document.addEventListener('DOMContentLoaded', function() {
         initCharts();
         initThemeToggle();
+        initSearch();
+        initWebSocket();
     });
 
     function updateThroughputDuration(duration) {
@@ -425,6 +426,15 @@
     }
 
 
+    function setText(id, value) {
+        const elem = document.getElementById(id);
+        if (elem) elem.innerText = value;
+    }
+
+    function formatCount(value) {
+        return (value == null ? 0 : value).toLocaleString('en-US');
+    }
+
     function updateStats(stats) {
         initialStats = stats;
 
@@ -438,29 +448,37 @@
             }
         }
 
-        document.getElementById('total-processed-count').innerText = stats.totalProcessed.toLocaleString('en-US');
-        document.getElementById('success-rate').innerText = stats.successRate.toFixed(2) + '%';
-        document.getElementById('success-rate-bar').style.width = stats.successRate + '%';
-        document.getElementById('dlt-count').innerText = stats.dltCount;
-        document.getElementById('consumer-lag').innerText = stats.consumerLag.toLocaleString('en-US');
+        const successRate = stats.successRate || 0;
+        setText('total-processed-count', formatCount(stats.totalProcessed));
+        setText('success-rate', successRate.toFixed(2) + '%');
+        const rateBar = document.getElementById('success-rate-bar');
+        if (rateBar) rateBar.style.width = successRate + '%';
+        setText('dlt-count', formatCount(stats.dltCount));
+        setText('consumer-lag', formatCount(stats.consumerLag));
+        // The PID-tuned values are shown on the lag card but were never refreshed.
+        if (stats.maxPollRecords != null) setText('max-poll-val', stats.maxPollRecords);
+        if (stats.concurrency != null) setText('concurrency-val', stats.concurrency);
+        if (stats.fetchMaxWaitMs != null) setText('fetch-wait-val', stats.fetchMaxWaitMs + 'ms');
 
         if (throughputChart) {
             const is24h = currentDuration === '24h';
+            // Single updateOptions call: passing the series along with the axis
+            // avoids the second full re-render updateSeries would trigger.
             throughputChart.updateOptions({
-                xaxis: { categories: is24h ? [] : stats.timestamps }
-            });
-            throughputChart.updateSeries([
-                { name: 'Success (Msg/s)', data: is24h ? stats.throughput24h : stats.successThroughput },
-                { name: 'DLT (Err/s)', data: is24h ? [] : stats.errorThroughput },
-                { name: 'Retries (Msg/s)', data: is24h ? [] : stats.retryThroughput }
-            ]);
+                xaxis: { categories: is24h ? [] : stats.timestamps },
+                series: [
+                    { name: 'Success (Msg/s)', data: is24h ? stats.throughput24h : stats.successThroughput },
+                    { name: 'DLT (Err/s)', data: is24h ? [] : stats.errorThroughput },
+                    { name: 'Retries (Msg/s)', data: is24h ? [] : stats.retryThroughput }
+                ]
+            }, false, false);
         }
         if (donutChart) {
             donutChart.updateSeries([stats.successCount, stats.errorCount, stats.retryCount]);
         }
-        document.getElementById('donut-success-count').innerText = stats.successCount.toLocaleString('en-US');
-        document.getElementById('donut-error-count').innerText = stats.errorCount.toLocaleString('en-US');
-        document.getElementById('donut-retry-count').innerText = stats.retryCount.toLocaleString('en-US');
+        setText('donut-success-count', formatCount(stats.successCount));
+        setText('donut-error-count', formatCount(stats.errorCount));
+        setText('donut-retry-count', formatCount(stats.retryCount));
     }
 
     function updateDashboard(events) {
@@ -494,6 +512,7 @@
 
             if (tableBody.firstChild) tableBody.insertBefore(row, tableBody.firstChild);
             else tableBody.appendChild(row);
+            applyFilterToRow(row);
             setTimeout(function() { row.classList.remove('animate-pulse'); }, 2000);
             if (tableBody.children.length > 15) tableBody.removeChild(tableBody.lastChild);
         });
@@ -530,6 +549,7 @@
 
         if (tableBody.firstChild) tableBody.insertBefore(row, tableBody.firstChild);
         else tableBody.appendChild(row);
+        applyFilterToRow(row);
 
         setTimeout(function() { row.classList.remove('animate-pulse'); }, 2000);
         if (tableBody.children.length > 15) tableBody.removeChild(tableBody.lastChild);
@@ -548,22 +568,56 @@
         }
     }
 
+    var currentQuery = '';
+
+    /*
+     * Rows cache their searchable text in a data attribute. The previous version
+     * read row.innerText on every keystroke, which forces a synchronous layout
+     * per row; textContent + caching keeps filtering off the layout path.
+     */
+    function rowSearchText(row) {
+        if (!row.dataset.search) {
+            row.dataset.search = row.textContent.toLowerCase().replace(/\s+/g, ' ');
+        }
+        return row.dataset.search;
+    }
+
+    function applyFilterToRow(row) {
+        row.style.display = !currentQuery || rowSearchText(row).includes(currentQuery) ? '' : 'none';
+    }
+
+    function filterDashboardTable() {
+        const input = document.getElementById('dashboard-search');
+        currentQuery = input ? input.value.trim().toLowerCase() : '';
+        document.querySelectorAll('#events-table-body tr:not(#empty-state)').forEach(applyFilterToRow);
+    }
+
     function clearSearch() {
-        document.getElementById('dashboard-search').value = '';
+        const input = document.getElementById('dashboard-search');
+        if (input) input.value = '';
         toggleSearchClear();
         filterDashboardTable();
+        if (input) input.focus();
     }
+
     function toggleSearchClear() {
-        const query = document.getElementById('dashboard-search').value;
+        const input = document.getElementById('dashboard-search');
         const btn = document.getElementById('search-clear');
-        if (query.length > 0) btn.classList.remove('hidden');
-        else btn.classList.add('hidden');
+        if (!input || !btn) return;
+        btn.classList.toggle('hidden', input.value.length === 0);
     }
-    function filterDashboardTable() {
-        const query = document.getElementById('dashboard-search').value.toLowerCase();
-        const rows = document.querySelectorAll('#events-table-body tr:not(#empty-state)');
-        rows.forEach(row => {
-            row.style.display = row.innerText.toLowerCase().includes(query) ? '' : 'none';
+
+    function initSearch() {
+        const input = document.getElementById('dashboard-search');
+        if (!input) return;
+        let debounce;
+        input.addEventListener('input', function () {
+            toggleSearchClear();
+            clearTimeout(debounce);
+            debounce = setTimeout(filterDashboardTable, 150);
+        });
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') clearSearch();
         });
     }
 </script>
