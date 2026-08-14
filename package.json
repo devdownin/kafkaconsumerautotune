@@ -1,6 +1,14 @@
 {
-  "dependencies": {
-    "@lydell/node-pty": "^1.2.0-beta.3",
-    "@lydell/node-pty-win32-x64": "^1.2.0-beta.7"
+  "name": "kafkaconsumerautotune-ui",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Build de la feuille de style du tableau de bord. Piloté par Maven via frontend-maven-plugin ; voir docs/frontend-build.md.",
+  "scripts": {
+    "build:css": "tailwindcss -i src/main/frontend/app.css -o src/main/resources/static/vendor/css/app.css --minify",
+    "watch:css": "tailwindcss -i src/main/frontend/app.css -o src/main/resources/static/vendor/css/app.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/forms": "0.5.10",
+    "tailwindcss": "3.4.17"
   }
 }

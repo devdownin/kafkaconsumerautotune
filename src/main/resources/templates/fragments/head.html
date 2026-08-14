@@ -7,22 +7,21 @@
     <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}"/>
 
     <!--
-      Fonts and libraries are served from this application, not from a CDN:
-      the UI works air-gapped, versions cannot shift under us, and no third
-      party sees the traffic. See static/vendor/README.md to refresh them.
-      Tailwind is the one remaining exception, documented below.
+      Every asset is served by this application, never by a CDN: the UI works
+      air-gapped, versions cannot shift under us, and no third party sees the
+      traffic. See static/vendor/README.md to refresh the fonts and libraries.
     -->
     <link rel="stylesheet" th:href="@{/vendor/css/inter.css}"/>
     <link rel="stylesheet" th:href="@{/vendor/css/material-symbols.css}"/>
 
     <!--
-      Tailwind still comes from its CDN, which compiles the classes in the
-      browser on every page load. Replacing it means compiling a stylesheet at
-      build time (see docs/ui-audit.md §4) — until then this is the only
-      external dependency, and the only asset a disconnected install lacks.
+      app.css is compiled by Maven from src/main/frontend/app.css; it carries
+      the Tailwind theme and this UI's own rules. It replaces the Tailwind CDN,
+      which shipped the whole engine and recompiled the classes in the browser
+      on every page load. Regenerating it is a build step: see
+      docs/frontend-build.md.
     -->
-    <link rel="preconnect" href="https://cdn.tailwindcss.com"/>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link rel="stylesheet" th:href="@{/vendor/css/app.css}"/>
 
     <!--
       defer: none of these are needed before first paint. Pages must therefore
@@ -32,97 +31,16 @@
     <script defer th:src="@{/vendor/js/stomp-2.3.3.min.js}"></script>
     <script defer th:src="@{/vendor/js/apexcharts-6.8.0.min.js}"></script>
 
-    <script id="tailwind-config">
+    <!--
+      Stays inline and synchronous on purpose: it must set the theme class before
+      the first paint, otherwise a dark-mode user gets a white flash. The theme
+      itself now lives in tailwind.config.js, applied at build time.
+    -->
+    <script id="theme-preference">
         if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
         } else {
             document.documentElement.classList.remove('dark');
         }
-
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#135bec",
-                        "primary-dark": "#0f49bd",
-                        "background-light": "#f6f6f8",
-                        "background-dark": "#0f172a",
-                    },
-                    fontFamily: {
-                        "display": ["Inter"]
-                    },
-                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
-                },
-            },
-        }
     </script>
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        /* Keyboard focus stays visible everywhere, including on custom controls. */
-        :focus-visible { outline: 2px solid #135bec; outline-offset: 2px; border-radius: 0.25rem; }
-
-        /* Skip link: first tab stop on every page, visible only once focused. */
-        .skip-link {
-            position: absolute; left: 0.5rem; top: -3rem; z-index: 200;
-            padding: 0.5rem 1rem; border-radius: 0.5rem;
-            background: #135bec; color: #fff; font-size: 0.75rem; font-weight: 700;
-            transition: top 0.15s ease-in-out;
-        }
-        .skip-link:focus { top: 0.5rem; }
-
-        /*
-          data-tooltip was used on several pages but never had an implementation,
-          so those hints simply never rendered. Pure CSS, no JS, no layout cost.
-        */
-        [data-tooltip] { position: relative; }
-        [data-tooltip]::after {
-            content: attr(data-tooltip);
-            position: absolute; top: calc(100% + 6px); left: 50%;
-            transform: translateX(-50%) scale(0.96);
-            padding: 0.25rem 0.5rem; border-radius: 0.375rem;
-            background: #0f172a; color: #f8fafc;
-            font-size: 10px; font-weight: 600; line-height: 1.4; letter-spacing: 0;
-            text-transform: none; white-space: nowrap;
-            opacity: 0; pointer-events: none; z-index: 90;
-            transition: opacity 0.12s ease-in-out, transform 0.12s ease-in-out;
-        }
-        [data-tooltip]:hover::after,
-        [data-tooltip]:focus-visible::after { opacity: 1; transform: translateX(-50%) scale(1); }
-        .dark [data-tooltip]::after { background: #e2e8f0; color: #0f172a; }
-        /* Tooltips on the status bar would be clipped downwards: flip them up. */
-        footer [data-tooltip]::after { top: auto; bottom: calc(100% + 6px); }
-
-        /*
-          Off-canvas sidebar below lg. Previously the 16rem sidebar was always in
-          flow, leaving almost nothing for the content on small screens.
-        */
-        @media (max-width: 1023px) {
-            #app-sidebar {
-                position: fixed; top: 0; bottom: 0; left: 0; z-index: 70;
-                transform: translateX(-100%);
-                transition: transform 0.2s ease-in-out;
-                box-shadow: 0 10px 40px rgba(15, 23, 42, 0.35);
-            }
-            #app-sidebar.is-open { transform: translateX(0); }
-            #sidebar-overlay.is-open { display: block; }
-            #sidebar-toggle { display: inline-flex; }
-            /* Keep the page title clear of the floating menu button. */
-            main > header { padding-left: 4rem; }
-        }
-
-        /* Respect the OS "reduce motion" setting: this UI animates a lot. */
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                animation-duration: 0.001ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.001ms !important;
-                scroll-behavior: auto !important;
-            }
-        }
-    </style>
 </head>

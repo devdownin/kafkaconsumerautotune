@@ -22,10 +22,10 @@ promtail-config.yaml
 otel-collector-config.yaml
 init.sql
 
-# Outillage hors sujet pour une image Java.
+# node_modules est réinstallé dans l'image par frontend-maven-plugin ; le
+# transférer ne ferait qu'alourdir le contexte. package.json, package-lock.json
+# et tailwind.config.js sont en revanche nécessaires à la compilation du CSS.
 node_modules/
-package.json
-package-lock.json
 
 # Environnements de développement.
 .idea/

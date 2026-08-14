@@ -65,6 +65,14 @@
         <testcontainers.version>1.20.5</testcontainers.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <oracle.version>23.6.0.24.10</oracle.version>
+
+        <!-- Build de la feuille de style du tableau de bord (voir docs/frontend-build.md).
+             frontend-maven-plugin télécharge Node dans target/ : rien à installer
+             sur le poste ni dans l'image de build. Passer -Dfrontend.skip=true pour
+             réutiliser un app.css déjà généré, par exemple hors ligne. -->
+        <frontend-maven-plugin.version>1.15.1</frontend-maven-plugin.version>
+        <node.version>v22.11.0</node.version>
+        <frontend.skip>false</frontend.skip>
     </properties>
 
     <dependencyManagement>
@@ -311,6 +319,55 @@
 
     <build>
         <plugins>
+            <!--
+              Compile src/main/frontend/app.css en une feuille minifiée servie
+              depuis static/vendor/css/. Remplace le CDN Tailwind, qui embarquait
+              le moteur complet et recompilait les classes dans le navigateur à
+              chaque chargement de page.
+
+              Phase generate-resources : le fichier produit doit exister avant que
+              process-resources ne recopie src/main/resources vers target/classes.
+            -->
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>${frontend-maven-plugin.version}</version>
+                <configuration>
+                    <nodeVersion>${node.version}</nodeVersion>
+                    <installDirectory>${project.build.directory}</installDirectory>
+                    <skip>${frontend.skip}</skip>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>install-node-and-npm</id>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                    </execution>
+                    <execution>
+                        <id>npm-ci</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <arguments>ci --no-audit --no-fund</arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm-build-css</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <arguments>run build:css</arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
             <!-- Spring Boot Maven Plugin -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
