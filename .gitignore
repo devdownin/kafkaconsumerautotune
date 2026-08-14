@@ -32,3 +32,9 @@ logs/
 
 ### VS Code ###
 .vscode/
+
+### Node ###
+node_modules/
+
+### Journaux d'exécution ###
+*.log
