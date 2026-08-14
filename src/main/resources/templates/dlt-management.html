@@ -549,9 +549,11 @@
         saveBtn.innerHTML = '<span class="material-symbols-outlined animate-spin mr-2" aria-hidden="true">sync</span> Processing...';
 
         try {
+            // Accept: this endpoint lives outside /api/, so the header is what
+            // tells the error handler to answer with JSON rather than a page.
             const response = await fetch(`/dlt-management/${currentInspectedId}/retry-with-payload`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                 body: JSON.stringify({ payload: payload })
             });
 

@@ -53,3 +53,51 @@ Si le système détecte une saturation critique (CPU > 90% ou Mémoire > 90%), l
     -   **Retry** : Re-jouer le message.
     -   **Discard** : Abandonner le message.
     -   **Edit & Retry** : Corriger le payload (ex: fixer un JSON) puis re-jouer.
+
+## 5. Erreurs HTTP (interface web et API)
+
+`GlobalExceptionHandler` intercepte les exceptions non traitées et répond selon
+le type d'appelant. Auparavant il renvoyait systématiquement une page HTML avec
+un statut **200 OK** : les sondes de supervision voyaient une application saine
+alors qu'elle servait des pages d'erreur, et le JavaScript du tableau de bord,
+qui teste `response.ok`, considérait comme réussis des appels d'API en échec.
+
+### 5.1 Négociation du format
+
+| Appelant | Critère | Réponse |
+|---|---|---|
+| Navigateur | Tout le reste | Vue `error.html`, statut **500** |
+| Client d'API | URI sous `/api/`, ou `Accept: application/json`, ou `X-Requested-With: XMLHttpRequest` | Corps JSON `ApiError`, statut **500** |
+
+Le second critère existe pour les rares endpoints JSON situés hors du préfixe
+`/api/` — aujourd'hui `POST /dlt-management/{id}/retry-with-payload`, dont
+l'appel `fetch` envoie explicitement l'en-tête `Accept`.
+
+### 5.2 Corps `ApiError`
+
+```json
+{
+  "timestamp": "2026-08-14T18:42:11.732Z",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "The request parameters are invalid.",
+  "path": "/api/simulation/start",
+  "fieldErrors": { "totalMessages": "must be at least 1" }
+}
+```
+
+`fieldErrors` n'est présent que sur un échec de validation. Les champs vides
+sont omis de la sérialisation.
+
+> **À revoir avec l'authentification.** `message` reprend le message de
+> l'exception, qui peut exposer des détails d'infrastructure. C'est le
+> comportement qu'avait déjà la page d'erreur HTML, et l'application n'a
+> actuellement aucune authentification : l'exposition est donc la même par les
+> deux surfaces. À restreindre le jour où un contrôle d'accès est introduit.
+
+### 5.3 Validation des requêtes
+
+Les corps de requête annotés `@Valid` renvoient **400** avec le détail par
+champ. `SimulationRequestDTO` borne ainsi le volume, les pourcentages, le délai
+et le débit visé : les garde-fous de l'interface sont côté client et ne
+protègent donc pas l'endpoint, qui est appelable directement.
