@@ -1,5 +1,10 @@
 # KafkaConsumerAutoTune: The Intelligent Kafka Consumer
 
+[![CI](https://github.com/devdownin/kafkaconsumerautotune/actions/workflows/ci.yml/badge.svg)](https://github.com/devdownin/kafkaconsumerautotune/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/devdownin/kafkaconsumerautotune/actions/workflows/codeql.yml/badge.svg)](https://github.com/devdownin/kafkaconsumerautotune/actions/workflows/codeql.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Java 21](https://img.shields.io/badge/Java-21-orange.svg)](https://openjdk.org/projects/jdk/21/)
+
 Welcome to **KafkaConsumerAutoTune**, a reference implementation of a high-performance Kafka consumer for Spring Boot. More than just a consumption tool, KafkaConsumerAutoTune is designed as a self-adaptive system capable of optimizing its own performance in real-time.
 
 ---
@@ -71,6 +76,13 @@ docker-compose up -d
 ```
 This launches: Kafka, Oracle XE, Prometheus, Jaeger, and the KafkaConsumerAutoTune application.
 
+> **Development credentials only.** The `docker-compose.yml` stack ships with
+> deliberately trivial credentials (database `testpass`, Grafana `admin`/`admin`)
+> so the demo runs out of the box. They are meant for a local machine and
+> nothing else — never deploy this stack as-is. In any real environment, supply
+> `DB_PASSWORD` and the `KAFKA_SSL_*` variables from your own secret store; the
+> application reads them from the environment and hardcodes nothing.
+
 ### Accessing the tools
 - **KafkaConsumerAutoTune Dashboard**: [http://localhost:8080/dashboard](http://localhost:8080/dashboard)
 - **Kafka Optimizer**: [http://localhost:8080/optimizer](http://localhost:8080/optimizer)
@@ -83,6 +95,9 @@ This launches: Kafka, Oracle XE, Prometheus, Jaeger, and the KafkaConsumerAutoTu
 - [Error Management](docs/error-management.md)
 - [Observability](docs/observability.md)
 - [Contributing Guidelines](CONTRIBUTING.md)
+- [Changelog](CHANGELOG.md)
+- [Security Policy](SECURITY.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
 
 ---
 

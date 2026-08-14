@@ -1,0 +1,33 @@
+name: Proposition d'évolution
+description: Suggérer une fonctionnalité ou une amélioration
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problème à résoudre
+      description: >
+        Quel besoin concret n'est pas couvert aujourd'hui ? Décrivez la
+        situation avant de décrire la solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Solution envisagée
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considérées
+      description: Y compris « ne rien faire » et pourquoi cela ne suffit pas.
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: Je suis prêt·e à proposer une pull request pour cette évolution
