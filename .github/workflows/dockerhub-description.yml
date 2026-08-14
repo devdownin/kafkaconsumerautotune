@@ -1,0 +1,36 @@
+name: Docker Hub description
+
+# La page Docker Hub est la vitrine de l'image : elle doit suivre le dépôt
+# sans attendre la release suivante. Ce workflow est donc découplé de la
+# publication de l'image elle-même.
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.docker/hub-description.md'
+      - '.github/workflows/dockerhub-description.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: Sync description
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Push description to Docker Hub
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ vars.DOCKERHUB_IMAGE || 'devdownin/kafkaconsumerautotune' }}
+          readme-filepath: .docker/hub-description.md
+          # 100 caractères maximum côté Docker Hub, au-delà l'appel est rejeté.
+          short-description: >-
+            Self-tuning Kafka consumer for Spring Boot: PID-controlled
+            throughput, circuit breaker, tracing
