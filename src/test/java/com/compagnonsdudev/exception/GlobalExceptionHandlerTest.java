@@ -38,7 +38,6 @@ class GlobalExceptionHandlerTest {
     @MockBean private SimulationService simulationService;
     @MockBean private com.compagnonsdudev.service.KafkaOptimizerService optimizerService;
     @MockBean private com.compagnonsdudev.config.MessageViewerConfig messageViewerConfig;
-    @MockBean private com.compagnonsdudev.service.FlinkMetricService flinkMetricService;
 
     @Test
     void browserRequestGetsTheErrorPageWithA500() throws Exception {

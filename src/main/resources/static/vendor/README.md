@@ -7,7 +7,7 @@ cloisonné, les versions ne peuvent plus bouger sous nos pieds, et aucun tiers n
 voit le trafic des utilisateurs.
 
 Ils sont référencés depuis `templates/fragments/head.html`, et pour Prism depuis
-`message-viewer.html` et `flink-metrics.html`.
+`message-viewer.html`.
 
 ## Inventaire
 
@@ -18,9 +18,7 @@ Ils sont référencés depuis `templates/fragments/head.html`, et pour Prism dep
 | `js/apexcharts-6.8.0.min.js` | 6.8.0 | npm `apexcharts`, `dist/apexcharts.min.js` |
 | `js/prism-core-1.29.0.min.js` | 1.29.0 | npm `prismjs`, `components/prism-core.min.js` |
 | `js/prism-json-1.29.0.min.js` | 1.29.0 | npm `prismjs`, `components/prism-json.min.js` |
-| `js/prism-sql-1.29.0.min.js` | 1.29.0 | npm `prismjs`, `components/prism-sql.min.js` |
 | `css/prism-okaidia-1.29.0.min.css` | 1.29.0 | npm `prismjs`, `themes/` |
-| `css/prism-tomorrow-1.29.0.min.css` | 1.29.0 | npm `prismjs`, `themes/` |
 | `css/inter.css` + `fonts/inter-*.woff2` | — | Google Fonts, Inter |
 | `css/material-symbols.css` + `fonts/material-symbols-outlined-subset.woff2` | — | Google Fonts, Material Symbols Outlined |
 
@@ -29,8 +27,8 @@ version se voit dans le diff et ne peut pas être servie depuis un cache
 navigateur périmé.
 
 Prism n'est pas repris tel quel : le bundle des CDN embarque aussi les grammaires
-markup, CSS et JavaScript, dont l'UI ne se sert pas. Seuls le cœur et les deux
-grammaires réellement utilisées (JSON, SQL) sont embarqués.
+markup, CSS et JavaScript, dont l'UI ne se sert pas. Seuls le cœur et la grammaire
+réellement utilisée (JSON) sont embarqués.
 
 ## Mettre à jour une bibliothèque
 
@@ -55,8 +53,8 @@ cyrillique, grec et vietnamien retombent sur la police système — sans effet s
 l'interface, dont les libellés sont latins, et sans effet sur les charges utiles
 affichées, rendues en police à chasse fixe.
 
-**Material Symbols est sous-ensemblée aux seules icônes utilisées** (57 glyphes
-au lieu des ~3 500 du jeu complet, soit 20 Ko au lieu de ~3,5 Mo). **Toute icône
+**Material Symbols est sous-ensemblée aux seules icônes utilisées** (54 glyphes
+au lieu des ~3 500 du jeu complet, soit 19 Ko au lieu de ~3,5 Mo). **Toute icône
 ajoutée à un template ou injectée depuis JavaScript doit être ajoutée à la liste
 `icon_names`, sinon elle s'affichera sous forme de texte littéral.**
 

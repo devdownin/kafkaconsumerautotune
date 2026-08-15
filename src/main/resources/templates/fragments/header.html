@@ -6,11 +6,11 @@
   Bascule de thème et rafraîchissement de la barre de titre.
 
   Recopiés à l'identique sur chaque page, et c'est bien ce qui avait laissé
-  `simulation` et `flink-metrics` sans bascule de thème : rien ne signalait que
-  leur en-tête avait divergé.
+  deux d'entre elles sans bascule de thème : rien ne signalait que leur en-tête
+  avait divergé.
 
-  Déclaré en th:block, sans conteneur : la page fournit le sien, ce qui permet à
-  flink-metrics de placer son bouton « Create Metric » dans le même groupe.
+  Déclaré en th:block, sans conteneur : la page fournit le sien, ce qui permet
+  d'y placer d'autres actions dans le même groupe.
 -->
 <th:block th:fragment="actions">
     <button type="button" id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" aria-label="Toggle theme">

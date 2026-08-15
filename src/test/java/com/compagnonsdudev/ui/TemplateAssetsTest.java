@@ -47,9 +47,9 @@ class TemplateAssetsTest {
     }
 
     /**
-     * The eleven page templates each carried their own copy of the header, main
-     * and footer scaffold. That is how `simulation` and `flink-metrics` ended up
-     * without a theme toggle: nothing flagged that their header had drifted.
+     * Each page template used to carry its own copy of the header, main and
+     * footer scaffold. That is how two pages ended up without a theme toggle:
+     * nothing flagged that their header had drifted.
      * A page that rebuilds the shell by hand can drift the same way again.
      */
     @Test
