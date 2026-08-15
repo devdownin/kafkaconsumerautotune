@@ -7,6 +7,11 @@
 
 Welcome to **KafkaConsumerAutoTune**, a reference implementation of a high-performance Kafka consumer for Spring Boot. More than just a consumption tool, KafkaConsumerAutoTune is designed as a self-adaptive system capable of optimizing its own performance in real-time.
 
+![Pipeline overview: throughput, success rate, consumer lag and the parameters currently applied by the optimizer](docs/images/dashboard.png)
+
+> Screenshots on this page show the interface with sample data; the figures in
+> them are illustrative.
+
 ---
 
 ## Why KafkaConsumerAutoTune?
@@ -61,6 +66,29 @@ You can't improve what you don't measure. KafkaConsumerAutoTune offers:
 - **Real-Time Dashboard**: Visualize throughput (msg/s), Kafka lag, and Optimizer interventions.
 - **Distributed Tracing**: Trace every message from Kafka to the database via OpenTelemetry and Jaeger.
 - **Structured Logs**: JSON format (ECS) ready for ELK, with automatic trace ID injection.
+
+### The optimizer, and why it did what it did
+
+Throughput is plotted against the two parameters the PID controller drives, so a
+change in behaviour can be traced back to the adjustment that caused it. Every
+adjustment is listed with the measurement that triggered it.
+
+![Optimizer timeline: throughput against max.poll.records and concurrency, with each adjustment listed and explained](docs/images/optimizer.png)
+
+### Consumer groups, down to the partition
+
+Lag is reported per partition rather than as a single number, which is what you
+need when one partition is the one falling behind.
+
+![Consumer groups view with per-partition lag, current offset and log end offset](docs/images/consumer-groups.png)
+
+### Handling what failed
+
+Messages routed to the Dead Letter Topic are listed with their origin and error.
+The inspection panel shows the Kafka headers and the error trace, and lets you
+correct the payload before replaying it — or discard it.
+
+![Dead Letter Topic management with the inspection panel: headers, error trace and editable payload](docs/images/dlt-management.png)
 
 ---
 

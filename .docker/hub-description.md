@@ -9,6 +9,8 @@ while staying up when the database underneath it does not.
 docker pull devdownin/kafkaconsumerautotune:latest
 ```
 
+![The pipeline overview: throughput, success rate, consumer lag and the parameters the optimizer is currently using](https://raw.githubusercontent.com/devdownin/kafkaconsumerautotune/main/docs/images/dashboard.png)
+
 ---
 
 ## The problem it solves
@@ -36,6 +38,11 @@ controller** does the same here:
 The result is optimal throughput that holds regardless of load, instead of a
 number someone picked during a sprint two years ago.
 
+![The optimizer timeline: throughput against max.poll.records and concurrency, with every adjustment listed and explained](https://raw.githubusercontent.com/devdownin/kafkaconsumerautotune/main/docs/images/optimizer.png)
+
+Every adjustment is recorded with the measurement that triggered it, so the
+consumer's behaviour stays explainable rather than mysterious.
+
 ## Built to survive a bad day
 
 **Circuit breaker.** When the database goes down, the consumer does not keep
@@ -47,6 +54,11 @@ database is healthy.
 When a batch fails, each message is retried individually: the healthy ones are
 persisted, and only the poison message is isolated and routed to the Dead
 Letter Topic.
+
+From there it is yours to handle: inspect the headers and the error, fix the
+payload in place, and replay it — or discard it.
+
+![Dead Letter Topic management: the failed messages, and the inspection panel showing headers, error trace and an editable payload](https://raw.githubusercontent.com/devdownin/kafkaconsumerautotune/main/docs/images/dlt-management.png)
 
 ## You can see what it is doing
 
@@ -76,6 +88,9 @@ open:
 - Dashboard — <http://localhost:8080/dashboard>
 - Kafka optimizer — <http://localhost:8080/optimizer>
 - Traces — <http://localhost:16686>
+
+The screenshots above show the interface with sample data; the figures in them
+are illustrative.
 
 To run the image on its own, point it at your own infrastructure:
 

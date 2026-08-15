@@ -68,6 +68,30 @@ Protège la persistance via Resilience4j.
 -   **Tableaux de bord** : Dashboard Technique et Dashboard Business KPI provisionnés dans Grafana.
 -   **Alertes** : Définies dans `prometheus-rules.yml` sur le lag Kafka, le taux d'erreur et la performance des batchs.
 
+### 4.3 Console Web Intégrée
+Au-delà de la pile Grafana, l'application sert sa propre console d'exploitation
+sur le port 8080. Ce n'est pas un second système de supervision : elle expose ce
+que seul le consommateur connaît — les décisions prises par l'optimiseur, et les
+messages qu'il n'a pas pu traiter.
+
+| Route | Rôle |
+| --- | --- |
+| `/` | Vue d'ensemble du pipeline : débit, taux de succès, lag, et paramètres appliqués |
+| `/optimizer` | Chaque ajustement PID, avec la mesure qui l'a déclenché |
+| `/dlt-management` | Messages en échec : inspection des en-têtes et de la trace, correction du payload, rejeu ou abandon |
+| `/consumer-groups` | État des groupes et lag détaillé par partition |
+| `/message-viewer` | Payload des derniers messages consommés, avec comparaison de deux d'entre eux |
+| `/metrics` | Tous les compteurs Micrometer enregistrés, avec recherche |
+| `/simulation` | Générateur de trafic, pour éprouver le consommateur sans producteur |
+| `/db-status`, `/settings`, `/architecture` | Pool de connexions, configuration effective, diagrammes C4 |
+
+La console pousse ses mises à jour en WebSocket plutôt qu'en interrogation
+périodique, sert toutes ses ressources elle-même — aucun CDN, elle fonctionne
+donc en environnement cloisonné — et sa feuille de style est compilée à la
+construction (voir `docs/frontend-build.md`).
+
+Captures d'écran : `docs/images/`.
+
 ---
 
 ## 5. Spécifications Techniques

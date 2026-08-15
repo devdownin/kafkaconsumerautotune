@@ -11,3 +11,7 @@ src/main/resources/static/vendor/** linguist-vendored
 *.woff2 binary
 src/main/resources/static/vendor/js/*.js -text -diff
 src/main/resources/static/vendor/css/*.css -text -diff
+
+# Captures d'écran de la documentation : binaires, hors statistiques de langage.
+docs/images/*.png binary
+docs/images/** linguist-documentation
