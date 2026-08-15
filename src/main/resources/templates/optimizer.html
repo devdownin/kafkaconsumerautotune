@@ -1,284 +1,271 @@
 <!DOCTYPE html>
-<html class="dark" lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head('Kafka Optimizer')}">
-    <title>Kafka Optimizer</title>
-</head>
-<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
-<a class="skip-link" href="#main-content">Skip to content</a>
-<div class="flex h-screen overflow-hidden">
-    <!-- Sidebar Navigation -->
-    <div th:replace="~{fragments/sidebar :: sidebar}"></div>
+<html th:replace="~{fragments/layout :: page(
+        'Kafka Optimizer',
+        ~{},
+        ~{::page-header},
+        ~{::page-content},
+        ~{::page-trailing})}"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
 
-    <!-- Main Content Area -->
-    <main id="main-content" tabindex="-1" class="flex-1 flex flex-col overflow-hidden">
-        <!-- Top Navbar -->
-        <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
-            <div class="flex items-center gap-4">
-                <h2 class="text-lg font-bold">Kafka Optimizer</h2>
-                <span class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase tracking-wider">
-                    <span class="size-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    Auto-Optimization Active
-                </span>
-            </div>
-            <div class="flex items-center gap-6">
-                <div class="flex items-center gap-2">
-                    <button type="button" id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" aria-label="Toggle theme">
-                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden" aria-hidden="true">dark_mode</span>
-                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden" aria-hidden="true">light_mode</span>
-                    </button>
-                    <button type="button" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()" data-tooltip="Refresh page" aria-label="Refresh page">
-                        <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
-                    </button>
-                </div>
-            </div>
-        </header>
+<th:block th:fragment="page-header">
+    <div class="flex items-center gap-4">
+        <h2 class="text-lg font-bold">Kafka Optimizer</h2>
+        <span class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase tracking-wider">
+            <span class="size-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            Auto-Optimization Active
+        </span>
+    </div>
+    <div class="flex items-center gap-6">
+        <div class="flex items-center gap-2">
+            <th:block th:replace="~{fragments/header :: actions}"></th:block>
+        </div>
+    </div>
+</th:block>
 
-        <!-- Content -->
-        <div class="flex-1 overflow-y-auto p-8 space-y-6">
-            <!-- Current Optimized Values -->
-            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">max.poll.records</p>
-                    <p class="text-xl font-bold text-primary" th:text="${stats.maxPollRecords}">100</p>
-                </div>
-                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">fetch.min.bytes</p>
-                    <p class="text-xl font-bold text-primary" th:text="${stats.fetchMinBytes}">10240</p>
-                </div>
-                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">fetch.max.wait.ms</p>
-                    <p class="text-xl font-bold text-primary" th:text="${stats.fetchMaxWaitMs}">500</p>
-                </div>
-                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">fetch.max.bytes</p>
-                    <p class="text-xl font-bold text-primary" th:text="${stats.fetchMaxBytes}">52428800</p>
-                </div>
-                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">max.poll.interval.ms</p>
-                    <p class="text-xl font-bold text-primary" th:text="${stats.maxPollIntervalMs}">300000</p>
-                </div>
-                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">concurrency</p>
-                    <p class="text-xl font-bold text-primary" th:text="${stats.concurrency}">6</p>
-                </div>
+<th:block th:fragment="page-content">
+    <!-- Content -->
+    <div class="flex-1 overflow-y-auto p-8 space-y-6">
+        <!-- Current Optimized Values -->
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">max.poll.records</p>
+                <p class="text-xl font-bold text-primary" th:text="${stats.maxPollRecords}">100</p>
             </div>
-
-            <!-- Timeline Chart -->
-            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
-                <div class="flex items-center justify-between mb-6">
-                    <div>
-                        <h4 class="text-base font-bold">Optimization Timeline</h4>
-                        <p class="text-xs text-slate-500">Correlation between throughput and PID-tuned parameters (max.poll.records & concurrency)</p>
-                    </div>
-                </div>
-                <div class="h-[350px] w-full" id="optimizer-timeline-chart"></div>
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">fetch.min.bytes</p>
+                <p class="text-xl font-bold text-primary" th:text="${stats.fetchMinBytes}">10240</p>
             </div>
-
-            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
-                <div class="p-6 border-b border-slate-200 dark:border-slate-800">
-                    <h4 class="text-base font-bold">Recent Property Optimizations</h4>
-                    <p class="text-xs text-slate-500">Automatic adjustments applied to Kafka consumer to maintain peak performance</p>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead class="bg-slate-50 dark:bg-slate-800/50">
-                        <tr>
-                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Timestamp</th>
-                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Property</th>
-                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center">Old Value</th>
-                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center">New Value</th>
-                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Explanation</th>
-                        </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                        <tr th:each="opt : ${optimizations}" class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                            <td class="px-6 py-4 text-xs text-slate-500" th:text="${#temporals.format(opt.timestamp, 'yyyy-MM-dd HH:mm:ss')}">2023-10-24 14:12:05</td>
-                            <td class="px-6 py-4 text-sm font-mono font-bold text-primary" th:text="${opt.propertyName}">max.poll.records</td>
-                            <td class="px-6 py-4 text-sm text-center text-slate-500 line-through" th:text="${opt.oldValue}">100</td>
-                            <td class="px-6 py-4 text-sm text-center font-bold text-emerald-500" th:text="${opt.newValue}">500</td>
-                            <td class="px-6 py-4 text-xs text-slate-600 dark:text-slate-400 max-w-md" th:title="${opt.reason}">
-                                <div class="font-medium text-slate-900 dark:text-slate-200 mb-1" th:text="${opt.explanation}">Explication pédagogique du changement...</div>
-                                <div class="text-[10px] text-slate-400 font-mono" th:text="${opt.reason}">PID optimization detail...</div>
-                            </td>
-                        </tr>
-                        <tr th:if="${#lists.isEmpty(optimizations)}">
-                            <td colspan="5" class="px-6 py-10 text-center text-slate-500 italic">No optimizations recorded yet.</td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="p-4 bg-slate-50 dark:bg-slate-800/30 text-[10px] text-slate-400 text-center uppercase tracking-widest font-bold">
-                    Showing up to 10 most recent optimizations
-                </div>
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">fetch.max.wait.ms</p>
+                <p class="text-xl font-bold text-primary" th:text="${stats.fetchMaxWaitMs}">500</p>
             </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-blue-500/5 border border-blue-500/20 rounded-xl p-6">
-                    <h5 class="font-bold text-blue-500 mb-2 flex items-center gap-2">
-                        <span class="material-symbols-outlined">info</span>
-                        How it works
-                    </h5>
-                    <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                        The Kafka Optimizer monitors consumer lag, batch processing duration, and throughput.
-                        When it detects sub-optimal performance or resource under-utilization, it suggests or applies
-                        dynamic changes to the consumer properties to ensure maximum reliability and efficiency.
-                    </p>
-                </div>
-                <div class="bg-amber-500/5 border border-amber-500/20 rounded-xl p-6">
-                    <h5 class="font-bold text-amber-500 mb-2 flex items-center gap-2">
-                        <span class="material-symbols-outlined">warning</span>
-                        Dynamic Reconfiguration
-                    </h5>
-                    <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                        Some property changes may require a consumer restart. The application handles graceful
-                        re-balancing when these optimizations are applied in production environments.
-                    </p>
-                </div>
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">fetch.max.bytes</p>
+                <p class="text-xl font-bold text-primary" th:text="${stats.fetchMaxBytes}">52428800</p>
+            </div>
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">max.poll.interval.ms</p>
+                <p class="text-xl font-bold text-primary" th:text="${stats.maxPollIntervalMs}">300000</p>
+            </div>
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">concurrency</p>
+                <p class="text-xl font-bold text-primary" th:text="${stats.concurrency}">6</p>
             </div>
         </div>
 
-        <!-- Footer Status Bar -->
-        <div th:replace="~{fragments/sidebar :: footer-status}"></div>
-    </main>
-</div>
+        <!-- Timeline Chart -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h4 class="text-base font-bold">Optimization Timeline</h4>
+                    <p class="text-xs text-slate-500">Correlation between throughput and PID-tuned parameters (max.poll.records & concurrency)</p>
+                </div>
+            </div>
+            <div class="h-[350px] w-full" id="optimizer-timeline-chart"></div>
+        </div>
 
-<!-- Common Scripts Fragment -->
-<div th:replace="~{fragments/scripts :: common-scripts}"></div>
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+            <div class="p-6 border-b border-slate-200 dark:border-slate-800">
+                <h4 class="text-base font-bold">Recent Property Optimizations</h4>
+                <p class="text-xs text-slate-500">Automatic adjustments applied to Kafka consumer to maintain peak performance</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-50 dark:bg-slate-800/50">
+                    <tr>
+                        <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Timestamp</th>
+                        <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Property</th>
+                        <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center">Old Value</th>
+                        <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center">New Value</th>
+                        <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Explanation</th>
+                    </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                    <tr th:each="opt : ${optimizations}" class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td class="px-6 py-4 text-xs text-slate-500" th:text="${#temporals.format(opt.timestamp, 'yyyy-MM-dd HH:mm:ss')}">2023-10-24 14:12:05</td>
+                        <td class="px-6 py-4 text-sm font-mono font-bold text-primary" th:text="${opt.propertyName}">max.poll.records</td>
+                        <td class="px-6 py-4 text-sm text-center text-slate-500 line-through" th:text="${opt.oldValue}">100</td>
+                        <td class="px-6 py-4 text-sm text-center font-bold text-emerald-500" th:text="${opt.newValue}">500</td>
+                        <td class="px-6 py-4 text-xs text-slate-600 dark:text-slate-400 max-w-md" th:title="${opt.reason}">
+                            <div class="font-medium text-slate-900 dark:text-slate-200 mb-1" th:text="${opt.explanation}">Explication pédagogique du changement...</div>
+                            <div class="text-[10px] text-slate-400 font-mono" th:text="${opt.reason}">PID optimization detail...</div>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(optimizations)}">
+                        <td colspan="5" class="px-6 py-10 text-center text-slate-500 italic">No optimizations recorded yet.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="p-4 bg-slate-50 dark:bg-slate-800/30 text-[10px] text-slate-400 text-center uppercase tracking-widest font-bold">
+                Showing up to 10 most recent optimizations
+            </div>
+        </div>
 
-<script th:inline="javascript">
-    var initialStats = /*[[${stats}]]*/ {};
-    var timelineChart;
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-blue-500/5 border border-blue-500/20 rounded-xl p-6">
+                <h5 class="font-bold text-blue-500 mb-2 flex items-center gap-2">
+                    <span class="material-symbols-outlined">info</span>
+                    How it works
+                </h5>
+                <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    The Kafka Optimizer monitors consumer lag, batch processing duration, and throughput.
+                    When it detects sub-optimal performance or resource under-utilization, it suggests or applies
+                    dynamic changes to the consumer properties to ensure maximum reliability and efficiency.
+                </p>
+            </div>
+            <div class="bg-amber-500/5 border border-amber-500/20 rounded-xl p-6">
+                <h5 class="font-bold text-amber-500 mb-2 flex items-center gap-2">
+                    <span class="material-symbols-outlined">warning</span>
+                    Dynamic Reconfiguration
+                </h5>
+                <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Some property changes may require a consumer restart. The application handles graceful
+                    re-balancing when these optimizations are applied in production environments.
+                </p>
+            </div>
+        </div>
+    </div>
+</th:block>
 
-    function initTimelineChart() {
-        var options = {
-            series: [
-                {
-                    name: 'Throughput (Msg/s)',
-                    type: 'area',
-                    data: initialStats.successThroughput || []
-                },
-                {
-                    name: 'max.poll.records',
+<th:block th:fragment="page-trailing">
+    <script th:inline="javascript">
+        var initialStats = /*[[${stats}]]*/ {};
+        var timelineChart;
+
+        function initTimelineChart() {
+            var options = {
+                series: [
+                    {
+                        name: 'Throughput (Msg/s)',
+                        type: 'area',
+                        data: initialStats.successThroughput || []
+                    },
+                    {
+                        name: 'max.poll.records',
+                        type: 'line',
+                        data: initialStats.maxPollRecordsHistory || []
+                    },
+                    {
+                        name: 'concurrency',
+                        type: 'line',
+                        data: initialStats.concurrencyHistory || []
+                    }
+                ],
+                chart: {
+                    height: 350,
                     type: 'line',
-                    data: initialStats.maxPollRecordsHistory || []
+                    stacked: false,
+                    toolbar: { show: false },
+                    animations: { enabled: true, easing: 'linear', dynamicAnimation: { speed: 1000 } }
                 },
-                {
-                    name: 'concurrency',
-                    type: 'line',
-                    data: initialStats.concurrencyHistory || []
-                }
-            ],
-            chart: {
-                height: 350,
-                type: 'line',
-                stacked: false,
-                toolbar: { show: false },
-                animations: { enabled: true, easing: 'linear', dynamicAnimation: { speed: 1000 } }
-            },
-            stroke: {
-                width: [0, 3, 3],
-                curve: 'smooth'
-            },
-            plotOptions: {
-                bar: { columnWidth: '50%' }
-            },
-            fill: {
-                type: 'gradient',
-                gradient: {
-                    inverseColors: false,
-                    shade: 'light',
-                    type: "vertical",
-                    opacityFrom: [0.35, 1, 1],
-                    opacityTo: [0.1, 1, 1],
-                    stops: [0, 90, 100]
-                }
-            },
-            colors: ['#135bec', '#10b981', '#f59e0b'],
-            labels: initialStats.timestamps || [],
-            xaxis: {
-                type: 'datetime',
-                labels: {
-                    style: { colors: '#94a3b8', fontSize: '10px' },
-                    datetimeUTC: false,
-                    format: 'HH:mm:ss'
-                }
-            },
-            yaxis: [
-                {
-                    title: { text: 'Throughput (Msg/s)', style: { color: '#135bec' } },
-                    labels: {
-                        style: { colors: '#94a3b8' },
-                        formatter: function(val) { return val.toFixed(1); }
+                stroke: {
+                    width: [0, 3, 3],
+                    curve: 'smooth'
+                },
+                plotOptions: {
+                    bar: { columnWidth: '50%' }
+                },
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        inverseColors: false,
+                        shade: 'light',
+                        type: "vertical",
+                        opacityFrom: [0.35, 1, 1],
+                        opacityTo: [0.1, 1, 1],
+                        stops: [0, 90, 100]
                     }
                 },
-                {
-                    opposite: true,
-                    title: { text: 'max.poll.records', style: { color: '#10b981' } },
+                colors: ['#135bec', '#10b981', '#f59e0b'],
+                labels: initialStats.timestamps || [],
+                xaxis: {
+                    type: 'datetime',
                     labels: {
-                        style: { colors: '#94a3b8' }
+                        style: { colors: '#94a3b8', fontSize: '10px' },
+                        datetimeUTC: false,
+                        format: 'HH:mm:ss'
                     }
                 },
-                {
-                    opposite: true,
-                    offsetY: 0,
-                    title: { text: 'concurrency', style: { color: '#f59e0b' } },
-                    labels: {
-                        style: { colors: '#94a3b8' },
-                        offsetX: -10
+                yaxis: [
+                    {
+                        title: { text: 'Throughput (Msg/s)', style: { color: '#135bec' } },
+                        labels: {
+                            style: { colors: '#94a3b8' },
+                            formatter: function(val) { return val.toFixed(1); }
+                        }
+                    },
+                    {
+                        opposite: true,
+                        title: { text: 'max.poll.records', style: { color: '#10b981' } },
+                        labels: {
+                            style: { colors: '#94a3b8' }
+                        }
+                    },
+                    {
+                        opposite: true,
+                        offsetY: 0,
+                        title: { text: 'concurrency', style: { color: '#f59e0b' } },
+                        labels: {
+                            style: { colors: '#94a3b8' },
+                            offsetX: -10
+                        }
                     }
+                ],
+                grid: { borderColor: '#1e293b', strokeDashArray: 4 },
+                tooltip: {
+                    theme: 'dark',
+                    x: { format: 'HH:mm:ss' }
+                },
+                legend: {
+                    show: true,
+                    position: 'top',
+                    horizontalAlign: 'right',
+                    labels: { colors: '#94a3b8' }
                 }
-            ],
-            grid: { borderColor: '#1e293b', strokeDashArray: 4 },
-            tooltip: {
-                theme: 'dark',
-                x: { format: 'HH:mm:ss' }
-            },
-            legend: {
-                show: true,
-                position: 'top',
-                horizontalAlign: 'right',
-                labels: { colors: '#94a3b8' }
-            }
-        };
+            };
 
-        timelineChart = new ApexCharts(document.querySelector("#optimizer-timeline-chart"), options);
-        timelineChart.render();
-    }
+            timelineChart = new ApexCharts(document.querySelector("#optimizer-timeline-chart"), options);
+            timelineChart.render();
+        }
 
-    // WebSocket setup. Runs on DOMContentLoaded because SockJS/Stomp are deferred.
-    function initWebSocket() {
-        var socket = new SockJS('/ws');
-        var stompClient = Stomp.over(socket);
-        stompClient.debug = null;
+        // WebSocket setup. Runs on DOMContentLoaded because SockJS/Stomp are deferred.
+        function initWebSocket() {
+            var socket = new SockJS('/ws');
+            var stompClient = Stomp.over(socket);
+            stompClient.debug = null;
 
-        stompClient.connect({}, function (frame) {
-            updateWsStatus(true);
-            stompClient.subscribe('/topic/stats', function (statsMessage) {
-                updateTimeline(JSON.parse(statsMessage.body));
+            stompClient.connect({}, function (frame) {
+                updateWsStatus(true);
+                stompClient.subscribe('/topic/stats', function (statsMessage) {
+                    updateTimeline(JSON.parse(statsMessage.body));
+                });
+            }, function(error) {
+                updateWsStatus(false);
             });
-        }, function(error) {
-            updateWsStatus(false);
+        }
+
+        function updateTimeline(stats) {
+            if (!timelineChart) return;
+            // Axis and series in one call: two calls meant two full chart re-renders.
+            timelineChart.updateOptions({
+                xaxis: { categories: stats.timestamps },
+                series: [
+                    { name: 'Throughput (Msg/s)', data: stats.successThroughput },
+                    { name: 'max.poll.records', data: stats.maxPollRecordsHistory },
+                    { name: 'concurrency', data: stats.concurrencyHistory }
+                ]
+            }, false, false);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initThemeToggle();
+            initTimelineChart();
+            initWebSocket();
         });
-    }
+    </script>
+</th:block>
 
-    function updateTimeline(stats) {
-        if (!timelineChart) return;
-        // Axis and series in one call: two calls meant two full chart re-renders.
-        timelineChart.updateOptions({
-            xaxis: { categories: stats.timestamps },
-            series: [
-                { name: 'Throughput (Msg/s)', data: stats.successThroughput },
-                { name: 'max.poll.records', data: stats.maxPollRecordsHistory },
-                { name: 'concurrency', data: stats.concurrencyHistory }
-            ]
-        }, false, false);
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        initThemeToggle();
-        initTimelineChart();
-        initWebSocket();
-    });
-</script>
 </body>
 </html>

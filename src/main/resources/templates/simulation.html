@@ -1,351 +1,341 @@
 <!DOCTYPE html>
-<html class="dark" lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head('Simulation')}">
-    <title>Simulation Simulator</title>
-</head>
-<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
-<a class="skip-link" href="#main-content">Skip to content</a>
-<div th:replace="~{fragments/notifications :: notifications}"></div>
+<html th:replace="~{fragments/layout :: page(
+        'Simulation',
+        ~{},
+        ~{::page-header},
+        ~{::page-content},
+        ~{::page-trailing})}"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
 
-<div class="flex h-screen overflow-hidden">
-    <div th:replace="~{fragments/sidebar :: sidebar}"></div>
+<th:block th:fragment="page-header">
+    <div class="flex items-center gap-4">
+        <h2 class="text-lg font-bold">Traffic Simulator</h2>
+        <span id="sim-badge" class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-500 text-[10px] font-bold uppercase tracking-wider" aria-live="polite">
+            <span id="sim-dot" class="size-1.5 rounded-full bg-slate-500" aria-hidden="true"></span>
+            <span id="sim-status-text">Idle</span>
+        </span>
+    </div>
+    <!-- The theme and refresh controls were missing here only: every other
+         page carries them, so the header behaved differently on this one. -->
+    <div class="flex items-center gap-2">
+        <th:block th:replace="~{fragments/header :: actions}"></th:block>
+    </div>
+</th:block>
 
-    <main id="main-content" tabindex="-1" class="flex-1 flex flex-col overflow-hidden">
-        <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
-            <div class="flex items-center gap-4">
-                <h2 class="text-lg font-bold">Traffic Simulator</h2>
-                <span id="sim-badge" class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-500 text-[10px] font-bold uppercase tracking-wider" aria-live="polite">
-                    <span id="sim-dot" class="size-1.5 rounded-full bg-slate-500" aria-hidden="true"></span>
-                    <span id="sim-status-text">Idle</span>
-                </span>
-            </div>
-            <!-- The theme and refresh controls were missing here only: every other
-                 page carries them, so the header behaved differently on this one. -->
-            <div class="flex items-center gap-2">
-                <button type="button" id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" aria-label="Toggle theme">
-                    <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden" aria-hidden="true">dark_mode</span>
-                    <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden" aria-hidden="true">light_mode</span>
-                </button>
-                <button type="button" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()" data-tooltip="Refresh page" aria-label="Refresh page">
-                    <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
-                </button>
-            </div>
-        </header>
+<th:block th:fragment="page-content">
+    <div class="flex-1 overflow-y-auto p-8 space-y-6">
+        <!-- Presets Row -->
+        <div class="flex items-center gap-3 overflow-x-auto pb-2 no-scrollbar" role="group" aria-labelledby="presets-label">
+            <span class="text-xs font-bold text-slate-500 uppercase whitespace-nowrap" id="presets-label">Presets:</span>
+            <button type="button" onclick="applyPreset('nominal')" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold hover:border-primary transition-colors whitespace-nowrap">Nominal Flow</button>
+            <button type="button" onclick="applyPreset('stress')" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold hover:border-rose-500 transition-colors whitespace-nowrap">Stress Test</button>
+            <button type="button" onclick="applyPreset('degraded')" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold hover:border-amber-500 transition-colors whitespace-nowrap">Degraded Data</button>
+            <button type="button" onclick="applyPreset('idempotency')" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold hover:border-blue-500 transition-colors whitespace-nowrap">Idempotency Check</button>
+        </div>
 
-        <div class="flex-1 overflow-y-auto p-8 space-y-6">
-            <!-- Presets Row -->
-            <div class="flex items-center gap-3 overflow-x-auto pb-2 no-scrollbar" role="group" aria-labelledby="presets-label">
-                <span class="text-xs font-bold text-slate-500 uppercase whitespace-nowrap" id="presets-label">Presets:</span>
-                <button type="button" onclick="applyPreset('nominal')" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold hover:border-primary transition-colors whitespace-nowrap">Nominal Flow</button>
-                <button type="button" onclick="applyPreset('stress')" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold hover:border-rose-500 transition-colors whitespace-nowrap">Stress Test</button>
-                <button type="button" onclick="applyPreset('degraded')" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold hover:border-amber-500 transition-colors whitespace-nowrap">Degraded Data</button>
-                <button type="button" onclick="applyPreset('idempotency')" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold hover:border-blue-500 transition-colors whitespace-nowrap">Idempotency Check</button>
-            </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Configuration Card -->
+            <div class="lg:col-span-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                <h4 class="text-base font-bold mb-4">Simulation Parameters</h4>
+                <form id="simulation-form" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="col-span-2">
+                            <label class="block text-xs font-medium text-slate-500 uppercase mb-1" for="totalMessages">Total Messages</label>
+                            <input type="number" id="totalMessages" name="totalMessages" value="1000" min="1" required class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm py-2 px-3 focus:ring-1 focus:ring-primary" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 uppercase mb-1" for="targetThroughput">Target Msg/s</label>
+                            <input type="number" id="targetThroughput" name="targetThroughput" value="100" min="0" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm py-2 px-3 focus:ring-1 focus:ring-primary" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 uppercase mb-1" for="delayBetweenMessagesMs">Delay (ms)</label>
+                            <input type="number" id="delayBetweenMessagesMs" name="delayBetweenMessagesMs" value="0" min="0" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm py-2 px-3 focus:ring-1 focus:ring-primary" />
+                        </div>
+                    </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Configuration Card -->
-                <div class="lg:col-span-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
-                    <h4 class="text-base font-bold mb-4">Simulation Parameters</h4>
-                    <form id="simulation-form" class="space-y-4">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="col-span-2">
-                                <label class="block text-xs font-medium text-slate-500 uppercase mb-1" for="totalMessages">Total Messages</label>
-                                <input type="number" id="totalMessages" name="totalMessages" value="1000" min="1" required class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm py-2 px-3 focus:ring-1 focus:ring-primary" />
+                    <div class="space-y-3 pt-2">
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <label class="block text-xs font-medium text-slate-500 uppercase" for="errorPercentage">Business Errors</label>
+                                <span id="val-error" class="text-xs font-bold text-amber-500">5%</span>
                             </div>
-                            <div>
-                                <label class="block text-xs font-medium text-slate-500 uppercase mb-1" for="targetThroughput">Target Msg/s</label>
-                                <input type="number" id="targetThroughput" name="targetThroughput" value="100" min="0" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm py-2 px-3 focus:ring-1 focus:ring-primary" />
+                            <input type="range" id="errorPercentage" value="5" min="0" max="100" oninput="document.getElementById('val-error').innerText = this.value + '%'" class="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <label class="block text-xs font-medium text-slate-500 uppercase" for="malformedJsonPercentage">Malformed JSON</label>
+                                <span id="val-malformed" class="text-xs font-bold text-rose-500">2%</span>
                             </div>
-                            <div>
-                                <label class="block text-xs font-medium text-slate-500 uppercase mb-1" for="delayBetweenMessagesMs">Delay (ms)</label>
-                                <input type="number" id="delayBetweenMessagesMs" name="delayBetweenMessagesMs" value="0" min="0" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm py-2 px-3 focus:ring-1 focus:ring-primary" />
+                            <input type="range" id="malformedJsonPercentage" value="2" min="0" max="100" oninput="document.getElementById('val-malformed').innerText = this.value + '%'" class="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-500" />
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <label class="block text-xs font-medium text-slate-500 uppercase" for="duplicatePercentage">Duplicates</label>
+                                <span id="val-duplicate" class="text-xs font-bold text-blue-500">0%</span>
+                            </div>
+                            <input type="range" id="duplicatePercentage" value="0" min="0" max="100" oninput="document.getElementById('val-duplicate').innerText = this.value + '%'" class="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                        </div>
+                    </div>
+
+                    <div class="pt-4 flex gap-2">
+                        <button type="button" id="start-btn" onclick="startSimulation()" class="flex-1 bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined">play_arrow</span>
+                            Start
+                        </button>
+                        <button type="button" id="stop-btn" onclick="stopSimulation()" class="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50" disabled>
+                            <span class="material-symbols-outlined">stop</span>
+                            Stop
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Status Card -->
+            <div class="lg:col-span-2 flex flex-col gap-6">
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                    <h4 class="text-base font-bold mb-4">Live Progress</h4>
+                    <div class="space-y-6">
+                        <div>
+                            <div class="flex justify-between items-end mb-2">
+                                <span class="text-xs font-medium text-slate-500 uppercase">Global Completion</span>
+                                <span id="progress-text" class="text-sm font-bold">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-100 dark:bg-slate-800 h-3 rounded-full overflow-hidden">
+                                <div id="progress-bar" class="bg-primary h-full transition-all duration-300" style="width: 0%"></div>
                             </div>
                         </div>
 
-                        <div class="space-y-3 pt-2">
-                            <div>
-                                <div class="flex justify-between mb-1">
-                                    <label class="block text-xs font-medium text-slate-500 uppercase" for="errorPercentage">Business Errors</label>
-                                    <span id="val-error" class="text-xs font-bold text-amber-500">5%</span>
-                                </div>
-                                <input type="range" id="errorPercentage" value="5" min="0" max="100" oninput="document.getElementById('val-error').innerText = this.value + '%'" class="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <div class="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-lg text-center">
+                                <p class="text-[10px] font-bold text-emerald-500 uppercase mb-1">Valid</p>
+                                <h3 id="stat-valid" class="text-xl font-bold">0</h3>
                             </div>
-                            <div>
-                                <div class="flex justify-between mb-1">
-                                    <label class="block text-xs font-medium text-slate-500 uppercase" for="malformedJsonPercentage">Malformed JSON</label>
-                                    <span id="val-malformed" class="text-xs font-bold text-rose-500">2%</span>
-                                </div>
-                                <input type="range" id="malformedJsonPercentage" value="2" min="0" max="100" oninput="document.getElementById('val-malformed').innerText = this.value + '%'" class="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-500" />
+                            <div class="p-4 bg-amber-500/5 border border-amber-500/10 rounded-lg text-center">
+                                <p class="text-[10px] font-bold text-amber-500 uppercase mb-1">Errors</p>
+                                <h3 id="stat-error" class="text-xl font-bold">0</h3>
                             </div>
-                            <div>
-                                <div class="flex justify-between mb-1">
-                                    <label class="block text-xs font-medium text-slate-500 uppercase" for="duplicatePercentage">Duplicates</label>
-                                    <span id="val-duplicate" class="text-xs font-bold text-blue-500">0%</span>
-                                </div>
-                                <input type="range" id="duplicatePercentage" value="0" min="0" max="100" oninput="document.getElementById('val-duplicate').innerText = this.value + '%'" class="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                            <div class="p-4 bg-rose-500/5 border border-rose-500/10 rounded-lg text-center">
+                                <p class="text-[10px] font-bold text-rose-500 uppercase mb-1">Malformed</p>
+                                <h3 id="stat-malformed" class="text-xl font-bold">0</h3>
+                            </div>
+                            <div class="p-4 bg-blue-500/5 border border-blue-500/10 rounded-lg text-center">
+                                <p class="text-[10px] font-bold text-blue-500 uppercase mb-1">Duplicates</p>
+                                <h3 id="stat-duplicate" class="text-xl font-bold">0</h3>
                             </div>
                         </div>
 
-                        <div class="pt-4 flex gap-2">
-                            <button type="button" id="start-btn" onclick="startSimulation()" class="flex-1 bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
-                                <span class="material-symbols-outlined">play_arrow</span>
-                                Start
-                            </button>
-                            <button type="button" id="stop-btn" onclick="stopSimulation()" class="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50" disabled>
-                                <span class="material-symbols-outlined">stop</span>
-                                Stop
-                            </button>
+                        <div class="flex justify-between items-center pt-4 border-t border-slate-100 dark:border-slate-800">
+                            <div class="text-sm">
+                                <span class="text-slate-500">Processed:</span>
+                                <span id="stat-processed" class="font-bold ml-1">0</span> / <span id="stat-total" class="font-bold">0</span>
+                            </div>
+                            <div class="text-sm">
+                                <span class="text-slate-500">Elapsed:</span>
+                                <span id="stat-elapsed" class="font-bold ml-1">0s</span>
+                            </div>
                         </div>
-                    </form>
+                    </div>
                 </div>
 
-                <!-- Status Card -->
-                <div class="lg:col-span-2 flex flex-col gap-6">
-                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
-                        <h4 class="text-base font-bold mb-4">Live Progress</h4>
-                        <div class="space-y-6">
-                            <div>
-                                <div class="flex justify-between items-end mb-2">
-                                    <span class="text-xs font-medium text-slate-500 uppercase">Global Completion</span>
-                                    <span id="progress-text" class="text-sm font-bold">0%</span>
-                                </div>
-                                <div class="w-full bg-slate-100 dark:bg-slate-800 h-3 rounded-full overflow-hidden">
-                                    <div id="progress-bar" class="bg-primary h-full transition-all duration-300" style="width: 0%"></div>
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                <div class="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-lg text-center">
-                                    <p class="text-[10px] font-bold text-emerald-500 uppercase mb-1">Valid</p>
-                                    <h3 id="stat-valid" class="text-xl font-bold">0</h3>
-                                </div>
-                                <div class="p-4 bg-amber-500/5 border border-amber-500/10 rounded-lg text-center">
-                                    <p class="text-[10px] font-bold text-amber-500 uppercase mb-1">Errors</p>
-                                    <h3 id="stat-error" class="text-xl font-bold">0</h3>
-                                </div>
-                                <div class="p-4 bg-rose-500/5 border border-rose-500/10 rounded-lg text-center">
-                                    <p class="text-[10px] font-bold text-rose-500 uppercase mb-1">Malformed</p>
-                                    <h3 id="stat-malformed" class="text-xl font-bold">0</h3>
-                                </div>
-                                <div class="p-4 bg-blue-500/5 border border-blue-500/10 rounded-lg text-center">
-                                    <p class="text-[10px] font-bold text-blue-500 uppercase mb-1">Duplicates</p>
-                                    <h3 id="stat-duplicate" class="text-xl font-bold">0</h3>
-                                </div>
-                            </div>
-
-                            <div class="flex justify-between items-center pt-4 border-t border-slate-100 dark:border-slate-800">
-                                <div class="text-sm">
-                                    <span class="text-slate-500">Processed:</span>
-                                    <span id="stat-processed" class="font-bold ml-1">0</span> / <span id="stat-total" class="font-bold">0</span>
-                                </div>
-                                <div class="text-sm">
-                                    <span class="text-slate-500">Elapsed:</span>
-                                    <span id="stat-elapsed" class="font-bold ml-1">0s</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Visual Feedback -->
-                    <div id="simulation-chart-card" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex-1 hidden">
-                        <h4 class="text-base font-bold mb-4">Traffic Composition</h4>
-                        <div id="simulation-donut" class="h-48"></div>
-                    </div>
+                <!-- Visual Feedback -->
+                <div id="simulation-chart-card" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex-1 hidden">
+                    <h4 class="text-base font-bold mb-4">Traffic Composition</h4>
+                    <div id="simulation-donut" class="h-48"></div>
                 </div>
             </div>
         </div>
+    </div>
+</th:block>
 
-        <div th:replace="~{fragments/sidebar :: footer-status}"></div>
-    </main>
-</div>
+<th:block th:fragment="page-trailing">
+    <script th:inline="javascript">
+        let stompClient;
+        let donutChart;
 
-<div th:replace="~{fragments/scripts :: common-scripts}"></div>
-
-<script th:inline="javascript">
-    let stompClient;
-    let donutChart;
-
-    const presets = {
-        nominal: { total: 5000, tput: 200, delay: 0, err: 0, malf: 0, dup: 0 },
-        stress: { total: 20000, tput: 1000, delay: 0, err: 2, malf: 1, dup: 0 },
-        degraded: { total: 2000, tput: 50, delay: 0, err: 20, malf: 10, dup: 5 },
-        idempotency: { total: 1000, tput: 100, delay: 0, err: 0, malf: 0, dup: 80 }
-    };
-
-    function applyPreset(id) {
-        const p = presets[id];
-        document.getElementById('totalMessages').value = p.total;
-        document.getElementById('targetThroughput').value = p.tput;
-        document.getElementById('delayBetweenMessagesMs').value = p.delay;
-
-        document.getElementById('errorPercentage').value = p.err;
-        document.getElementById('val-error').innerText = p.err + '%';
-
-        document.getElementById('malformedJsonPercentage').value = p.malf;
-        document.getElementById('val-malformed').innerText = p.malf + '%';
-
-        document.getElementById('duplicatePercentage').value = p.dup;
-        document.getElementById('val-duplicate').innerText = p.dup + '%';
-    }
-
-    function initWs() {
-        const socket = new SockJS('/ws');
-        stompClient = Stomp.over(socket);
-        stompClient.debug = null;
-        stompClient.connect({}, () => {
-            updateWsStatus(true);
-            stompClient.subscribe('/topic/simulation', (msg) => {
-                updateUI(JSON.parse(msg.body));
-            });
-        }, () => updateWsStatus(false));
-    }
-
-    function intValue(id, fallback) {
-        const parsed = parseInt(document.getElementById(id).value, 10);
-        return Number.isFinite(parsed) ? parsed : fallback;
-    }
-
-    /*
-     * Both calls used to be fire-and-forget: a rejected request or a server error
-     * left the UI showing "Idle" with no explanation.
-     */
-    async function startSimulation() {
-        const total = intValue('totalMessages', 0);
-        if (total <= 0) {
-            showToast('Total messages must be greater than zero', 'error');
-            document.getElementById('totalMessages').focus();
-            return;
-        }
-
-        const data = {
-            totalMessages: total,
-            errorPercentage: intValue('errorPercentage', 0),
-            malformedJsonPercentage: intValue('malformedJsonPercentage', 0),
-            delayBetweenMessagesMs: intValue('delayBetweenMessagesMs', 0),
-            duplicatePercentage: intValue('duplicatePercentage', 0),
-            targetThroughputMsgPerSec: intValue('targetThroughput', 0)
+        const presets = {
+            nominal: { total: 5000, tput: 200, delay: 0, err: 0, malf: 0, dup: 0 },
+            stress: { total: 20000, tput: 1000, delay: 0, err: 2, malf: 1, dup: 0 },
+            degraded: { total: 2000, tput: 50, delay: 0, err: 20, malf: 10, dup: 5 },
+            idempotency: { total: 1000, tput: 100, delay: 0, err: 0, malf: 0, dup: 80 }
         };
 
-        const startBtn = document.getElementById('start-btn');
-        startBtn.disabled = true;
-        try {
-            const response = await fetch('/api/simulation/start', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            if (!response.ok) {
-                showToast(await serverMessage(response, 'The simulation could not be started'), 'error');
-                startBtn.disabled = false;
+        function applyPreset(id) {
+            const p = presets[id];
+            document.getElementById('totalMessages').value = p.total;
+            document.getElementById('targetThroughput').value = p.tput;
+            document.getElementById('delayBetweenMessagesMs').value = p.delay;
+
+            document.getElementById('errorPercentage').value = p.err;
+            document.getElementById('val-error').innerText = p.err + '%';
+
+            document.getElementById('malformedJsonPercentage').value = p.malf;
+            document.getElementById('val-malformed').innerText = p.malf + '%';
+
+            document.getElementById('duplicatePercentage').value = p.dup;
+            document.getElementById('val-duplicate').innerText = p.dup + '%';
+        }
+
+        function initWs() {
+            const socket = new SockJS('/ws');
+            stompClient = Stomp.over(socket);
+            stompClient.debug = null;
+            stompClient.connect({}, () => {
+                updateWsStatus(true);
+                stompClient.subscribe('/topic/simulation', (msg) => {
+                    updateUI(JSON.parse(msg.body));
+                });
+            }, () => updateWsStatus(false));
+        }
+
+        function intValue(id, fallback) {
+            const parsed = parseInt(document.getElementById(id).value, 10);
+            return Number.isFinite(parsed) ? parsed : fallback;
+        }
+
+        /*
+         * Both calls used to be fire-and-forget: a rejected request or a server error
+         * left the UI showing "Idle" with no explanation.
+         */
+        async function startSimulation() {
+            const total = intValue('totalMessages', 0);
+            if (total <= 0) {
+                showToast('Total messages must be greater than zero', 'error');
+                document.getElementById('totalMessages').focus();
                 return;
             }
-            showToast(`Simulation started: ${total.toLocaleString()} messages`, 'success');
-        } catch (e) {
-            showToast('Network error while starting the simulation', 'error');
-            startBtn.disabled = false;
-        }
-    }
 
-    async function stopSimulation() {
-        try {
-            const response = await fetch('/api/simulation/stop', {
-                method: 'POST',
-                headers: { 'Accept': 'application/json' }
-            });
-            if (!response.ok) {
-                showToast(await serverMessage(response, 'The simulation could not be stopped'), 'error');
-                return;
-            }
-            showToast('Simulation stopped', 'info');
-        } catch (e) {
-            showToast('Network error while stopping the simulation', 'error');
-        }
-    }
-
-    /*
-     * Turns the ApiError body into something worth reading. Server-side
-     * validation reports the offending fields, which is more useful than a
-     * generic failure notice.
-     */
-    async function serverMessage(response, fallback) {
-        try {
-            const body = await response.json();
-            if (body.fieldErrors) {
-                const details = Object.entries(body.fieldErrors)
-                    .map(([field, problem]) => `${field} ${problem}`)
-                    .join(', ');
-                if (details) return `Invalid parameters: ${details}`;
-            }
-            return body.message || fallback;
-        } catch (e) {
-            return fallback;
-        }
-    }
-
-    function updateUI(status) {
-        if (!status) return;
-        document.getElementById('stat-processed').textContent = status.processedMessages.toLocaleString();
-        document.getElementById('stat-total').textContent = status.totalMessages.toLocaleString();
-        document.getElementById('stat-valid').textContent = status.sentValid.toLocaleString();
-        document.getElementById('stat-error').textContent = status.sentError.toLocaleString();
-        document.getElementById('stat-malformed').textContent = status.sentMalformed.toLocaleString();
-        document.getElementById('stat-duplicate').textContent = status.sentDuplicate.toLocaleString();
-
-        const progress = status.totalMessages > 0 ? (status.processedMessages / status.totalMessages * 100) : 0;
-        document.getElementById('progress-bar').style.width = progress + '%';
-        document.getElementById('progress-text').textContent = Math.round(progress) + '%';
-
-        if (status.running) {
-            document.getElementById('sim-badge').className = 'flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase tracking-wider';
-            document.getElementById('sim-dot').className = 'size-1.5 rounded-full bg-emerald-500 animate-pulse';
-            document.getElementById('sim-status-text').textContent = 'Running';
-            document.getElementById('start-btn').disabled = true;
-            document.getElementById('stop-btn').disabled = false;
-            document.getElementById('simulation-chart-card').classList.remove('hidden');
-
-            const elapsed = Math.round((Date.now() - status.startTime) / 1000);
-            document.getElementById('stat-elapsed').textContent = elapsed + 's';
-
-            updateDonut(status);
-        } else {
-            document.getElementById('sim-badge').className = 'flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-500 text-[10px] font-bold uppercase tracking-wider';
-            // was bg-slate-50: a near-white dot, invisible on the light background
-            document.getElementById('sim-dot').className = 'size-1.5 rounded-full bg-slate-500';
-            document.getElementById('sim-status-text').textContent = 'Idle';
-            document.getElementById('start-btn').disabled = false;
-            document.getElementById('stop-btn').disabled = true;
-        }
-    }
-
-    function updateDonut(status) {
-        const data = [status.sentValid, status.sentError, status.sentMalformed, status.sentDuplicate];
-        if (!donutChart) {
-            const options = {
-                series: data,
-                chart: { type: 'donut', height: '100%' },
-                labels: ['Valid', 'Business Error', 'Malformed', 'Duplicate'],
-                colors: ['#10b981', '#f59e0b', '#f43f5e', '#3b82f6'],
-                legend: { position: 'bottom', labels: { colors: '#94a3b8' } },
-                dataLabels: { enabled: false },
-                stroke: { show: false },
-                tooltip: { theme: 'dark' }
+            const data = {
+                totalMessages: total,
+                errorPercentage: intValue('errorPercentage', 0),
+                malformedJsonPercentage: intValue('malformedJsonPercentage', 0),
+                delayBetweenMessagesMs: intValue('delayBetweenMessagesMs', 0),
+                duplicatePercentage: intValue('duplicatePercentage', 0),
+                targetThroughputMsgPerSec: intValue('targetThroughput', 0)
             };
-            donutChart = new ApexCharts(document.querySelector("#simulation-donut"), options);
-            donutChart.render();
-        } else {
-            donutChart.updateSeries(data);
-        }
-    }
 
-    document.addEventListener('DOMContentLoaded', () => {
-        initThemeToggle();
-        initWs();
-        // Initial status fetch
-        fetch('/api/simulation/status')
-            .then(res => res.ok ? res.json() : null)
-            .then(updateUI)
-            .catch(() => showToast('Could not read the current simulation status', 'error'));
-    });
-</script>
+            const startBtn = document.getElementById('start-btn');
+            startBtn.disabled = true;
+            try {
+                const response = await fetch('/api/simulation/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!response.ok) {
+                    showToast(await serverMessage(response, 'The simulation could not be started'), 'error');
+                    startBtn.disabled = false;
+                    return;
+                }
+                showToast(`Simulation started: ${total.toLocaleString()} messages`, 'success');
+            } catch (e) {
+                showToast('Network error while starting the simulation', 'error');
+                startBtn.disabled = false;
+            }
+        }
+
+        async function stopSimulation() {
+            try {
+                const response = await fetch('/api/simulation/stop', {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!response.ok) {
+                    showToast(await serverMessage(response, 'The simulation could not be stopped'), 'error');
+                    return;
+                }
+                showToast('Simulation stopped', 'info');
+            } catch (e) {
+                showToast('Network error while stopping the simulation', 'error');
+            }
+        }
+
+        /*
+         * Turns the ApiError body into something worth reading. Server-side
+         * validation reports the offending fields, which is more useful than a
+         * generic failure notice.
+         */
+        async function serverMessage(response, fallback) {
+            try {
+                const body = await response.json();
+                if (body.fieldErrors) {
+                    const details = Object.entries(body.fieldErrors)
+                        .map(([field, problem]) => `${field} ${problem}`)
+                        .join(', ');
+                    if (details) return `Invalid parameters: ${details}`;
+                }
+                return body.message || fallback;
+            } catch (e) {
+                return fallback;
+            }
+        }
+
+        function updateUI(status) {
+            if (!status) return;
+            document.getElementById('stat-processed').textContent = status.processedMessages.toLocaleString();
+            document.getElementById('stat-total').textContent = status.totalMessages.toLocaleString();
+            document.getElementById('stat-valid').textContent = status.sentValid.toLocaleString();
+            document.getElementById('stat-error').textContent = status.sentError.toLocaleString();
+            document.getElementById('stat-malformed').textContent = status.sentMalformed.toLocaleString();
+            document.getElementById('stat-duplicate').textContent = status.sentDuplicate.toLocaleString();
+
+            const progress = status.totalMessages > 0 ? (status.processedMessages / status.totalMessages * 100) : 0;
+            document.getElementById('progress-bar').style.width = progress + '%';
+            document.getElementById('progress-text').textContent = Math.round(progress) + '%';
+
+            if (status.running) {
+                document.getElementById('sim-badge').className = 'flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase tracking-wider';
+                document.getElementById('sim-dot').className = 'size-1.5 rounded-full bg-emerald-500 animate-pulse';
+                document.getElementById('sim-status-text').textContent = 'Running';
+                document.getElementById('start-btn').disabled = true;
+                document.getElementById('stop-btn').disabled = false;
+                document.getElementById('simulation-chart-card').classList.remove('hidden');
+
+                const elapsed = Math.round((Date.now() - status.startTime) / 1000);
+                document.getElementById('stat-elapsed').textContent = elapsed + 's';
+
+                updateDonut(status);
+            } else {
+                document.getElementById('sim-badge').className = 'flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-500 text-[10px] font-bold uppercase tracking-wider';
+                // was bg-slate-50: a near-white dot, invisible on the light background
+                document.getElementById('sim-dot').className = 'size-1.5 rounded-full bg-slate-500';
+                document.getElementById('sim-status-text').textContent = 'Idle';
+                document.getElementById('start-btn').disabled = false;
+                document.getElementById('stop-btn').disabled = true;
+            }
+        }
+
+        function updateDonut(status) {
+            const data = [status.sentValid, status.sentError, status.sentMalformed, status.sentDuplicate];
+            if (!donutChart) {
+                const options = {
+                    series: data,
+                    chart: { type: 'donut', height: '100%' },
+                    labels: ['Valid', 'Business Error', 'Malformed', 'Duplicate'],
+                    colors: ['#10b981', '#f59e0b', '#f43f5e', '#3b82f6'],
+                    legend: { position: 'bottom', labels: { colors: '#94a3b8' } },
+                    dataLabels: { enabled: false },
+                    stroke: { show: false },
+                    tooltip: { theme: 'dark' }
+                };
+                donutChart = new ApexCharts(document.querySelector("#simulation-donut"), options);
+                donutChart.render();
+            } else {
+                donutChart.updateSeries(data);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initThemeToggle();
+            initWs();
+            // Initial status fetch
+            fetch('/api/simulation/status')
+                .then(res => res.ok ? res.json() : null)
+                .then(updateUI)
+                .catch(() => showToast('Could not read the current simulation status', 'error'));
+        });
+    </script>
+</th:block>
+
 </body>
 </html>

@@ -13,7 +13,9 @@ module.exports = {
     darkMode: 'class',
     content: [
         './src/main/resources/templates/**/*.html',
-        './src/main/resources/static/**/*.html'
+        './src/main/resources/static/**/*.html',
+        // notifications.js compose les toasts : ses classes doivent survivre à la purge.
+        './src/main/resources/static/js/**/*.js'
     ],
     theme: {
         extend: {

@@ -32,6 +32,15 @@
     <script defer th:src="@{/vendor/js/apexcharts-6.8.0.min.js}"></script>
 
     <!--
+      Comportements communs à toutes les pages. Étaient inclus en ligne dans
+      chaque réponse HTML ; servis en fichier statique, ils sont mis en cache
+      une fois. defer, donc exécutés avant DOMContentLoaded : les pages qui s'y
+      accrochent y trouvent bien initThemeToggle, showToast et les autres.
+    -->
+    <script defer th:src="@{/js/app-shell.js}"></script>
+    <script defer th:src="@{/js/notifications.js}"></script>
+
+    <!--
       Stays inline and synchronous on purpose: it must set the theme class before
       the first paint, otherwise a dark-mode user gets a white flash. The theme
       itself now lives in tailwind.config.js, applied at build time.

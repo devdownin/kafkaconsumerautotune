@@ -1,533 +1,524 @@
 <!DOCTYPE html>
-<html class="dark" lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head('Message Analysis')}">
-    <title>Message Analysis</title>
-</head>
-<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
-<a class="skip-link" href="#main-content">Skip to content</a>
-<!--
-  Page-specific CSS lives here on purpose: the shared head fragment replaces the
-  whole <head>, so anything declared there is dropped before rendering. It used
-  to be declared in both places, which downloaded the Prism theme twice.
--->
-<link th:href="@{/vendor/css/prism-okaidia-1.29.0.min.css}" rel="stylesheet"/>
-<style>
-    .serif-title { font-family: 'Georgia', serif; }
-    .category-active { border-left: 4px solid #135bec; background: rgba(19, 91, 236, 0.1); }
+<html th:replace="~{fragments/layout :: page(
+        'Message Analysis',
+        ~{::page-styles},
+        ~{::page-header},
+        ~{::page-content},
+        ~{::page-trailing})}"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
 
-    .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+<th:block th:fragment="page-styles">
+    <!--
+      Page-specific CSS lives here on purpose: the shared head fragment replaces the
+      whole <head>, so anything declared there is dropped before rendering. It used
+      to be declared in both places, which downloaded the Prism theme twice.
+    -->
+    <link th:href="@{/vendor/css/prism-okaidia-1.29.0.min.css}" rel="stylesheet"/>
+    <style>
+        .serif-title { font-family: 'Georgia', serif; }
+        .category-active { border-left: 4px solid #135bec; background: rgba(19, 91, 236, 0.1); }
 
-    /* Modern JSON Prism styling */
-    pre[class*="language-"], code[class*="language-"] {
-        font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', 'Consolas', monospace !important;
-        text-shadow: none !important;
-    }
-    pre[class*="language-"] { margin: 0 !important; padding: 0 !important; background: transparent !important; }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
 
-    #raw-json-content { color: #e06c75; }
-    .token.property { color: #56b6c2 !important; font-weight: 600; }
-    .token.string { color: #98c379 !important; }
-    .token.number { color: #d19a66 !important; }
-    .token.boolean { color: #c678dd !important; }
-    .token.operator, .token.punctuation { color: #abb2bf !important; }
-    .token.keyword { color: #61afef !important; }
-    .token.null { color: #d19a66 !important; }
+        /* Modern JSON Prism styling */
+        pre[class*="language-"], code[class*="language-"] {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', 'Consolas', monospace !important;
+            text-shadow: none !important;
+        }
+        pre[class*="language-"] { margin: 0 !important; padding: 0 !important; background: transparent !important; }
 
-    .search-match {
-        background-color: rgba(255, 255, 0, 0.3);
-        border-bottom: 2px solid yellow;
-        border-radius: 2px;
-    }
-</style>
+        #raw-json-content { color: #e06c75; }
+        .token.property { color: #56b6c2 !important; font-weight: 600; }
+        .token.string { color: #98c379 !important; }
+        .token.number { color: #d19a66 !important; }
+        .token.boolean { color: #c678dd !important; }
+        .token.operator, .token.punctuation { color: #abb2bf !important; }
+        .token.keyword { color: #61afef !important; }
+        .token.null { color: #d19a66 !important; }
 
-<!-- Global Notifications (provides the toast container and showToast) -->
-<div th:replace="~{fragments/notifications :: notifications}"></div>
+        .search-match {
+            background-color: rgba(255, 255, 0, 0.3);
+            border-bottom: 2px solid yellow;
+            border-radius: 2px;
+        }
+    </style>
+</th:block>
 
-<div class="flex h-screen overflow-hidden">
-    <!-- Sidebar Navigation -->
-    <div th:replace="~{fragments/sidebar :: sidebar}"></div>
-
-    <!-- Main Content Area -->
-    <main id="main-content" tabindex="-1" class="flex-1 flex flex-col overflow-hidden">
-        <!-- Top Navbar -->
-        <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
-            <div class="flex items-center gap-4">
-                <div class="flex flex-col">
-                    <div class="flex items-center gap-3">
-                        <h2 class="text-xl font-bold serif-title text-primary">Analytical Message Analysis</h2>
-                        <span id="schema-badge" class="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter hidden"></span>
-                    </div>
-                </div>
-                <span class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 text-[10px] font-bold uppercase tracking-wider" data-tooltip="Active WebSocket stream">
-                    <span class="size-1.5 rounded-full bg-blue-500 animate-pulse" aria-hidden="true"></span>
-                    Real Time
-                </span>
-            </div>
-            <div class="flex items-center gap-6">
-                <div class="relative hidden md:block">
-                    <label class="sr-only" for="json-search">Search inside the payload</label>
-                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" aria-hidden="true">search</span>
-                    <input id="json-search" class="bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm pl-10 pr-4 py-1.5 w-64 focus:ring-1 focus:ring-primary placeholder:text-slate-500" placeholder="Search for a value..." type="search"/>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button type="button" id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" aria-label="Toggle theme">
-                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden" aria-hidden="true">dark_mode</span>
-                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden" aria-hidden="true">light_mode</span>
-                    </button>
-                    <button type="button" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()" data-tooltip="Refresh page" aria-label="Refresh page">
-                        <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
-                    </button>
-                </div>
-            </div>
-        </header>
-
-        <!-- Message Content -->
-        <div class="flex-1 overflow-hidden flex flex-col lg:flex-row">
-            <!-- Left Category Navigation & History -->
-            <nav class="w-full lg:w-72 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 overflow-y-auto p-4 flex flex-col gap-2 shrink-0" aria-label="Message sections and history">
-                <!-- Categories -->
-                <h3 class="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Navigation</h3>
-                <button type="button" onclick="scrollToSection('section-overview')" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all hover:bg-slate-100 dark:hover:bg-slate-800 group category-active category-btn" id="btn-overview" data-target="section-overview">
-                    <div class="p-2 bg-primary text-white rounded-lg transition-colors">
-                        <span class="material-symbols-outlined text-xl" aria-hidden="true">analytics</span>
-                    </div>
-                    <span class="text-sm font-semibold">Overview</span>
-                </button>
-                <button type="button" onclick="scrollToSection('section-raw')" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all hover:bg-slate-100 dark:hover:bg-slate-800 group category-btn" id="btn-raw" data-target="section-raw">
-                    <div class="p-2 bg-slate-500/10 text-slate-500 rounded-lg group-hover:bg-primary group-hover:text-white transition-colors">
-                        <span class="material-symbols-outlined text-xl" aria-hidden="true">code</span>
-                    </div>
-                    <span class="text-sm font-semibold">Raw Data</span>
-                </button>
-
-                <!-- History Navigation -->
-                <div class="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
-                    <div class="flex items-center justify-between px-4 mb-3">
-                        <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Recent History</h3>
-                        <button type="button" onclick="toggleCompareMode()" id="btn-compare-mode" class="text-[9px] font-bold text-primary hover:underline uppercase" data-tooltip="Compare two messages" aria-pressed="false">Compare</button>
-                    </div>
-                    <div class="flex flex-col gap-1 px-2" id="history-list">
-                        <button type="button" th:each="event : ${recentEvents}"
-                                th:id="'history-' + ${event.id}"
-                                th:data-id="${event.id}"
-                                class="w-full text-left px-3 py-2.5 rounded-xl text-xs cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 flex justify-between items-center group history-item border border-transparent transition-all">
-                            <span class="flex items-center gap-3">
-                                <span class="compare-checkbox hidden">
-                                    <input type="checkbox" th:id="'check-' + ${event.id}" th:data-id="${event.id}" aria-label="Select for comparison" class="compare-input rounded border-slate-300 text-primary focus:ring-primary size-3">
-                                </span>
-                                <span class="flex flex-col overflow-hidden">
-                                    <span class="font-bold text-slate-700 dark:text-slate-300 truncate" th:text="${event.eventId}">-</span>
-                                    <span class="text-[9px] text-slate-500" th:text="${#temporals.format(event.createdAt, 'HH:mm:ss')}">14:12</span>
-                                </span>
-                            </span>
-                            <span class="material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 text-primary transition-opacity" aria-hidden="true">chevron_right</span>
-                        </button>
-                    </div>
-                </div>
-            </nav>
-
-            <!-- Main Scrollable Section -->
-            <div class="flex-1 overflow-y-auto p-8 bg-slate-50 dark:bg-background-dark scroll-smooth" id="sections-container">
-                <div id="no-message-warning" class="hidden flex-col items-center justify-center h-full text-slate-500 space-y-4">
-                    <span class="material-symbols-outlined text-6xl opacity-20" aria-hidden="true">cloud_off</span>
-                    <p class="text-lg font-medium">No messages available for visualization</p>
-                </div>
-
-                <div class="space-y-12 max-w-5xl mx-auto" id="main-content-panel">
-                    <!-- Section: Overview -->
-                    <section id="section-overview" class="space-y-6" aria-labelledby="section-overview-title">
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-2xl serif-title font-bold text-slate-800 dark:text-slate-100" id="section-overview-title">Overview</h3>
-                            <span class="px-3 py-1 bg-primary/10 text-primary text-xs font-bold rounded-full">Last Update: <span id="last-update-time">-</span></span>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="generic-blocks-container">
-                        </div>
-                    </section>
-
-                    <!-- Section: Headers -->
-                    <section id="section-headers" class="space-y-4 hidden">
-                        <h3 class="text-xl serif-title font-bold text-slate-800 dark:text-slate-100">Kafka Headers</h3>
-                        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-                            <div id="headers-content" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- Section: Raw JSON -->
-                    <section id="section-raw" class="space-y-6" aria-labelledby="section-raw-title">
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-2xl serif-title font-bold text-slate-800 dark:text-slate-100" id="section-raw-title">Raw Data (JSON)</h3>
-                            <div class="flex items-center gap-3">
-                                <span id="search-match-count" class="text-[10px] font-bold text-slate-400 uppercase" aria-live="polite"></span>
-                                <button type="button" onclick="copyRawJson()" class="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg transition-all text-xs font-bold uppercase">
-                                    <span class="material-symbols-outlined text-sm" aria-hidden="true">content_copy</span>
-                                    Copy JSON
-                                </button>
-                            </div>
-                        </div>
-                        <div class="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
-                            <div class="flex items-center justify-between px-6 py-3 border-b border-slate-800 bg-slate-900/50">
-                                <div class="flex items-center gap-2">
-                                    <div class="flex gap-1.5" aria-hidden="true">
-                                        <div class="size-2.5 rounded-full bg-rose-500/20 border border-rose-500/40"></div>
-                                        <div class="size-2.5 rounded-full bg-amber-500/20 border border-amber-500/40"></div>
-                                        <div class="size-2.5 rounded-full bg-emerald-500/20 border border-emerald-500/40"></div>
-                                    </div>
-                                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-2">JSON Payload</span>
-                                </div>
-                                <div class="text-[10px] font-medium text-slate-600 font-mono" id="json-meta">Size: 0 bytes</div>
-                            </div>
-                            <div class="p-6 overflow-x-auto max-h-[600px] custom-scrollbar">
-                                <pre class="language-json text-xs leading-relaxed"><code id="raw-json-content" class="language-json"></code></pre>
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- Section: Diff Viewer (Hidden by default) -->
-                    <section id="section-diff" class="space-y-6 hidden">
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-2xl serif-title font-bold text-slate-800 dark:text-slate-100">Message Comparison</h3>
-                            <button type="button" onclick="exitCompareMode()" class="text-xs font-bold text-rose-500 hover:underline">Exit Compare Mode</button>
-                        </div>
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            <div class="space-y-2">
-                                <p class="text-[10px] font-bold text-slate-400 uppercase text-center" id="diff-label-1">Message A</p>
-                                <div class="bg-slate-900 rounded-xl p-4 overflow-auto max-h-[500px] border border-slate-800">
-                                    <pre class="text-[10px] font-mono"><code id="diff-content-1" class="language-json"></code></pre>
-                                </div>
-                            </div>
-                            <div class="space-y-2">
-                                <p class="text-[10px] font-bold text-slate-400 uppercase text-center" id="diff-label-2">Message B</p>
-                                <div class="bg-slate-900 rounded-xl p-4 overflow-auto max-h-[500px] border border-slate-800">
-                                    <pre class="text-[10px] font-mono"><code id="diff-content-2" class="language-json"></code></pre>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                </div>
+<th:block th:fragment="page-header">
+    <div class="flex items-center gap-4">
+        <div class="flex flex-col">
+            <div class="flex items-center gap-3">
+                <h2 class="text-xl font-bold serif-title text-primary">Analytical Message Analysis</h2>
+                <span id="schema-badge" class="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter hidden"></span>
             </div>
         </div>
-        <div th:replace="~{fragments/sidebar :: footer-status}"></div>
-    </main>
-</div>
+        <span class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 text-[10px] font-bold uppercase tracking-wider" data-tooltip="Active WebSocket stream">
+            <span class="size-1.5 rounded-full bg-blue-500 animate-pulse" aria-hidden="true"></span>
+            Real Time
+        </span>
+    </div>
+    <div class="flex items-center gap-6">
+        <div class="relative hidden md:block">
+            <label class="sr-only" for="json-search">Search inside the payload</label>
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" aria-hidden="true">search</span>
+            <input id="json-search" class="bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm pl-10 pr-4 py-1.5 w-64 focus:ring-1 focus:ring-primary placeholder:text-slate-500" placeholder="Search for a value..." type="search"/>
+        </div>
+        <div class="flex items-center gap-2">
+            <th:block th:replace="~{fragments/header :: actions}"></th:block>
+        </div>
+    </div>
+</th:block>
 
-<!-- Prism core plus the one grammar this page needs, instead of the CDN
-     bundle that also carries markup, CSS and JavaScript grammars. -->
-<script defer th:src="@{/vendor/js/prism-core-1.29.0.min.js}"></script>
-<script defer th:src="@{/vendor/js/prism-json-1.29.0.min.js}"></script>
+<th:block th:fragment="page-content">
+    <!-- Message Content -->
+    <div class="flex-1 overflow-hidden flex flex-col lg:flex-row">
+        <!-- Left Category Navigation & History -->
+        <nav class="w-full lg:w-72 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 overflow-y-auto p-4 flex flex-col gap-2 shrink-0" aria-label="Message sections and history">
+            <!-- Categories -->
+            <h3 class="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Navigation</h3>
+            <button type="button" onclick="scrollToSection('section-overview')" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all hover:bg-slate-100 dark:hover:bg-slate-800 group category-active category-btn" id="btn-overview" data-target="section-overview">
+                <div class="p-2 bg-primary text-white rounded-lg transition-colors">
+                    <span class="material-symbols-outlined text-xl" aria-hidden="true">analytics</span>
+                </div>
+                <span class="text-sm font-semibold">Overview</span>
+            </button>
+            <button type="button" onclick="scrollToSection('section-raw')" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all hover:bg-slate-100 dark:hover:bg-slate-800 group category-btn" id="btn-raw" data-target="section-raw">
+                <div class="p-2 bg-slate-500/10 text-slate-500 rounded-lg group-hover:bg-primary group-hover:text-white transition-colors">
+                    <span class="material-symbols-outlined text-xl" aria-hidden="true">code</span>
+                </div>
+                <span class="text-sm font-semibold">Raw Data</span>
+            </button>
 
-<!-- Common Scripts Fragment -->
-<div th:replace="~{fragments/scripts :: common-scripts}"></div>
+            <!-- History Navigation -->
+            <div class="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
+                <div class="flex items-center justify-between px-4 mb-3">
+                    <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Recent History</h3>
+                    <button type="button" onclick="toggleCompareMode()" id="btn-compare-mode" class="text-[9px] font-bold text-primary hover:underline uppercase" data-tooltip="Compare two messages" aria-pressed="false">Compare</button>
+                </div>
+                <div class="flex flex-col gap-1 px-2" id="history-list">
+                    <button type="button" th:each="event : ${recentEvents}"
+                            th:id="'history-' + ${event.id}"
+                            th:data-id="${event.id}"
+                            class="w-full text-left px-3 py-2.5 rounded-xl text-xs cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 flex justify-between items-center group history-item border border-transparent transition-all">
+                        <span class="flex items-center gap-3">
+                            <span class="compare-checkbox hidden">
+                                <input type="checkbox" th:id="'check-' + ${event.id}" th:data-id="${event.id}" aria-label="Select for comparison" class="compare-input rounded border-slate-300 text-primary focus:ring-primary size-3">
+                            </span>
+                            <span class="flex flex-col overflow-hidden">
+                                <span class="font-bold text-slate-700 dark:text-slate-300 truncate" th:text="${event.eventId}">-</span>
+                                <span class="text-[9px] text-slate-500" th:text="${#temporals.format(event.createdAt, 'HH:mm:ss')}">14:12</span>
+                            </span>
+                        </span>
+                        <span class="material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 text-primary transition-opacity" aria-hidden="true">chevron_right</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
 
-<script th:inline="javascript">
-    var lastEvent = /*[[${lastEvent}]]*/ null;
-    var recentEvents = /*[[${recentEvents}]]*/ [];
-    var blockConfigs = /*[[${messageViewerConfig.blocks}]]*/ [];
+        <!-- Main Scrollable Section -->
+        <div class="flex-1 overflow-y-auto p-8 bg-slate-50 dark:bg-background-dark scroll-smooth" id="sections-container">
+            <div id="no-message-warning" class="hidden flex-col items-center justify-center h-full text-slate-500 space-y-4">
+                <span class="material-symbols-outlined text-6xl opacity-20" aria-hidden="true">cloud_off</span>
+                <p class="text-lg font-medium">No messages available for visualization</p>
+            </div>
 
-    var currentEventId = null;
-    var compareMode = false;
-    var compareSelection = [];
+            <div class="space-y-12 max-w-5xl mx-auto" id="main-content-panel">
+                <!-- Section: Overview -->
+                <section id="section-overview" class="space-y-6" aria-labelledby="section-overview-title">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-2xl serif-title font-bold text-slate-800 dark:text-slate-100" id="section-overview-title">Overview</h3>
+                        <span class="px-3 py-1 bg-primary/10 text-primary text-xs font-bold rounded-full">Last Update: <span id="last-update-time">-</span></span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="generic-blocks-container">
+                    </div>
+                </section>
 
-    document.addEventListener('DOMContentLoaded', function() {
-        initThemeToggle();
-        initHistoryList();
-        initSearch();
+                <!-- Section: Headers -->
+                <section id="section-headers" class="space-y-4 hidden">
+                    <h3 class="text-xl serif-title font-bold text-slate-800 dark:text-slate-100">Kafka Headers</h3>
+                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                        <div id="headers-content" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        </div>
+                    </div>
+                </section>
 
-        if (lastEvent && lastEvent.payload) {
-            selectEvent(lastEvent.id);
-        } else {
-            document.getElementById('main-content-panel').classList.add('hidden');
-            showNoMessage(true);
+                <!-- Section: Raw JSON -->
+                <section id="section-raw" class="space-y-6" aria-labelledby="section-raw-title">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-2xl serif-title font-bold text-slate-800 dark:text-slate-100" id="section-raw-title">Raw Data (JSON)</h3>
+                        <div class="flex items-center gap-3">
+                            <span id="search-match-count" class="text-[10px] font-bold text-slate-400 uppercase" aria-live="polite"></span>
+                            <button type="button" onclick="copyRawJson()" class="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg transition-all text-xs font-bold uppercase">
+                                <span class="material-symbols-outlined text-sm" aria-hidden="true">content_copy</span>
+                                Copy JSON
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+                        <div class="flex items-center justify-between px-6 py-3 border-b border-slate-800 bg-slate-900/50">
+                            <div class="flex items-center gap-2">
+                                <div class="flex gap-1.5" aria-hidden="true">
+                                    <div class="size-2.5 rounded-full bg-rose-500/20 border border-rose-500/40"></div>
+                                    <div class="size-2.5 rounded-full bg-amber-500/20 border border-amber-500/40"></div>
+                                    <div class="size-2.5 rounded-full bg-emerald-500/20 border border-emerald-500/40"></div>
+                                </div>
+                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-2">JSON Payload</span>
+                            </div>
+                            <div class="text-[10px] font-medium text-slate-600 font-mono" id="json-meta">Size: 0 bytes</div>
+                        </div>
+                        <div class="p-6 overflow-x-auto max-h-[600px] custom-scrollbar">
+                            <pre class="language-json text-xs leading-relaxed"><code id="raw-json-content" class="language-json"></code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section: Diff Viewer (Hidden by default) -->
+                <section id="section-diff" class="space-y-6 hidden">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-2xl serif-title font-bold text-slate-800 dark:text-slate-100">Message Comparison</h3>
+                        <button type="button" onclick="exitCompareMode()" class="text-xs font-bold text-rose-500 hover:underline">Exit Compare Mode</button>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase text-center" id="diff-label-1">Message A</p>
+                            <div class="bg-slate-900 rounded-xl p-4 overflow-auto max-h-[500px] border border-slate-800">
+                                <pre class="text-[10px] font-mono"><code id="diff-content-1" class="language-json"></code></pre>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase text-center" id="diff-label-2">Message B</p>
+                            <div class="bg-slate-900 rounded-xl p-4 overflow-auto max-h-[500px] border border-slate-800">
+                                <pre class="text-[10px] font-mono"><code id="diff-content-2" class="language-json"></code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+</th:block>
+
+<th:block th:fragment="page-trailing">
+    <!-- Prism core plus the one grammar this page needs, instead of the CDN
+         bundle that also carries markup, CSS and JavaScript grammars. -->
+    <script defer th:src="@{/vendor/js/prism-core-1.29.0.min.js}"></script>
+    <script defer th:src="@{/vendor/js/prism-json-1.29.0.min.js}"></script>
+
+
+
+
+    <script th:inline="javascript">
+        var lastEvent = /*[[${lastEvent}]]*/ null;
+        var recentEvents = /*[[${recentEvents}]]*/ [];
+        var blockConfigs = /*[[${messageViewerConfig.blocks}]]*/ [];
+
+        var currentEventId = null;
+        var compareMode = false;
+        var compareSelection = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initThemeToggle();
+            initHistoryList();
+            initSearch();
+
+            if (lastEvent && lastEvent.payload) {
+                selectEvent(lastEvent.id);
+            } else {
+                document.getElementById('main-content-panel').classList.add('hidden');
+                showNoMessage(true);
+            }
+
+            initWebSocket();
+        });
+
+        function showNoMessage(visible) {
+            const warning = document.getElementById('no-message-warning');
+            warning.classList.toggle('hidden', !visible);
+            warning.classList.toggle('flex', visible);
         }
 
-        initWebSocket();
-    });
+        /* Delegated listeners instead of one inline handler per history entry. */
+        function initHistoryList() {
+            const list = document.getElementById('history-list');
+            list.addEventListener('click', function (e) {
+                const input = e.target.closest('.compare-input');
+                if (input) {
+                    e.stopPropagation();
+                    updateCompareSelection(Number(input.dataset.id));
+                    return;
+                }
+                const item = e.target.closest('.history-item');
+                if (item) selectEvent(Number(item.dataset.id));
+            });
+        }
 
-    function showNoMessage(visible) {
-        const warning = document.getElementById('no-message-warning');
-        warning.classList.toggle('hidden', !visible);
-        warning.classList.toggle('flex', visible);
-    }
+        function initWebSocket() {
+            var socket = new SockJS('/ws');
+            var stompClient = Stomp.over(socket);
+            stompClient.debug = null;
+            stompClient.connect({}, function () {
+                updateWsStatus(true);
+                stompClient.subscribe('/topic/events', function (eventMessage) {
+                    var events = JSON.parse(eventMessage.body);
+                    if (events.length === 0) return;
 
-    /* Delegated listeners instead of one inline handler per history entry. */
-    function initHistoryList() {
-        const list = document.getElementById('history-list');
-        list.addEventListener('click', function (e) {
-            const input = e.target.closest('.compare-input');
-            if (input) {
-                e.stopPropagation();
-                updateCompareSelection(Number(input.dataset.id));
+                    const list = document.getElementById('history-list');
+                    events.forEach(event => {
+                        recentEvents.unshift(event);
+                        if (recentEvents.length > 20) recentEvents.pop();
+                        list.insertBefore(buildHistoryItem(event), list.firstChild);
+                        while (list.children.length > 20) list.removeChild(list.lastChild);
+                    });
+
+                    if (!compareMode) {
+                        const latest = events[0];
+                        if (latest.payload) selectEvent(latest.id);
+                    }
+                });
+            }, function () {
+                updateWsStatus(false);
+            });
+        }
+
+        function buildHistoryItem(event) {
+            const date = new Date(event.createdAt);
+            const pad = (n) => String(n).padStart(2, '0');
+            const formattedTime = pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());
+
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.id = 'history-' + event.id;
+            item.dataset.id = event.id;
+            item.className = 'w-full text-left px-3 py-2.5 rounded-xl text-xs cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 flex justify-between items-center group history-item border border-transparent transition-all animate-pulse';
+            item.innerHTML = `
+                <span class="flex items-center gap-3">
+                    <span class="compare-checkbox ${compareMode ? '' : 'hidden'}">
+                        <input type="checkbox" id="check-${event.id}" data-id="${event.id}" aria-label="Select for comparison" class="compare-input rounded border-slate-300 text-primary focus:ring-primary size-3">
+                    </span>
+                    <span class="flex flex-col overflow-hidden">
+                        <span class="font-bold text-slate-700 dark:text-slate-300 truncate">${escapeHtml(event.eventId)}</span>
+                        <span class="text-[9px] text-slate-500">${formattedTime}</span>
+                    </span>
+                </span>
+                <span class="material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 text-primary transition-opacity" aria-hidden="true">chevron_right</span>
+            `;
+            setTimeout(() => item.classList.remove('animate-pulse'), 2000);
+            return item;
+        }
+
+        function selectEvent(id) {
+            const event = recentEvents.find(e => e.id === id);
+            if (!event || !event.payload) return;
+
+            if (compareMode) {
+                const checkbox = document.getElementById('check-' + id);
+                if (checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                    updateCompareSelection(id);
+                }
                 return;
             }
-            const item = e.target.closest('.history-item');
-            if (item) selectEvent(Number(item.dataset.id));
-        });
-    }
 
-    function initWebSocket() {
-        var socket = new SockJS('/ws');
-        var stompClient = Stomp.over(socket);
-        stompClient.debug = null;
-        stompClient.connect({}, function () {
-            updateWsStatus(true);
-            stompClient.subscribe('/topic/events', function (eventMessage) {
-                var events = JSON.parse(eventMessage.body);
-                if (events.length === 0) return;
+            currentEventId = id;
+            document.querySelectorAll('.history-item').forEach(item => {
+                item.classList.remove('bg-primary/5', 'border-primary/20', 'ring-1', 'ring-primary/20');
+            });
+            const activeItem = document.getElementById('history-' + id);
+            if (activeItem) activeItem.classList.add('bg-primary/5', 'border-primary/20', 'ring-1', 'ring-primary/20');
 
-                const list = document.getElementById('history-list');
-                events.forEach(event => {
-                    recentEvents.unshift(event);
-                    if (recentEvents.length > 20) recentEvents.pop();
-                    list.insertBefore(buildHistoryItem(event), list.firstChild);
-                    while (list.children.length > 20) list.removeChild(list.lastChild);
-                });
+            visualizeMessage(event);
+        }
 
-                if (!compareMode) {
-                    const latest = events[0];
-                    if (latest.payload) selectEvent(latest.id);
+        function visualizeMessage(event) {
+            let data;
+            try {
+                data = JSON.parse(event.payload);
+            } catch (e) {
+                showToast('This message is not valid JSON and cannot be visualized', 'error');
+                return;
+            }
+
+            document.getElementById('main-content-panel').classList.remove('hidden');
+            showNoMessage(false);
+            document.getElementById('last-update-time').innerText = new Date().toLocaleTimeString('en-US');
+
+            const container = document.getElementById('generic-blocks-container');
+            container.innerHTML = '';
+            blockConfigs.forEach((config, index) => {
+                const val = getValueByPath(data, config.jsonPath);
+                const card = document.createElement('div');
+                card.className = index === 0
+                    ? 'bg-gradient-to-br from-primary to-blue-600 p-6 rounded-2xl text-white shadow-lg shadow-blue-500/20'
+                    : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm';
+                // Payload values are untrusted: escape before injecting.
+                card.innerHTML =
+                    `<p class="${index === 0 ? 'text-blue-100' : 'text-slate-500 dark:text-slate-400'} text-xs font-bold uppercase tracking-wider mb-1">${escapeHtml(config.title)}</p>` +
+                    `<h4 class="text-2xl font-black break-words">${escapeHtml(val)}</h4>`;
+                container.appendChild(card);
+            });
+
+            // Headers
+            const headersSection = document.getElementById('section-headers');
+            const headersContent = document.getElementById('headers-content');
+            if (event.headers) {
+                headersSection.classList.remove('hidden');
+                let parsedHeaders = {};
+                try { parsedHeaders = JSON.parse(event.headers); } catch (e) { /* ignore malformed headers */ }
+                headersContent.innerHTML = Object.entries(parsedHeaders).map(([k, v]) => `
+                    <div class="flex flex-col p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">${escapeHtml(k)}</span>
+                        <span class="text-xs break-all">${escapeHtml(v)}</span>
+                    </div>
+                `).join('');
+            } else {
+                headersSection.classList.add('hidden');
+            }
+
+            const rawContentElem = document.getElementById('raw-json-content');
+            const jsonString = JSON.stringify(data, null, 2);
+            rawContentElem.textContent = jsonString;
+
+            document.getElementById('json-meta').innerText = `Size: ${new Blob([jsonString]).size} bytes`;
+
+            if (window.Prism) Prism.highlightElement(rawContentElem);
+            applySearchHighlight();
+        }
+
+        function getValueByPath(obj, path) {
+            if (!path) return "N/A";
+            try {
+                let current = obj;
+                for (const part of path.split('.')) {
+                    if (current == null || current[part] === undefined) return "N/A";
+                    current = current[part];
+                }
+                return (typeof current === 'object') ? JSON.stringify(current) : String(current);
+            } catch (e) { return "N/A"; }
+        }
+
+        /* Was referenced by the two nav buttons but never defined (ReferenceError). */
+        function scrollToSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            if (!section) return;
+            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.toggle('category-active', btn.dataset.target === sectionId);
+            });
+        }
+
+        function toggleCompareMode() {
+            compareMode = !compareMode;
+            const btn = document.getElementById('btn-compare-mode');
+            btn.setAttribute('aria-pressed', String(compareMode));
+            if (compareMode) {
+                btn.innerText = 'Cancel';
+                btn.classList.add('text-rose-500');
+                document.querySelectorAll('.compare-checkbox').forEach(c => c.classList.remove('hidden'));
+            } else {
+                exitCompareMode();
+            }
+        }
+
+        function exitCompareMode() {
+            compareMode = false;
+            compareSelection = [];
+            const btn = document.getElementById('btn-compare-mode');
+            btn.innerText = 'Compare';
+            btn.classList.remove('text-rose-500');
+            btn.setAttribute('aria-pressed', 'false');
+            document.querySelectorAll('.compare-checkbox').forEach(c => c.classList.add('hidden'));
+            document.querySelectorAll('.compare-input').forEach(i => i.checked = false);
+            document.getElementById('section-diff').classList.add('hidden');
+            document.getElementById('section-overview').classList.remove('hidden');
+            document.getElementById('section-raw').classList.remove('hidden');
+            if (currentEventId) selectEvent(currentEventId);
+        }
+
+        function updateCompareSelection(id) {
+            const checkbox = document.getElementById('check-' + id);
+            if (!checkbox) return;
+            if (checkbox.checked) {
+                if (compareSelection.length >= 2) {
+                    const firstId = compareSelection.shift();
+                    const firstCheck = document.getElementById('check-' + firstId);
+                    if (firstCheck) firstCheck.checked = false;
+                }
+                compareSelection.push(id);
+            } else {
+                compareSelection = compareSelection.filter(sid => sid !== id);
+            }
+            if (compareSelection.length === 2) showDiff();
+        }
+
+        function showDiff() {
+            const eventA = recentEvents.find(e => e.id === compareSelection[0]);
+            const eventB = recentEvents.find(e => e.id === compareSelection[1]);
+            if (!eventA || !eventB) return;
+            ['section-overview', 'section-raw', 'section-headers'].forEach(s => document.getElementById(s).classList.add('hidden'));
+            document.getElementById('section-diff').classList.remove('hidden');
+            document.getElementById('diff-label-1').innerText = 'Event ID: ' + eventA.eventId;
+            document.getElementById('diff-label-2').innerText = 'Event ID: ' + eventB.eventId;
+            const c1 = document.getElementById('diff-content-1');
+            const c2 = document.getElementById('diff-content-2');
+            c1.textContent = prettyPayload(eventA.payload);
+            c2.textContent = prettyPayload(eventB.payload);
+            if (window.Prism) { Prism.highlightElement(c1); Prism.highlightElement(c2); }
+        }
+
+        function prettyPayload(payload) {
+            try { return JSON.stringify(JSON.parse(payload), null, 2); } catch (e) { return payload; }
+        }
+
+        function initSearch() {
+            const input = document.getElementById('json-search');
+            let debounce;
+            input.addEventListener('input', function () {
+                clearTimeout(debounce);
+                debounce = setTimeout(applySearchHighlight, 150);
+            });
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') { input.value = ''; applySearchHighlight(); }
+            });
+        }
+
+        /*
+         * Highlights matching Prism tokens in place. Cheaper and far simpler than
+         * re-rendering the payload: highlighting only toggles a class per token.
+         */
+        function applySearchHighlight() {
+            const query = document.getElementById('json-search').value.trim().toLowerCase();
+            const contentElem = document.getElementById('raw-json-content');
+            const counter = document.getElementById('search-match-count');
+            if (!contentElem) return;
+
+            const tokens = contentElem.querySelectorAll('.token');
+            let matchCount = 0;
+            let firstMatch = null;
+
+            tokens.forEach(token => {
+                const isMatch = query.length > 0 && token.textContent.toLowerCase().includes(query);
+                token.classList.toggle('search-match', isMatch);
+                if (isMatch) {
+                    matchCount++;
+                    if (!firstMatch) firstMatch = token;
                 }
             });
-        }, function () {
-            updateWsStatus(false);
-        });
-    }
 
-    function buildHistoryItem(event) {
-        const date = new Date(event.createdAt);
-        const pad = (n) => String(n).padStart(2, '0');
-        const formattedTime = pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());
-
-        const item = document.createElement('button');
-        item.type = 'button';
-        item.id = 'history-' + event.id;
-        item.dataset.id = event.id;
-        item.className = 'w-full text-left px-3 py-2.5 rounded-xl text-xs cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 flex justify-between items-center group history-item border border-transparent transition-all animate-pulse';
-        item.innerHTML = `
-            <span class="flex items-center gap-3">
-                <span class="compare-checkbox ${compareMode ? '' : 'hidden'}">
-                    <input type="checkbox" id="check-${event.id}" data-id="${event.id}" aria-label="Select for comparison" class="compare-input rounded border-slate-300 text-primary focus:ring-primary size-3">
-                </span>
-                <span class="flex flex-col overflow-hidden">
-                    <span class="font-bold text-slate-700 dark:text-slate-300 truncate">${escapeHtml(event.eventId)}</span>
-                    <span class="text-[9px] text-slate-500">${formattedTime}</span>
-                </span>
-            </span>
-            <span class="material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 text-primary transition-opacity" aria-hidden="true">chevron_right</span>
-        `;
-        setTimeout(() => item.classList.remove('animate-pulse'), 2000);
-        return item;
-    }
-
-    function selectEvent(id) {
-        const event = recentEvents.find(e => e.id === id);
-        if (!event || !event.payload) return;
-
-        if (compareMode) {
-            const checkbox = document.getElementById('check-' + id);
-            if (checkbox) {
-                checkbox.checked = !checkbox.checked;
-                updateCompareSelection(id);
-            }
-            return;
+            counter.innerText = query.length === 0 ? '' : `${matchCount} match${matchCount === 1 ? '' : 'es'}`;
+            if (firstMatch) firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
-        currentEventId = id;
-        document.querySelectorAll('.history-item').forEach(item => {
-            item.classList.remove('bg-primary/5', 'border-primary/20', 'ring-1', 'ring-primary/20');
-        });
-        const activeItem = document.getElementById('history-' + id);
-        if (activeItem) activeItem.classList.add('bg-primary/5', 'border-primary/20', 'ring-1', 'ring-primary/20');
-
-        visualizeMessage(event);
-    }
-
-    function visualizeMessage(event) {
-        let data;
-        try {
-            data = JSON.parse(event.payload);
-        } catch (e) {
-            showToast('This message is not valid JSON and cannot be visualized', 'error');
-            return;
+        function copyRawJson() {
+            navigator.clipboard.writeText(document.getElementById('raw-json-content').textContent)
+                .then(() => showToast('JSON copied to clipboard', 'success'))
+                .catch(() => showToast('Clipboard access denied', 'error'));
         }
+    </script>
+</th:block>
 
-        document.getElementById('main-content-panel').classList.remove('hidden');
-        showNoMessage(false);
-        document.getElementById('last-update-time').innerText = new Date().toLocaleTimeString('en-US');
-
-        const container = document.getElementById('generic-blocks-container');
-        container.innerHTML = '';
-        blockConfigs.forEach((config, index) => {
-            const val = getValueByPath(data, config.jsonPath);
-            const card = document.createElement('div');
-            card.className = index === 0
-                ? 'bg-gradient-to-br from-primary to-blue-600 p-6 rounded-2xl text-white shadow-lg shadow-blue-500/20'
-                : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm';
-            // Payload values are untrusted: escape before injecting.
-            card.innerHTML =
-                `<p class="${index === 0 ? 'text-blue-100' : 'text-slate-500 dark:text-slate-400'} text-xs font-bold uppercase tracking-wider mb-1">${escapeHtml(config.title)}</p>` +
-                `<h4 class="text-2xl font-black break-words">${escapeHtml(val)}</h4>`;
-            container.appendChild(card);
-        });
-
-        // Headers
-        const headersSection = document.getElementById('section-headers');
-        const headersContent = document.getElementById('headers-content');
-        if (event.headers) {
-            headersSection.classList.remove('hidden');
-            let parsedHeaders = {};
-            try { parsedHeaders = JSON.parse(event.headers); } catch (e) { /* ignore malformed headers */ }
-            headersContent.innerHTML = Object.entries(parsedHeaders).map(([k, v]) => `
-                <div class="flex flex-col p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                    <span class="text-[10px] font-bold text-slate-400 uppercase">${escapeHtml(k)}</span>
-                    <span class="text-xs break-all">${escapeHtml(v)}</span>
-                </div>
-            `).join('');
-        } else {
-            headersSection.classList.add('hidden');
-        }
-
-        const rawContentElem = document.getElementById('raw-json-content');
-        const jsonString = JSON.stringify(data, null, 2);
-        rawContentElem.textContent = jsonString;
-
-        document.getElementById('json-meta').innerText = `Size: ${new Blob([jsonString]).size} bytes`;
-
-        if (window.Prism) Prism.highlightElement(rawContentElem);
-        applySearchHighlight();
-    }
-
-    function getValueByPath(obj, path) {
-        if (!path) return "N/A";
-        try {
-            let current = obj;
-            for (const part of path.split('.')) {
-                if (current == null || current[part] === undefined) return "N/A";
-                current = current[part];
-            }
-            return (typeof current === 'object') ? JSON.stringify(current) : String(current);
-        } catch (e) { return "N/A"; }
-    }
-
-    /* Was referenced by the two nav buttons but never defined (ReferenceError). */
-    function scrollToSection(sectionId) {
-        const section = document.getElementById(sectionId);
-        if (!section) return;
-        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        document.querySelectorAll('.category-btn').forEach(btn => {
-            btn.classList.toggle('category-active', btn.dataset.target === sectionId);
-        });
-    }
-
-    function toggleCompareMode() {
-        compareMode = !compareMode;
-        const btn = document.getElementById('btn-compare-mode');
-        btn.setAttribute('aria-pressed', String(compareMode));
-        if (compareMode) {
-            btn.innerText = 'Cancel';
-            btn.classList.add('text-rose-500');
-            document.querySelectorAll('.compare-checkbox').forEach(c => c.classList.remove('hidden'));
-        } else {
-            exitCompareMode();
-        }
-    }
-
-    function exitCompareMode() {
-        compareMode = false;
-        compareSelection = [];
-        const btn = document.getElementById('btn-compare-mode');
-        btn.innerText = 'Compare';
-        btn.classList.remove('text-rose-500');
-        btn.setAttribute('aria-pressed', 'false');
-        document.querySelectorAll('.compare-checkbox').forEach(c => c.classList.add('hidden'));
-        document.querySelectorAll('.compare-input').forEach(i => i.checked = false);
-        document.getElementById('section-diff').classList.add('hidden');
-        document.getElementById('section-overview').classList.remove('hidden');
-        document.getElementById('section-raw').classList.remove('hidden');
-        if (currentEventId) selectEvent(currentEventId);
-    }
-
-    function updateCompareSelection(id) {
-        const checkbox = document.getElementById('check-' + id);
-        if (!checkbox) return;
-        if (checkbox.checked) {
-            if (compareSelection.length >= 2) {
-                const firstId = compareSelection.shift();
-                const firstCheck = document.getElementById('check-' + firstId);
-                if (firstCheck) firstCheck.checked = false;
-            }
-            compareSelection.push(id);
-        } else {
-            compareSelection = compareSelection.filter(sid => sid !== id);
-        }
-        if (compareSelection.length === 2) showDiff();
-    }
-
-    function showDiff() {
-        const eventA = recentEvents.find(e => e.id === compareSelection[0]);
-        const eventB = recentEvents.find(e => e.id === compareSelection[1]);
-        if (!eventA || !eventB) return;
-        ['section-overview', 'section-raw', 'section-headers'].forEach(s => document.getElementById(s).classList.add('hidden'));
-        document.getElementById('section-diff').classList.remove('hidden');
-        document.getElementById('diff-label-1').innerText = 'Event ID: ' + eventA.eventId;
-        document.getElementById('diff-label-2').innerText = 'Event ID: ' + eventB.eventId;
-        const c1 = document.getElementById('diff-content-1');
-        const c2 = document.getElementById('diff-content-2');
-        c1.textContent = prettyPayload(eventA.payload);
-        c2.textContent = prettyPayload(eventB.payload);
-        if (window.Prism) { Prism.highlightElement(c1); Prism.highlightElement(c2); }
-    }
-
-    function prettyPayload(payload) {
-        try { return JSON.stringify(JSON.parse(payload), null, 2); } catch (e) { return payload; }
-    }
-
-    function initSearch() {
-        const input = document.getElementById('json-search');
-        let debounce;
-        input.addEventListener('input', function () {
-            clearTimeout(debounce);
-            debounce = setTimeout(applySearchHighlight, 150);
-        });
-        input.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') { input.value = ''; applySearchHighlight(); }
-        });
-    }
-
-    /*
-     * Highlights matching Prism tokens in place. Cheaper and far simpler than
-     * re-rendering the payload: highlighting only toggles a class per token.
-     */
-    function applySearchHighlight() {
-        const query = document.getElementById('json-search').value.trim().toLowerCase();
-        const contentElem = document.getElementById('raw-json-content');
-        const counter = document.getElementById('search-match-count');
-        if (!contentElem) return;
-
-        const tokens = contentElem.querySelectorAll('.token');
-        let matchCount = 0;
-        let firstMatch = null;
-
-        tokens.forEach(token => {
-            const isMatch = query.length > 0 && token.textContent.toLowerCase().includes(query);
-            token.classList.toggle('search-match', isMatch);
-            if (isMatch) {
-                matchCount++;
-                if (!firstMatch) firstMatch = token;
-            }
-        });
-
-        counter.innerText = query.length === 0 ? '' : `${matchCount} match${matchCount === 1 ? '' : 'es'}`;
-        if (firstMatch) firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-
-    function copyRawJson() {
-        navigator.clipboard.writeText(document.getElementById('raw-json-content').textContent)
-            .then(() => showToast('JSON copied to clipboard', 'success'))
-            .catch(() => showToast('Clipboard access denied', 'error'));
-    }
-</script>
 </body>
 </html>

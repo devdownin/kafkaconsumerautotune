@@ -68,6 +68,29 @@ Protects persistence via Resilience4j.
 -   **Dashboards**: Technical Dashboard and Business KPI Dashboard provisioned in Grafana.
 -   **Alerts**: Defined in `prometheus-rules.yml` on Kafka lag, error rate, and batch performance.
 
+### 4.3 Built-in Web Console
+Beyond the Grafana stack, the application serves its own operator console on
+port 8080. It is not a second monitoring system: it exposes what only the
+consumer itself knows — the decisions the optimizer took, and the messages it
+could not process.
+
+| Route | Purpose |
+| --- | --- |
+| `/` | Pipeline overview: throughput, success rate, consumer lag, and the parameters currently applied |
+| `/optimizer` | Every PID adjustment, with the measurement that triggered it |
+| `/dlt-management` | Failed messages: inspect headers and error trace, correct the payload, replay or discard |
+| `/consumer-groups` | Group state and lag broken down per partition |
+| `/message-viewer` | Payload of the last messages consumed, with comparison between two of them |
+| `/metrics` | Every registered Micrometer meter, searchable |
+| `/simulation` | Traffic generator, to exercise the consumer without a producer |
+| `/db-status`, `/settings`, `/architecture` | Connection pool, effective configuration, C4 diagrams |
+
+The console pushes its updates over WebSocket rather than polling, serves all of
+its assets itself — no CDN, so it works air-gapped — and its stylesheet is
+compiled at build time (see `docs/frontend-build.md`).
+
+Screenshots: `docs/images/`.
+
 ---
 
 ## 5. Technical Specifications

@@ -1,141 +1,127 @@
 <!DOCTYPE html>
-<html class="dark" lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head('Consumer Groups')}">
-    <title>Consumer Groups</title>
-</head>
-<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
-<a class="skip-link" href="#main-content">Skip to content</a>
-<div class="flex h-screen overflow-hidden">
-    <!-- Sidebar Navigation -->
-    <div th:replace="~{fragments/sidebar :: sidebar}"></div>
+<html th:replace="~{fragments/layout :: page(
+        'Consumer Groups',
+        ~{},
+        ~{::page-header},
+        ~{::page-content},
+        ~{::page-trailing})}"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
 
-    <!-- Main Content Area -->
-    <main id="main-content" tabindex="-1" class="flex-1 flex flex-col overflow-hidden">
-        <!-- Top Navbar -->
-        <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
-            <div class="flex items-center gap-4">
-                <h2 class="text-lg font-bold">Consumer Groups</h2>
-                <span class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase tracking-wider">
-                    <span class="size-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    Live
-                </span>
-            </div>
-            <div class="flex items-center gap-6">
-                <div class="flex items-center gap-2">
-                    <button type="button" id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" aria-label="Toggle theme">
-                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden" aria-hidden="true">dark_mode</span>
-                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden" aria-hidden="true">light_mode</span>
-                    </button>
-                    <button type="button" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()" data-tooltip="Refresh page" aria-label="Refresh page">
-                        <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
-                    </button>
-                </div>
-            </div>
-        </header>
+<th:block th:fragment="page-header">
+    <div class="flex items-center gap-4">
+        <h2 class="text-lg font-bold">Consumer Groups</h2>
+        <span class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase tracking-wider">
+            <span class="size-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true"></span>
+            Live
+        </span>
+    </div>
+    <div class="flex items-center gap-6">
+        <div class="flex items-center gap-2">
+            <th:block th:replace="~{fragments/header :: actions}"></th:block>
+        </div>
+    </div>
+</th:block>
 
-        <!-- Content -->
-        <div class="flex-1 overflow-y-auto p-8 space-y-6">
-            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
-                <div class="p-6 border-b border-slate-200 dark:border-slate-800">
-                    <h4 class="text-base font-bold">Active Consumer Groups</h4>
-                    <p class="text-xs text-slate-500">Overview of all registered consumer groups in the cluster</p>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead class="bg-slate-50 dark:bg-slate-800/50">
-                        <tr>
-                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Group ID</th>
-                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">State</th>
-                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center">Members</th>
-                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center">Partitions</th>
-                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-right">Total Lag</th>
-                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center w-20">Actions</th>
+<th:block th:fragment="page-content">
+    <div class="flex-1 overflow-y-auto p-8 space-y-6">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+            <div class="p-6 border-b border-slate-200 dark:border-slate-800">
+                <h4 class="text-base font-bold">Active Consumer Groups</h4>
+                <p class="text-xs text-slate-500">Overview of all registered consumer groups in the cluster</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-50 dark:bg-slate-800/50">
+                    <tr>
+                        <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Group ID</th>
+                        <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">State</th>
+                        <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center">Members</th>
+                        <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center">Partitions</th>
+                        <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-right">Total Lag</th>
+                        <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-center w-20">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                    <th:block th:each="group, iterStat : ${stats.consumerGroups}">
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                            <td class="px-6 py-4 text-sm font-medium" th:text="${group.groupId}">ASF.PEAGE.BACKOFFICE.PARTAGE.RECOUVRABLE</td>
+                            <td class="px-6 py-4 text-sm">
+                                <span th:class="${'px-2 py-1 rounded-md text-xs font-bold ' + (group.state == 'Stable' ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400')}"
+                                      th:text="${group.state}">Stable</span>
+                            </td>
+                            <td class="px-6 py-4 text-sm font-medium text-center" th:text="${group.members}">6</td>
+                            <td class="px-6 py-4 text-sm font-medium text-center" th:text="${group.partitions}">6</td>
+                            <td th:class="${'px-6 py-4 text-right text-sm font-mono ' + (group.lag > 1000 ? 'text-amber-500 font-bold' : 'text-slate-500')}"
+                                th:text="${#numbers.formatInteger(group.lag, 0, 'WHITESPACE')}">8 421</td>
+                            <td class="px-6 py-4 text-center">
+                                <button type="button" th:onclick="'toggleDetails(' + ${iterStat.index} + ')'"
+                                        th:id="'toggle-' + ${iterStat.index}"
+                                        th:attr="aria-controls='details-' + ${iterStat.index},aria-label='Show partition breakdown for ' + ${group.groupId}"
+                                        aria-expanded="false"
+                                        class="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-slate-500 transition-colors">
+                                    <span th:id="'icon-' + ${iterStat.index}" class="material-symbols-outlined transition-transform" aria-hidden="true">expand_more</span>
+                                </button>
+                            </td>
                         </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                        <th:block th:each="group, iterStat : ${stats.consumerGroups}">
-                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                <td class="px-6 py-4 text-sm font-medium" th:text="${group.groupId}">ASF.PEAGE.BACKOFFICE.PARTAGE.RECOUVRABLE</td>
-                                <td class="px-6 py-4 text-sm">
-                                    <span th:class="${'px-2 py-1 rounded-md text-xs font-bold ' + (group.state == 'Stable' ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400')}"
-                                          th:text="${group.state}">Stable</span>
-                                </td>
-                                <td class="px-6 py-4 text-sm font-medium text-center" th:text="${group.members}">6</td>
-                                <td class="px-6 py-4 text-sm font-medium text-center" th:text="${group.partitions}">6</td>
-                                <td th:class="${'px-6 py-4 text-right text-sm font-mono ' + (group.lag > 1000 ? 'text-amber-500 font-bold' : 'text-slate-500')}"
-                                    th:text="${#numbers.formatInteger(group.lag, 0, 'WHITESPACE')}">8 421</td>
-                                <td class="px-6 py-4 text-center">
-                                    <button type="button" th:onclick="'toggleDetails(' + ${iterStat.index} + ')'"
-                                            th:id="'toggle-' + ${iterStat.index}"
-                                            th:attr="aria-controls='details-' + ${iterStat.index},aria-label='Show partition breakdown for ' + ${group.groupId}"
-                                            aria-expanded="false"
-                                            class="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-slate-500 transition-colors">
-                                        <span th:id="'icon-' + ${iterStat.index}" class="material-symbols-outlined transition-transform" aria-hidden="true">expand_more</span>
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr th:id="'details-' + ${iterStat.index}" class="hidden bg-slate-50/50 dark:bg-slate-900/50 border-x-2 border-primary/20">
-                                <td colspan="6" class="p-0">
-                                    <div class="px-12 py-6">
-                                        <div class="flex items-center justify-between mb-4">
-                                            <h5 class="text-xs font-bold uppercase tracking-widest text-slate-400">Partition Breakdown</h5>
-                                            <span class="text-[10px] text-slate-500" th:text="${'Total Partitions: ' + group.partitions}">Total Partitions: 6</span>
-                                        </div>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                                            <div th:each="part : ${group.partitionLags}" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 shadow-sm">
-                                                <div class="flex justify-between items-center mb-2">
-                                                    <span class="text-[10px] font-bold text-slate-400 uppercase" th:text="'Partition ' + ${part.partition}">Partition 0</span>
-                                                    <span th:class="${'px-1.5 py-0.5 rounded text-[9px] font-black ' + (part.lag > 500 ? 'bg-rose-500/10 text-rose-500' : (part.lag > 0 ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'))}"
-                                                          th:text="${'Lag: ' + part.lag}">Lag: 0</span>
+                        <tr th:id="'details-' + ${iterStat.index}" class="hidden bg-slate-50/50 dark:bg-slate-900/50 border-x-2 border-primary/20">
+                            <td colspan="6" class="p-0">
+                                <div class="px-12 py-6">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <h5 class="text-xs font-bold uppercase tracking-widest text-slate-400">Partition Breakdown</h5>
+                                        <span class="text-[10px] text-slate-500" th:text="${'Total Partitions: ' + group.partitions}">Total Partitions: 6</span>
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                                        <div th:each="part : ${group.partitionLags}" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 shadow-sm">
+                                            <div class="flex justify-between items-center mb-2">
+                                                <span class="text-[10px] font-bold text-slate-400 uppercase" th:text="'Partition ' + ${part.partition}">Partition 0</span>
+                                                <span th:class="${'px-1.5 py-0.5 rounded text-[9px] font-black ' + (part.lag > 500 ? 'bg-rose-500/10 text-rose-500' : (part.lag > 0 ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'))}"
+                                                      th:text="${'Lag: ' + part.lag}">Lag: 0</span>
+                                            </div>
+                                            <div class="space-y-1">
+                                                <div class="flex justify-between text-[11px]">
+                                                    <span class="text-slate-500">Current Offset:</span>
+                                                    <span class="font-mono font-medium" th:text="${part.currentOffset}">123456</span>
                                                 </div>
-                                                <div class="space-y-1">
-                                                    <div class="flex justify-between text-[11px]">
-                                                        <span class="text-slate-500">Current Offset:</span>
-                                                        <span class="font-mono font-medium" th:text="${part.currentOffset}">123456</span>
-                                                    </div>
-                                                    <div class="flex justify-between text-[11px]">
-                                                        <span class="text-slate-500">End Offset:</span>
-                                                        <span class="font-mono font-medium" th:text="${part.logEndOffset}">123456</span>
-                                                    </div>
+                                                <div class="flex justify-between text-[11px]">
+                                                    <span class="text-slate-500">End Offset:</span>
+                                                    <span class="font-mono font-medium" th:text="${part.logEndOffset}">123456</span>
                                                 </div>
-                                                <div class="mt-2 w-full bg-slate-100 dark:bg-slate-700 h-1 rounded-full overflow-hidden">
-                                                    <div th:class="${'h-full ' + (part.lag > 500 ? 'bg-rose-500' : (part.lag > 0 ? 'bg-amber-500' : 'bg-emerald-500'))}"
-                                                         th:style="'width: ' + ${part.logEndOffset > 0 ? (part.currentOffset * 100 / part.logEndOffset) : 100} + '%'"></div>
-                                                </div>
+                                            </div>
+                                            <div class="mt-2 w-full bg-slate-100 dark:bg-slate-700 h-1 rounded-full overflow-hidden">
+                                                <div th:class="${'h-full ' + (part.lag > 500 ? 'bg-rose-500' : (part.lag > 0 ? 'bg-amber-500' : 'bg-emerald-500'))}"
+                                                     th:style="'width: ' + ${part.logEndOffset > 0 ? (part.currentOffset * 100 / part.logEndOffset) : 100} + '%'"></div>
                                             </div>
                                         </div>
                                     </div>
-                                </td>
-                            </tr>
-                        </th:block>
-                        </tbody>
-                    </table>
-                </div>
+                                </div>
+                            </td>
+                        </tr>
+                    </th:block>
+                    </tbody>
+                </table>
             </div>
         </div>
+    </div>
+</th:block>
 
-        <!-- Footer Status Bar -->
-        <div th:replace="~{fragments/sidebar :: footer-status}"></div>
-    </main>
-</div>
+<th:block th:fragment="page-trailing">
+    <script>
+        function toggleDetails(index) {
+            const detailsRow = document.getElementById('details-' + index);
+            const icon = document.getElementById('icon-' + index);
+            const toggle = document.getElementById('toggle-' + index);
 
-<!-- Common Scripts Fragment -->
-<div th:replace="~{fragments/scripts :: common-scripts}"></div>
+            const expanded = detailsRow.classList.toggle('hidden') === false;
+            icon.style.transform = expanded ? 'rotate(180deg)' : 'rotate(0deg)';
+            if (toggle) toggle.setAttribute('aria-expanded', String(expanded));
+        }
 
-<script>
-    function toggleDetails(index) {
-        const detailsRow = document.getElementById('details-' + index);
-        const icon = document.getElementById('icon-' + index);
-        const toggle = document.getElementById('toggle-' + index);
+        document.addEventListener('DOMContentLoaded', function() {
+            initThemeToggle();
+        });
+    </script>
+</th:block>
 
-        const expanded = detailsRow.classList.toggle('hidden') === false;
-        icon.style.transform = expanded ? 'rotate(180deg)' : 'rotate(0deg)';
-        if (toggle) toggle.setAttribute('aria-expanded', String(expanded));
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        initThemeToggle();
-    });
-</script>
 </body>
 </html>
