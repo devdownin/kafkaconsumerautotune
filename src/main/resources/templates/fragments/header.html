@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!--
+  Bascule de thème et rafraîchissement de la barre de titre.
+
+  Recopiés à l'identique sur chaque page, et c'est bien ce qui avait laissé
+  `simulation` et `flink-metrics` sans bascule de thème : rien ne signalait que
+  leur en-tête avait divergé.
+
+  Déclaré en th:block, sans conteneur : la page fournit le sien, ce qui permet à
+  flink-metrics de placer son bouton « Create Metric » dans le même groupe.
+-->
+<th:block th:fragment="actions">
+    <button type="button" id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" aria-label="Toggle theme">
+        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden" aria-hidden="true">dark_mode</span>
+        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden" aria-hidden="true">light_mode</span>
+    </button>
+    <button type="button" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()" data-tooltip="Refresh page" aria-label="Refresh page">
+        <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+    </button>
+</th:block>
+
+</body>
+</html>

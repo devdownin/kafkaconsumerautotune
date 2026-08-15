@@ -46,6 +46,32 @@ class TemplateAssetsTest {
                 "Templates must serve their assets locally, see static/vendor/README.md. Found: " + offenders);
     }
 
+    /**
+     * The eleven page templates each carried their own copy of the header, main
+     * and footer scaffold. That is how `simulation` and `flink-metrics` ended up
+     * without a theme toggle: nothing flagged that their header had drifted.
+     * A page that rebuilds the shell by hand can drift the same way again.
+     */
+    @Test
+    void everyPageBuildsOnTheSharedLayout() throws IOException {
+        List<String> offenders = new ArrayList<>();
+
+        try (Stream<Path> templates = Files.list(TEMPLATES)) {
+            for (Path template : templates.filter(p -> p.toString().endsWith(".html")).toList()) {
+                // error.html is a standalone card, deliberately outside the shell.
+                if (template.getFileName().toString().equals("error.html")) {
+                    continue;
+                }
+                if (!Files.readString(template).contains("fragments/layout :: page")) {
+                    offenders.add(template.getFileName().toString());
+                }
+            }
+        }
+
+        assertTrue(offenders.isEmpty(),
+                "Pages must render through fragments/layout :: page rather than repeating the shell. Found: " + offenders);
+    }
+
     @Test
     void theCompiledStylesheetIsTheOneReferenced() throws IOException {
         String head = Files.readString(TEMPLATES.resolve("fragments/head.html"));

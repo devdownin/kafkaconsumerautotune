@@ -1,114 +1,101 @@
 <!DOCTYPE html>
-<html class="dark" lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head('System Architecture')}">
-    <title>System Architecture</title>
-</head>
-<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
-<a class="skip-link" href="#main-content">Skip to content</a>
-<!-- Global Notifications -->
-<div th:replace="~{fragments/notifications :: notifications}"></div>
+<html th:replace="~{fragments/layout :: page(
+        'System Architecture',
+        ~{},
+        ~{::page-header},
+        ~{::page-content},
+        ~{::page-trailing})}"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
 
-<div class="flex h-screen overflow-hidden">
-    <!-- Sidebar Navigation -->
-    <div th:replace="~{fragments/sidebar :: sidebar}"></div>
+<th:block th:fragment="page-header">
+    <div class="flex items-center gap-4">
+        <h2 class="text-lg font-bold">System Architecture</h2>
+        <span class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-500 text-[10px] font-bold uppercase tracking-wider">
+            <span class="material-symbols-outlined text-[12px]">menu_book</span>
+            Documentation
+        </span>
+    </div>
+    <div class="flex items-center gap-6">
+        <div class="flex items-center gap-2">
+            <th:block th:replace="~{fragments/header :: actions}"></th:block>
+        </div>
+    </div>
+</th:block>
 
-    <!-- Main Content Area -->
-    <main id="main-content" tabindex="-1" class="flex-1 flex flex-col overflow-hidden">
-        <!-- Top Navbar -->
-        <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
-            <div class="flex items-center gap-4">
-                <h2 class="text-lg font-bold">System Architecture</h2>
-                <span class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-500 text-[10px] font-bold uppercase tracking-wider">
-                    <span class="material-symbols-outlined text-[12px]">menu_book</span>
-                    Documentation
-                </span>
-            </div>
-            <div class="flex items-center gap-6">
-                <div class="flex items-center gap-2">
-                    <button type="button" id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" aria-label="Toggle theme">
-                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden" aria-hidden="true">dark_mode</span>
-                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden" aria-hidden="true">light_mode</span>
-                    </button>
-                    <button type="button" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()" data-tooltip="Refresh page" aria-label="Refresh page">
-                        <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
-                    </button>
-                </div>
-            </div>
-        </header>
-
-        <!-- Content Area -->
-        <div class="flex-1 overflow-y-auto p-8 space-y-6">
-            <!-- Level 1 & 2 Grid -->
-            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
-                <!-- Level 1 -->
-                <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
-                    <div class="flex items-center gap-4 mb-6">
-                        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold">1</div>
-                        <h2 class="text-xl font-bold text-slate-900 dark:text-white">Level 1: System Context Diagram</h2>
-                    </div>
-                    <p class="text-slate-600 dark:text-slate-400 mb-8 max-w-3xl">
-                        This diagram shows the KafkaConsumerAutoTune system in its global environment, its interactions with users and external systems.
-                    </p>
-                    <div class="bg-slate-950 rounded-lg p-4 flex justify-center overflow-hidden border border-slate-800">
-                        <img src="/C4-N1.svg" alt="C4 level 1 diagram: KafkaConsumerAutoTune in its system context" class="max-w-full h-auto" decoding="async">
-                    </div>
-                </div>
-
-                <!-- Level 2 -->
-                <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
-                    <div class="flex items-center gap-4 mb-6">
-                        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold">2</div>
-                        <h2 class="text-xl font-bold text-slate-900 dark:text-white">Level 2: Container Diagram</h2>
-                    </div>
-                    <p class="text-slate-600 dark:text-slate-400 mb-8 max-w-3xl">
-                        This diagram decomposes the KafkaConsumerAutoTune system into logical containers (applications, databases, etc.).
-                    </p>
-                    <div class="bg-slate-950 rounded-lg p-4 flex justify-center overflow-hidden border border-slate-800">
-                        <img src="/C4-N2.svg" alt="C4 level 2 diagram: containers making up KafkaConsumerAutoTune" class="max-w-full h-auto" loading="lazy" decoding="async">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Level 3 -->
+<th:block th:fragment="page-content">
+    <!-- Content Area -->
+    <div class="flex-1 overflow-y-auto p-8 space-y-6">
+        <!-- Level 1 & 2 Grid -->
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+            <!-- Level 1 -->
             <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
                 <div class="flex items-center gap-4 mb-6">
-                    <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold">3</div>
-                    <h2 class="text-xl font-bold text-slate-900 dark:text-white">Level 3: Component Diagram</h2>
+                    <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold">1</div>
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white">Level 1: System Context Diagram</h2>
                 </div>
                 <p class="text-slate-600 dark:text-slate-400 mb-8 max-w-3xl">
-                    This diagram shows how the Application Spring Boot is decomposed into components and their interactions.
+                    This diagram shows the KafkaConsumerAutoTune system in its global environment, its interactions with users and external systems.
                 </p>
                 <div class="bg-slate-950 rounded-lg p-4 flex justify-center overflow-hidden border border-slate-800">
-                    <img src="/C4-N3.svg" alt="C4 level 3 diagram: components inside the Spring Boot application" class="max-w-full h-auto" loading="lazy" decoding="async">
+                    <img src="/C4-N1.svg" alt="C4 level 1 diagram: KafkaConsumerAutoTune in its system context" class="max-w-full h-auto" decoding="async">
+                </div>
+            </div>
+
+            <!-- Level 2 -->
+            <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold">2</div>
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white">Level 2: Container Diagram</h2>
+                </div>
+                <p class="text-slate-600 dark:text-slate-400 mb-8 max-w-3xl">
+                    This diagram decomposes the KafkaConsumerAutoTune system into logical containers (applications, databases, etc.).
+                </p>
+                <div class="bg-slate-950 rounded-lg p-4 flex justify-center overflow-hidden border border-slate-800">
+                    <img src="/C4-N2.svg" alt="C4 level 2 diagram: containers making up KafkaConsumerAutoTune" class="max-w-full h-auto" loading="lazy" decoding="async">
                 </div>
             </div>
         </div>
 
-        <!-- Footer Status Bar -->
-        <div th:replace="~{fragments/sidebar :: footer-status}"></div>
-    </main>
-</div>
+        <!-- Level 3 -->
+        <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
+            <div class="flex items-center gap-4 mb-6">
+                <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold">3</div>
+                <h2 class="text-xl font-bold text-slate-900 dark:text-white">Level 3: Component Diagram</h2>
+            </div>
+            <p class="text-slate-600 dark:text-slate-400 mb-8 max-w-3xl">
+                This diagram shows how the Application Spring Boot is decomposed into components and their interactions.
+            </p>
+            <div class="bg-slate-950 rounded-lg p-4 flex justify-center overflow-hidden border border-slate-800">
+                <img src="/C4-N3.svg" alt="C4 level 3 diagram: components inside the Spring Boot application" class="max-w-full h-auto" loading="lazy" decoding="async">
+            </div>
+        </div>
+    </div>
+</th:block>
 
-<!-- SockJS and Stomp already ship (deferred) from the head fragment. -->
+<th:block th:fragment="page-trailing">
+    <!-- SockJS and Stomp already ship (deferred) from the head fragment. -->
 
-<!-- Common Scripts Fragment -->
-<div th:replace="~{fragments/scripts :: common-scripts}"></div>
 
-<script th:inline="javascript">
-    document.addEventListener('DOMContentLoaded', function() {
-        initThemeToggle();
 
-        var socket = new SockJS('/ws');
-        var stompClient = Stomp.over(socket);
-        stompClient.debug = null;
 
-        stompClient.connect({}, function (frame) {
-            updateWsStatus(true);
-            initSystemNotifications(stompClient);
-        }, function(error) {
-            updateWsStatus(false);
+    <script th:inline="javascript">
+        document.addEventListener('DOMContentLoaded', function() {
+            initThemeToggle();
+
+            var socket = new SockJS('/ws');
+            var stompClient = Stomp.over(socket);
+            stompClient.debug = null;
+
+            stompClient.connect({}, function (frame) {
+                updateWsStatus(true);
+                initSystemNotifications(stompClient);
+            }, function(error) {
+                updateWsStatus(false);
+            });
         });
-    });
-</script>
+    </script>
+</th:block>
+
 </body>
 </html>

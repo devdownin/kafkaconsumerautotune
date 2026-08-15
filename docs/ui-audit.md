@@ -127,10 +127,17 @@ irreversible — now ask for confirmation. Only the Flink metric delete had one 
    misread as a total.
 4. **No CSRF tokens on the POST forms**, because Spring Security is not on the
    classpath. Worth revisiting if authentication is ever added.
-5. **Duplicated page shell.** Every view repeats the same `header`/`main`/footer
-   scaffold. A single `layout` fragment (or `thymeleaf-layout-dialect`) would remove
-   roughly 40 lines per page and stop the chrome from drifting apart again — which is
-   exactly how `simulation` and `flink-metrics` lost their theme toggles.
+5. ~~**Duplicated page shell.**~~ **Resolved.** The eleven views now render through
+   `fragments/layout :: page`, which owns the head, skip link, sidebar, header
+   container, footer and shared scripts. `TemplateAssetsTest` fails if a page
+   rebuilds the shell by hand, which is how `simulation` and `flink-metrics` lost
+   their theme toggles in the first place.
+
+   The shared behaviour scripts moved out of the templates while doing it: the
+   toast logic and the shell behaviours were inlined into **every HTML response**
+   (~9 KB each time). They are now `static/js/notifications.js` and
+   `static/js/app-shell.js`, fetched once and cached. Pages shrank by 19% on
+   average — between 3.5 KB and 10.5 KB of HTML per response.
 
 ## 5. How this was verified
 

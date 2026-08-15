@@ -1,503 +1,523 @@
 <!DOCTYPE html>
-<html class="dark" lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head('Dashboard')}">
-    <title>Dashboard</title>
-</head>
-<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
-<a class="skip-link" href="#main-content">Skip to content</a>
-<!-- Global Notifications -->
-<div th:replace="~{fragments/notifications :: notifications}"></div>
+<html th:replace="~{fragments/layout :: page(
+        'Dashboard',
+        ~{},
+        ~{::page-header},
+        ~{::page-content},
+        ~{::page-trailing})}"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
 
-<div class="flex h-screen overflow-hidden">
-    <!-- Sidebar Navigation -->
-    <div th:replace="~{fragments/sidebar :: sidebar}"></div>
+<th:block th:fragment="page-header">
+    <div class="flex items-center gap-4">
+        <h2 class="text-lg font-bold">Pipeline Overview</h2>
+        <span class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase tracking-wider" data-tooltip="Active data pipeline">
+            <span class="size-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            Live
+        </span>
+    </div>
+    <div class="flex items-center gap-6">
+        <div class="relative hidden lg:block group">
+            <label class="sr-only" for="dashboard-search">Search recent activity</label>
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" aria-hidden="true">search</span>
+            <input id="dashboard-search" class="bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm pl-10 pr-10 py-1.5 w-64 focus:ring-1 focus:ring-primary placeholder:text-slate-500" placeholder="Search by event ID or topic..." type="search"/>
+            <button type="button" id="search-clear" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" aria-label="Clear search">
+                <span class="material-symbols-outlined text-sm" aria-hidden="true">cancel</span>
+            </button>
+        </div>
+        <div class="flex items-center gap-2">
+            <th:block th:replace="~{fragments/header :: actions}"></th:block>
+        </div>
+    </div>
+</th:block>
 
-    <!-- Main Content Area -->
-    <main id="main-content" tabindex="-1" class="flex-1 flex flex-col overflow-hidden">
-        <!-- Top Navbar -->
-        <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
+<th:block th:fragment="page-content">
+    <!-- Dashboard Content -->
+    <div class="flex-1 overflow-y-auto p-8 space-y-6">
+        <!-- Circuit Breaker Alert -->
+        <div id="cb-alert" role="alert" th:class="${'bg-rose-500/10 border border-rose-500/20 text-rose-500 px-6 py-4 rounded-xl flex items-center justify-between ' + (stats.circuitBreakerStatus == 'OPEN' ? '' : 'hidden')}">
             <div class="flex items-center gap-4">
-                <h2 class="text-lg font-bold">Pipeline Overview</h2>
-                <span class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase tracking-wider" data-tooltip="Active data pipeline">
-                    <span class="size-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    Live
-                </span>
-            </div>
-            <div class="flex items-center gap-6">
-                <div class="relative hidden lg:block group">
-                    <label class="sr-only" for="dashboard-search">Search recent activity</label>
-                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" aria-hidden="true">search</span>
-                    <input id="dashboard-search" class="bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm pl-10 pr-10 py-1.5 w-64 focus:ring-1 focus:ring-primary placeholder:text-slate-500" placeholder="Search by event ID or topic..." type="search"/>
-                    <button type="button" id="search-clear" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" aria-label="Clear search">
-                        <span class="material-symbols-outlined text-sm" aria-hidden="true">cancel</span>
-                    </button>
+                <div class="p-2 bg-rose-500/20 rounded-lg">
+                    <span class="material-symbols-outlined animate-pulse" aria-hidden="true">database_off</span>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button type="button" id="theme-toggle" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" aria-label="Toggle theme">
-                        <span id="theme-toggle-dark-icon" class="material-symbols-outlined hidden" aria-hidden="true">dark_mode</span>
-                        <span id="theme-toggle-light-icon" class="material-symbols-outlined hidden" aria-hidden="true">light_mode</span>
-                    </button>
-                    <button type="button" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500" onclick="location.reload()" data-tooltip="Refresh page" aria-label="Refresh page">
-                        <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
-                    </button>
+                <div>
+                    <h4 class="text-sm font-bold uppercase tracking-tight">Database Connectivity Alert</h4>
+                    <p class="text-xs opacity-80">The persistence circuit breaker is OPEN. Processing is currently paused to protect system integrity.</p>
                 </div>
             </div>
-        </header>
-        <!-- Dashboard Content -->
-        <div class="flex-1 overflow-y-auto p-8 space-y-6">
-            <!-- Circuit Breaker Alert -->
-            <div id="cb-alert" role="alert" th:class="${'bg-rose-500/10 border border-rose-500/20 text-rose-500 px-6 py-4 rounded-xl flex items-center justify-between ' + (stats.circuitBreakerStatus == 'OPEN' ? '' : 'hidden')}">
-                <div class="flex items-center gap-4">
-                    <div class="p-2 bg-rose-500/20 rounded-lg">
-                        <span class="material-symbols-outlined animate-pulse" aria-hidden="true">database_off</span>
-                    </div>
-                    <div>
-                        <h4 class="text-sm font-bold uppercase tracking-tight">Database Connectivity Alert</h4>
-                        <p class="text-xs opacity-80">The persistence circuit breaker is OPEN. Processing is currently paused to protect system integrity.</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span class="text-[10px] font-black uppercase px-2 py-1 rounded bg-rose-500 text-white">Action Required</span>
-                </div>
+            <div class="flex items-center gap-2">
+                <span class="text-[10px] font-black uppercase px-2 py-1 rounded bg-rose-500 text-white">Action Required</span>
             </div>
+        </div>
 
-            <!-- Fallback Mode Alert -->
-            <div id="fallback-alert" role="alert" class="bg-amber-500/10 border border-amber-500/20 text-amber-500 px-6 py-4 rounded-xl flex items-center justify-between hidden">
-                <div class="flex items-center gap-4">
-                    <div class="p-2 bg-amber-500/20 rounded-lg">
-                        <span class="material-symbols-outlined animate-spin" aria-hidden="true">sync_problem</span>
-                    </div>
-                    <div>
-                        <h4 class="text-sm font-bold uppercase tracking-tight">Individual Fallback Mode Active</h4>
-                        <p class="text-xs opacity-80">Batch persistence failed. The system is currently retrying records individually to isolate errors.</p>
-                    </div>
+        <!-- Fallback Mode Alert -->
+        <div id="fallback-alert" role="alert" class="bg-amber-500/10 border border-amber-500/20 text-amber-500 px-6 py-4 rounded-xl flex items-center justify-between hidden">
+            <div class="flex items-center gap-4">
+                <div class="p-2 bg-amber-500/20 rounded-lg">
+                    <span class="material-symbols-outlined animate-spin" aria-hidden="true">sync_problem</span>
                 </div>
-                <div class="flex items-center gap-2">
-                    <span class="text-[10px] font-black uppercase px-2 py-1 rounded bg-amber-500 text-white">Degraded Mode</span>
+                <div>
+                    <h4 class="text-sm font-bold uppercase tracking-tight">Individual Fallback Mode Active</h4>
+                    <p class="text-xs opacity-80">Batch persistence failed. The system is currently retrying records individually to isolate errors.</p>
                 </div>
             </div>
+            <div class="flex items-center gap-2">
+                <span class="text-[10px] font-black uppercase px-2 py-1 rounded bg-amber-500 text-white">Degraded Mode</span>
+            </div>
+        </div>
 
-            <!-- Stats Row -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
-                            <span class="material-symbols-outlined">move_to_inbox</span>
-                        </div>
-                        <span class="text-emerald-500 text-xs font-bold">Total</span>
+        <!-- Stats Row -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
+                        <span class="material-symbols-outlined">move_to_inbox</span>
                     </div>
-                    <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Total Processed</p>
-                    <h3 class="text-2xl font-bold mt-1" id="total-processed-count" th:text="${#numbers.formatInteger(stats.totalProcessed, 0, 'WHITESPACE')}">0</h3>
-                    <div class="mt-4 w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
-                        <div class="bg-blue-500 h-full w-full"></div>
-                    </div>
+                    <span class="text-emerald-500 text-xs font-bold">Total</span>
                 </div>
-                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg">
-                            <span class="material-symbols-outlined">check_circle</span>
-                        </div>
-                        <span class="text-emerald-500 text-xs font-bold">Overall</span>
-                    </div>
-                    <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Success Rate</p>
-                    <h3 class="text-2xl font-bold mt-1" id="success-rate" th:text="${stats.successRate + '%'}">99.98%</h3>
-                    <div class="mt-4 w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
-                        <div class="bg-emerald-500 h-full" id="success-rate-bar" th:style="'width: ' + ${stats.successRate} + '%'"></div>
-                    </div>
-                </div>
-                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="p-2 bg-rose-500/10 text-rose-500 rounded-lg">
-                            <span class="material-symbols-outlined">warning</span>
-                        </div>
-                        <span class="flex items-center gap-1 text-rose-500 text-xs font-bold" id="active-errors-tag">
-                            <span id="dlt-pulse-dot" class="size-1.5 rounded-full bg-rose-500 hidden animate-ping"></span>
-                            Active
-                        </span>
-                    </div>
-                    <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">DLT Messages</p>
-                    <h3 class="text-2xl font-bold mt-1" id="dlt-count" th:text="${stats.dltCount}">142</h3>
-                    <div class="mt-4 w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
-                        <div class="bg-rose-500 h-full w-[15%]"></div>
-                    </div>
-                </div>
-                <div class="bg-white dark:bg-slate-900 border border-amber-500/30 dark:border-amber-500/20 p-6 rounded-xl shadow-sm ring-1 ring-amber-500/10">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
-                            <span class="material-symbols-outlined">hourglass_top</span>
-                        </div>
-                        <span class="text-amber-500 text-xs font-bold" id="lag-status-tag">PID Tuned</span>
-                    </div>
-                    <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Consumer Lag</p>
-                    <h3 class="text-2xl font-bold mt-1"><span id="consumer-lag" th:text="${#numbers.formatInteger(stats.consumerLag, 0, 'WHITESPACE')}">8,421</span></h3>
-                    <div class="mt-4 flex flex-col gap-1 text-[10px] font-bold text-slate-400 uppercase">
-                        <div class="flex justify-between">
-                            <span>Max Poll: <span id="max-poll-val" class="text-primary" th:text="${stats.maxPollRecords}">100</span></span>
-                            <span>Threads: <span id="concurrency-val" class="text-primary" th:text="${stats.concurrency}">6</span></span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Fetch Wait: <span id="fetch-wait-val" class="text-primary" th:text="${stats.fetchMaxWaitMs + 'ms'}">500ms</span></span>
-                        </div>
-                    </div>
+                <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Total Processed</p>
+                <h3 class="text-2xl font-bold mt-1" id="total-processed-count" th:text="${#numbers.formatInteger(stats.totalProcessed, 0, 'WHITESPACE')}">0</h3>
+                <div class="mt-4 w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
+                    <div class="bg-blue-500 h-full w-full"></div>
                 </div>
             </div>
-            <!-- Charts Grid -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Consumption Throughput -->
-                <div class="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
-                    <div class="flex items-center justify-between mb-8">
-                        <div>
-                            <h4 class="text-base font-bold">Consumption Throughput</h4>
-                            <p class="text-xs text-slate-500">Real-time messages processed per second (Msg/s)</p>
-                        </div>
-                        <div class="flex items-center gap-2">
-                             <label class="text-[10px] font-bold text-slate-400 uppercase" for="throughput-duration">Duration:</label>
-                             <select id="throughput-duration" onchange="updateThroughputDuration(this.value)" class="bg-slate-50 dark:bg-slate-800 border-none rounded text-xs py-1 px-3 focus:ring-1 focus:ring-primary cursor-pointer">
-                                <option value="10m">Last 10 minutes</option>
-                                <option value="24h">Last 24 hours</option>
-                            </select>
-                        </div>
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg">
+                        <span class="material-symbols-outlined">check_circle</span>
                     </div>
-                    <div class="h-[300px] w-full" id="throughput-chart"></div>
+                    <span class="text-emerald-500 text-xs font-bold">Overall</span>
                 </div>
-                <!-- Status Distribution -->
-                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex flex-col">
-                    <div class="mb-6">
-                        <h4 class="text-base font-bold">Message Status</h4>
-                        <p class="text-xs text-slate-500">Success vs Error Distribution</p>
-                    </div>
-                    <div class="flex-1 flex flex-col items-center justify-center gap-4">
-                        <div id="status-donut-chart" class="w-full"></div>
-                        <div class="w-full space-y-3">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-2">
-                                    <div class="size-2 rounded-full bg-primary"></div>
-                                    <span class="text-sm text-slate-500">Success</span>
-                                </div>
-                                <span class="text-sm font-bold" id="donut-success-count" th:text="${#numbers.formatInteger(stats.successCount, 0, 'WHITESPACE')}">1.2M</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-2">
-                                    <div class="size-2 rounded-full bg-rose-500"></div>
-                                    <span class="text-sm text-slate-500">DLT / Errors</span>
-                                </div>
-                                <span class="text-sm font-bold" id="donut-error-count" th:text="${#numbers.formatInteger(stats.errorCount, 0, 'WHITESPACE')}">142</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-2">
-                                    <div class="size-2 rounded-full bg-amber-500"></div>
-                                    <span class="text-sm text-slate-500">Retries</span>
-                                </div>
-                                <span class="text-sm font-bold" id="donut-retry-count" th:text="${#numbers.formatInteger(stats.retryCount, 0, 'WHITESPACE')}">2.4k</span>
-                            </div>
-                        </div>
-                    </div>
+                <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Success Rate</p>
+                <h3 class="text-2xl font-bold mt-1" id="success-rate" th:text="${stats.successRate + '%'}">99.98%</h3>
+                <div class="mt-4 w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
+                    <div class="bg-emerald-500 h-full" id="success-rate-bar" th:style="'width: ' + ${stats.successRate} + '%'"></div>
                 </div>
             </div>
-            <!-- Bottom Section: Latest Activity -->
-            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
-                <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                    <div>
-                        <h4 class="text-base font-bold">Recent Pipeline Activity</h4>
-                        <p class="text-xs text-slate-500">Latest generalized events processed into Oracle DB</p>
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-2 bg-rose-500/10 text-rose-500 rounded-lg">
+                        <span class="material-symbols-outlined">warning</span>
                     </div>
+                    <span class="flex items-center gap-1 text-rose-500 text-xs font-bold" id="active-errors-tag">
+                        <span id="dlt-pulse-dot" class="size-1.5 rounded-full bg-rose-500 hidden animate-ping"></span>
+                        Active
+                    </span>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead class="bg-slate-50 dark:bg-slate-800/50">
-                        <tr>
-                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Status</th>
-                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Topic</th>
-                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Event ID / Error</th>
-                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Offset</th>
-                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Partition</th>
-                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Oracle ID</th>
-                            <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-right">Timestamp</th>
-                        </tr>
-                        </thead>
-                        <tbody id="events-table-body" class="divide-y divide-slate-100 dark:divide-slate-800">
-                        <tr id="empty-state" th:if="${#lists.isEmpty(recentEvents)}">
-                            <td colspan="7" class="px-6 py-12 text-center text-slate-500">
-                                <div class="flex flex-col items-center gap-2">
-                                    <span class="material-symbols-outlined text-4xl opacity-20">inventory_2</span>
-                                    <p class="text-sm font-medium">No events processed yet</p>
-                                    <p class="text-[10px] opacity-60">Real-time events will appear here as they are consumed</p>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr th:each="event : ${recentEvents}" class="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                            <td class="px-6 py-4">
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">Success</span>
-                            </td>
-                            <td class="px-6 py-4 text-sm font-medium" th:text="${event.kafkaTopic}">topic.name</td>
-                            <td class="px-6 py-4 text-sm font-bold text-primary" th:text="${event.eventId}">EVT-123</td>
-                            <td class="px-6 py-4 text-sm font-mono text-slate-500" th:text="${event.kafkaOffset != null ? event.kafkaOffset : '-'}">-</td>
-                            <td class="px-6 py-4 text-sm font-medium" th:text="${event.kafkaPartition != null ? event.kafkaPartition : '-'}">-</td>
-                            <td class="px-6 py-4 text-sm font-mono text-slate-500" th:text="${event.id}">1</td>
-                            <td class="px-6 py-4 text-sm text-slate-500 text-right" th:text="${#temporals.format(event.createdAt, 'yyyy-MM-dd HH:mm:ss')}">2023-10-24 14:12:05</td>
-                        </tr>
-                        </tbody>
-                    </table>
+                <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">DLT Messages</p>
+                <h3 class="text-2xl font-bold mt-1" id="dlt-count" th:text="${stats.dltCount}">142</h3>
+                <div class="mt-4 w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden">
+                    <div class="bg-rose-500 h-full w-[15%]"></div>
+                </div>
+            </div>
+            <div class="bg-white dark:bg-slate-900 border border-amber-500/30 dark:border-amber-500/20 p-6 rounded-xl shadow-sm ring-1 ring-amber-500/10">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
+                        <span class="material-symbols-outlined">hourglass_top</span>
+                    </div>
+                    <span class="text-amber-500 text-xs font-bold" id="lag-status-tag">PID Tuned</span>
+                </div>
+                <p class="text-slate-500 text-xs font-medium uppercase tracking-wider">Consumer Lag</p>
+                <h3 class="text-2xl font-bold mt-1"><span id="consumer-lag" th:text="${#numbers.formatInteger(stats.consumerLag, 0, 'WHITESPACE')}">8,421</span></h3>
+                <div class="mt-4 flex flex-col gap-1 text-[10px] font-bold text-slate-400 uppercase">
+                    <div class="flex justify-between">
+                        <span>Max Poll: <span id="max-poll-val" class="text-primary" th:text="${stats.maxPollRecords}">100</span></span>
+                        <span>Threads: <span id="concurrency-val" class="text-primary" th:text="${stats.concurrency}">6</span></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Fetch Wait: <span id="fetch-wait-val" class="text-primary" th:text="${stats.fetchMaxWaitMs + 'ms'}">500ms</span></span>
+                    </div>
                 </div>
             </div>
         </div>
-        <!-- Footer Status Bar -->
-        <div th:replace="~{fragments/sidebar :: footer-status}"></div>
-    </main>
-</div>
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Consumption Throughput -->
+            <div class="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                <div class="flex items-center justify-between mb-8">
+                    <div>
+                        <h4 class="text-base font-bold">Consumption Throughput</h4>
+                        <p class="text-xs text-slate-500">Real-time messages processed per second (Msg/s)</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                         <label class="text-[10px] font-bold text-slate-400 uppercase" for="throughput-duration">Duration:</label>
+                         <select id="throughput-duration" onchange="updateThroughputDuration(this.value)" class="bg-slate-50 dark:bg-slate-800 border-none rounded text-xs py-1 px-3 focus:ring-1 focus:ring-primary cursor-pointer">
+                            <option value="10m">Last 10 minutes</option>
+                            <option value="24h">Last 24 hours</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="h-[300px] w-full" id="throughput-chart"></div>
+            </div>
+            <!-- Status Distribution -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex flex-col">
+                <div class="mb-6">
+                    <h4 class="text-base font-bold">Message Status</h4>
+                    <p class="text-xs text-slate-500">Success vs Error Distribution</p>
+                </div>
+                <div class="flex-1 flex flex-col items-center justify-center gap-4">
+                    <div id="status-donut-chart" class="w-full"></div>
+                    <div class="w-full space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <div class="size-2 rounded-full bg-primary"></div>
+                                <span class="text-sm text-slate-500">Success</span>
+                            </div>
+                            <span class="text-sm font-bold" id="donut-success-count" th:text="${#numbers.formatInteger(stats.successCount, 0, 'WHITESPACE')}">1.2M</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <div class="size-2 rounded-full bg-rose-500"></div>
+                                <span class="text-sm text-slate-500">DLT / Errors</span>
+                            </div>
+                            <span class="text-sm font-bold" id="donut-error-count" th:text="${#numbers.formatInteger(stats.errorCount, 0, 'WHITESPACE')}">142</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <div class="size-2 rounded-full bg-amber-500"></div>
+                                <span class="text-sm text-slate-500">Retries</span>
+                            </div>
+                            <span class="text-sm font-bold" id="donut-retry-count" th:text="${#numbers.formatInteger(stats.retryCount, 0, 'WHITESPACE')}">2.4k</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Bottom Section: Latest Activity -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+            <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                <div>
+                    <h4 class="text-base font-bold">Recent Pipeline Activity</h4>
+                    <p class="text-xs text-slate-500">Latest generalized events processed into Oracle DB</p>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-50 dark:bg-slate-800/50">
+                    <tr>
+                        <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Status</th>
+                        <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Topic</th>
+                        <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Event ID / Error</th>
+                        <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Offset</th>
+                        <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Partition</th>
+                        <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Oracle ID</th>
+                        <th scope="col" class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase text-right">Timestamp</th>
+                    </tr>
+                    </thead>
+                    <tbody id="events-table-body" class="divide-y divide-slate-100 dark:divide-slate-800">
+                    <tr id="empty-state" th:if="${#lists.isEmpty(recentEvents)}">
+                        <td colspan="7" class="px-6 py-12 text-center text-slate-500">
+                            <div class="flex flex-col items-center gap-2">
+                                <span class="material-symbols-outlined text-4xl opacity-20">inventory_2</span>
+                                <p class="text-sm font-medium">No events processed yet</p>
+                                <p class="text-[10px] opacity-60">Real-time events will appear here as they are consumed</p>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr th:each="event : ${recentEvents}" class="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">Success</span>
+                        </td>
+                        <td class="px-6 py-4 text-sm font-medium" th:text="${event.kafkaTopic}">topic.name</td>
+                        <td class="px-6 py-4 text-sm font-bold text-primary" th:text="${event.eventId}">EVT-123</td>
+                        <td class="px-6 py-4 text-sm font-mono text-slate-500" th:text="${event.kafkaOffset != null ? event.kafkaOffset : '-'}">-</td>
+                        <td class="px-6 py-4 text-sm font-medium" th:text="${event.kafkaPartition != null ? event.kafkaPartition : '-'}">-</td>
+                        <td class="px-6 py-4 text-sm font-mono text-slate-500" th:text="${event.id}">1</td>
+                        <td class="px-6 py-4 text-sm text-slate-500 text-right" th:text="${#temporals.format(event.createdAt, 'yyyy-MM-dd HH:mm:ss')}">2023-10-24 14:12:05</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</th:block>
 
-<!-- Common Scripts Fragment -->
-<div th:replace="~{fragments/scripts :: common-scripts}"></div>
+<th:block th:fragment="page-trailing">
+    <script th:inline="javascript">
+        var initialStats = /*[[${stats}]]*/ {};
 
-<script th:inline="javascript">
-    var initialStats = /*[[${stats}]]*/ {};
+        // WebSocket setup. Runs on DOMContentLoaded because SockJS/Stomp are deferred.
+        function initWebSocket() {
+            var socket = new SockJS('/ws');
+            var stompClient = Stomp.over(socket);
+            stompClient.debug = null;
 
-    // WebSocket setup. Runs on DOMContentLoaded because SockJS/Stomp are deferred.
-    function initWebSocket() {
-        var socket = new SockJS('/ws');
-        var stompClient = Stomp.over(socket);
-        stompClient.debug = null;
+            stompClient.connect({}, function (frame) {
+                updateWsStatus(true);
+                initSystemNotifications(stompClient);
 
-        stompClient.connect({}, function (frame) {
-            updateWsStatus(true);
-            initSystemNotifications(stompClient);
-
-            stompClient.subscribe('/topic/events', function (eventMessage) {
-                var events = JSON.parse(eventMessage.body);
-                updateDashboard(events);
+                stompClient.subscribe('/topic/events', function (eventMessage) {
+                    var events = JSON.parse(eventMessage.body);
+                    updateDashboard(events);
+                });
+                stompClient.subscribe('/topic/stats', function (statsMessage) {
+                    var stats = JSON.parse(statsMessage.body);
+                    updateStats(stats);
+                });
+                stompClient.subscribe('/topic/dlt', function (dltMessage) {
+                    var dltEvent = JSON.parse(dltMessage.body);
+                    updateDashboardWithDlt(dltEvent);
+                    pulseDltCounter();
+                });
+            }, function(error) {
+                updateWsStatus(false);
             });
-            stompClient.subscribe('/topic/stats', function (statsMessage) {
-                var stats = JSON.parse(statsMessage.body);
-                updateStats(stats);
-            });
-            stompClient.subscribe('/topic/dlt', function (dltMessage) {
-                var dltEvent = JSON.parse(dltMessage.body);
-                updateDashboardWithDlt(dltEvent);
-                pulseDltCounter();
-            });
-        }, function(error) {
-            updateWsStatus(false);
-        });
-    }
+        }
 
-    var throughputChart, donutChart;
-    var currentDuration = '10m';
+        var throughputChart, donutChart;
+        var currentDuration = '10m';
 
-    function initCharts() {
-        const is24h = currentDuration === '24h';
-        const timestamps = is24h ? [] : (initialStats.timestamps || []);
+        function initCharts() {
+            const is24h = currentDuration === '24h';
+            const timestamps = is24h ? [] : (initialStats.timestamps || []);
 
-        var throughputOptions = {
-            series: [
-                {
-                    name: 'Success (Msg/s)',
+            var throughputOptions = {
+                series: [
+                    {
+                        name: 'Success (Msg/s)',
+                        type: 'bar',
+                        data: is24h ? (initialStats.throughput24h || []) : (initialStats.successThroughput || [])
+                    },
+                    {
+                        name: 'DLT (Err/s)',
+                        type: 'bar',
+                        data: is24h ? [] : (initialStats.errorThroughput || [])
+                    },
+                    {
+                        name: 'Retries (Msg/s)',
+                        type: 'bar',
+                        data: is24h ? [] : (initialStats.retryThroughput || [])
+                    }
+                ],
+                chart: {
+                    height: 300,
                     type: 'bar',
-                    data: is24h ? (initialStats.throughput24h || []) : (initialStats.successThroughput || [])
+                    stacked: true,
+                    toolbar: { show: false },
+                    animations: { enabled: true, easing: 'linear', dynamicAnimation: { speed: 1000 } }
                 },
-                {
-                    name: 'DLT (Err/s)',
-                    type: 'bar',
-                    data: is24h ? [] : (initialStats.errorThroughput || [])
-                },
-                {
-                    name: 'Retries (Msg/s)',
-                    type: 'bar',
-                    data: is24h ? [] : (initialStats.retryThroughput || [])
-                }
-            ],
-            chart: {
-                height: 300,
-                type: 'bar',
-                stacked: true,
-                toolbar: { show: false },
-                animations: { enabled: true, easing: 'linear', dynamicAnimation: { speed: 1000 } }
-            },
-            plotOptions: {
-                bar: {
-                    columnWidth: '95%',
-                    borderRadius: 2
-                }
-            },
-            dataLabels: { enabled: false },
-            stroke: {
-                curve: 'smooth',
-                width: [0, 0, 0],
-                dashArray: [0, 0, 0, 0]
-            },
-            colors: ['#135bec', '#f43f5e', '#f59e0b'],
-            fill: {
-                opacity: [0.85, 0.85, 0.85]
-            },
-            grid: { borderColor: '#1e293b', strokeDashArray: 4 },
-            xaxis: {
-                type: 'datetime',
-                categories: timestamps,
-                labels: {
-                    show: !is24h,
-                    style: { colors: '#94a3b8', fontSize: '10px' },
-                    datetimeUTC: false,
-                    format: 'HH:mm:ss'
-                },
-                axisBorder: { show: false },
-                axisTicks: { show: false }
-            },
-            yaxis: [
-                {
-                    seriesName: 'Success (Msg/s)',
-                    title: { text: 'Throughput (Msg/s)', style: { color: '#135bec', fontWeight: 600 } },
-                    labels: {
-                        style: { colors: '#94a3b8' },
-                        formatter: function(val) { return val.toFixed(1); }
+                plotOptions: {
+                    bar: {
+                        columnWidth: '95%',
+                        borderRadius: 2
                     }
                 },
-                {
-                    seriesName: 'Success (Msg/s)',
-                    show: false
+                dataLabels: { enabled: false },
+                stroke: {
+                    curve: 'smooth',
+                    width: [0, 0, 0],
+                    dashArray: [0, 0, 0, 0]
                 },
-                {
-                    seriesName: 'Success (Msg/s)',
-                    show: false
-                }
-            ],
-            tooltip: {
-                theme: 'dark',
-                x: { format: 'HH:mm:ss' }
-            },
-            legend: {
-                show: true,
-                position: 'top',
-                horizontalAlign: 'right',
-                labels: { colors: '#94a3b8' },
-                itemMargin: { horizontal: 10, vertical: 5 }
-            }
-        };
-
-        throughputChart = new ApexCharts(document.querySelector("#throughput-chart"), throughputOptions);
-        throughputChart.render();
-
-        var donutOptions = {
-            series: [initialStats.successCount || 0, initialStats.errorCount || 0, initialStats.retryCount || 0],
-            chart: { type: 'donut', height: 250 },
-            labels: ['Success', 'DLT / Errors', 'Retries'],
-            colors: ['#135bec', '#f43f5e', '#f59e0b'],
-            plotOptions: {
-                pie: {
-                    donut: {
-                        size: '75%',
+                colors: ['#135bec', '#f43f5e', '#f59e0b'],
+                fill: {
+                    opacity: [0.85, 0.85, 0.85]
+                },
+                grid: { borderColor: '#1e293b', strokeDashArray: 4 },
+                xaxis: {
+                    type: 'datetime',
+                    categories: timestamps,
+                    labels: {
+                        show: !is24h,
+                        style: { colors: '#94a3b8', fontSize: '10px' },
+                        datetimeUTC: false,
+                        format: 'HH:mm:ss'
+                    },
+                    axisBorder: { show: false },
+                    axisTicks: { show: false }
+                },
+                yaxis: [
+                    {
+                        seriesName: 'Success (Msg/s)',
+                        title: { text: 'Throughput (Msg/s)', style: { color: '#135bec', fontWeight: 600 } },
                         labels: {
-                            show: true,
-                            name: { show: true, color: '#94a3b8' },
-                            value: { show: true, color: '#f8fafc' },
-                            total: { show: true, label: 'Success Rate', formatter: function() { return (initialStats.successRate || 0).toFixed(2) + '%' } }
+                            style: { colors: '#94a3b8' },
+                            formatter: function(val) { return val.toFixed(1); }
+                        }
+                    },
+                    {
+                        seriesName: 'Success (Msg/s)',
+                        show: false
+                    },
+                    {
+                        seriesName: 'Success (Msg/s)',
+                        show: false
+                    }
+                ],
+                tooltip: {
+                    theme: 'dark',
+                    x: { format: 'HH:mm:ss' }
+                },
+                legend: {
+                    show: true,
+                    position: 'top',
+                    horizontalAlign: 'right',
+                    labels: { colors: '#94a3b8' },
+                    itemMargin: { horizontal: 10, vertical: 5 }
+                }
+            };
+
+            throughputChart = new ApexCharts(document.querySelector("#throughput-chart"), throughputOptions);
+            throughputChart.render();
+
+            var donutOptions = {
+                series: [initialStats.successCount || 0, initialStats.errorCount || 0, initialStats.retryCount || 0],
+                chart: { type: 'donut', height: 250 },
+                labels: ['Success', 'DLT / Errors', 'Retries'],
+                colors: ['#135bec', '#f43f5e', '#f59e0b'],
+                plotOptions: {
+                    pie: {
+                        donut: {
+                            size: '75%',
+                            labels: {
+                                show: true,
+                                name: { show: true, color: '#94a3b8' },
+                                value: { show: true, color: '#f8fafc' },
+                                total: { show: true, label: 'Success Rate', formatter: function() { return (initialStats.successRate || 0).toFixed(2) + '%' } }
+                            }
                         }
                     }
-                }
-            },
-            dataLabels: { enabled: false },
-            legend: { show: false },
-            stroke: { show: false },
-            tooltip: { theme: 'dark' }
-        };
+                },
+                dataLabels: { enabled: false },
+                legend: { show: false },
+                stroke: { show: false },
+                tooltip: { theme: 'dark' }
+            };
 
-        donutChart = new ApexCharts(document.querySelector("#status-donut-chart"), donutOptions);
-        donutChart.render();
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        initCharts();
-        initThemeToggle();
-        initSearch();
-        initWebSocket();
-    });
-
-    function updateThroughputDuration(duration) {
-        currentDuration = duration;
-        if (throughputChart) {
-            const is24h = duration === '24h';
-            throughputChart.updateOptions({
-                xaxis: { labels: { show: !is24h } }
-            });
-            throughputChart.updateSeries([
-                { data: is24h ? initialStats.throughput24h : initialStats.successThroughput },
-                { data: is24h ? [] : initialStats.errorThroughput },
-                { data: is24h ? [] : initialStats.retryThroughput }
-            ]);
+            donutChart = new ApexCharts(document.querySelector("#status-donut-chart"), donutOptions);
+            donutChart.render();
         }
-    }
 
+        document.addEventListener('DOMContentLoaded', function() {
+            initCharts();
+            initThemeToggle();
+            initSearch();
+            initWebSocket();
+        });
 
-    function setText(id, value) {
-        const elem = document.getElementById(id);
-        if (elem) elem.innerText = value;
-    }
-
-    function formatCount(value) {
-        return (value == null ? 0 : value).toLocaleString('en-US');
-    }
-
-    function updateStats(stats) {
-        initialStats = stats;
-
-        // Update Circuit Breaker Alert visibility
-        const cbAlert = document.getElementById('cb-alert');
-        if (cbAlert) {
-            if (stats.circuitBreakerStatus === 'OPEN') {
-                cbAlert.classList.remove('hidden');
-            } else {
-                cbAlert.classList.add('hidden');
+        function updateThroughputDuration(duration) {
+            currentDuration = duration;
+            if (throughputChart) {
+                const is24h = duration === '24h';
+                throughputChart.updateOptions({
+                    xaxis: { labels: { show: !is24h } }
+                });
+                throughputChart.updateSeries([
+                    { data: is24h ? initialStats.throughput24h : initialStats.successThroughput },
+                    { data: is24h ? [] : initialStats.errorThroughput },
+                    { data: is24h ? [] : initialStats.retryThroughput }
+                ]);
             }
         }
 
-        const successRate = stats.successRate || 0;
-        setText('total-processed-count', formatCount(stats.totalProcessed));
-        setText('success-rate', successRate.toFixed(2) + '%');
-        const rateBar = document.getElementById('success-rate-bar');
-        if (rateBar) rateBar.style.width = successRate + '%';
-        setText('dlt-count', formatCount(stats.dltCount));
-        setText('consumer-lag', formatCount(stats.consumerLag));
-        // The PID-tuned values are shown on the lag card but were never refreshed.
-        if (stats.maxPollRecords != null) setText('max-poll-val', stats.maxPollRecords);
-        if (stats.concurrency != null) setText('concurrency-val', stats.concurrency);
-        if (stats.fetchMaxWaitMs != null) setText('fetch-wait-val', stats.fetchMaxWaitMs + 'ms');
 
-        if (throughputChart) {
-            const is24h = currentDuration === '24h';
-            // Single updateOptions call: passing the series along with the axis
-            // avoids the second full re-render updateSeries would trigger.
-            throughputChart.updateOptions({
-                xaxis: { categories: is24h ? [] : stats.timestamps },
-                series: [
-                    { name: 'Success (Msg/s)', data: is24h ? stats.throughput24h : stats.successThroughput },
-                    { name: 'DLT (Err/s)', data: is24h ? [] : stats.errorThroughput },
-                    { name: 'Retries (Msg/s)', data: is24h ? [] : stats.retryThroughput }
-                ]
-            }, false, false);
+        function setText(id, value) {
+            const elem = document.getElementById(id);
+            if (elem) elem.innerText = value;
         }
-        if (donutChart) {
-            donutChart.updateSeries([stats.successCount, stats.errorCount, stats.retryCount]);
+
+        function formatCount(value) {
+            return (value == null ? 0 : value).toLocaleString('en-US');
         }
-        setText('donut-success-count', formatCount(stats.successCount));
-        setText('donut-error-count', formatCount(stats.errorCount));
-        setText('donut-retry-count', formatCount(stats.retryCount));
-    }
 
-    function updateDashboard(events) {
-        var tableBody = document.getElementById('events-table-body');
-        var emptyState = document.getElementById('empty-state');
-        if (emptyState && events.length > 0) emptyState.style.display = 'none';
+        function updateStats(stats) {
+            initialStats = stats;
 
-        events.forEach(function(event) {
+            // Update Circuit Breaker Alert visibility
+            const cbAlert = document.getElementById('cb-alert');
+            if (cbAlert) {
+                if (stats.circuitBreakerStatus === 'OPEN') {
+                    cbAlert.classList.remove('hidden');
+                } else {
+                    cbAlert.classList.add('hidden');
+                }
+            }
+
+            const successRate = stats.successRate || 0;
+            setText('total-processed-count', formatCount(stats.totalProcessed));
+            setText('success-rate', successRate.toFixed(2) + '%');
+            const rateBar = document.getElementById('success-rate-bar');
+            if (rateBar) rateBar.style.width = successRate + '%';
+            setText('dlt-count', formatCount(stats.dltCount));
+            setText('consumer-lag', formatCount(stats.consumerLag));
+            // The PID-tuned values are shown on the lag card but were never refreshed.
+            if (stats.maxPollRecords != null) setText('max-poll-val', stats.maxPollRecords);
+            if (stats.concurrency != null) setText('concurrency-val', stats.concurrency);
+            if (stats.fetchMaxWaitMs != null) setText('fetch-wait-val', stats.fetchMaxWaitMs + 'ms');
+
+            if (throughputChart) {
+                const is24h = currentDuration === '24h';
+                // Single updateOptions call: passing the series along with the axis
+                // avoids the second full re-render updateSeries would trigger.
+                throughputChart.updateOptions({
+                    xaxis: { categories: is24h ? [] : stats.timestamps },
+                    series: [
+                        { name: 'Success (Msg/s)', data: is24h ? stats.throughput24h : stats.successThroughput },
+                        { name: 'DLT (Err/s)', data: is24h ? [] : stats.errorThroughput },
+                        { name: 'Retries (Msg/s)', data: is24h ? [] : stats.retryThroughput }
+                    ]
+                }, false, false);
+            }
+            if (donutChart) {
+                donutChart.updateSeries([stats.successCount, stats.errorCount, stats.retryCount]);
+            }
+            setText('donut-success-count', formatCount(stats.successCount));
+            setText('donut-error-count', formatCount(stats.errorCount));
+            setText('donut-retry-count', formatCount(stats.retryCount));
+        }
+
+        function updateDashboard(events) {
+            var tableBody = document.getElementById('events-table-body');
+            var emptyState = document.getElementById('empty-state');
+            if (emptyState && events.length > 0) emptyState.style.display = 'none';
+
+            events.forEach(function(event) {
+                var row = document.createElement('tr');
+                row.className = 'hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors animate-pulse';
+                var date = new Date(event.createdAt);
+                var formattedDate = date.toISOString().replace('T', ' ').substring(0, 19);
+
+                const cells = [
+                    { html: '<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">Success</span>', class: 'px-6 py-4' },
+                    { text: event.kafkaTopic || '-', class: 'px-6 py-4 text-sm font-medium' },
+                    { text: event.eventId, class: 'px-6 py-4 text-sm font-bold text-primary' },
+                    { text: event.kafkaOffset != null ? event.kafkaOffset : '-', class: 'px-6 py-4 text-sm font-mono text-slate-500' },
+                    { text: event.kafkaPartition != null ? event.kafkaPartition : '-', class: 'px-6 py-4 text-sm font-medium' },
+                    { text: event.id, class: 'px-6 py-4 text-sm font-mono text-slate-500' },
+                    { text: formattedDate, class: 'px-6 py-4 text-sm text-slate-500 text-right' }
+                ];
+
+                cells.forEach(c => {
+                    const td = document.createElement('td');
+                    td.className = c.class;
+                    if (c.html) td.innerHTML = c.html;
+                    else td.textContent = c.text;
+                    row.appendChild(td);
+                });
+
+                if (tableBody.firstChild) tableBody.insertBefore(row, tableBody.firstChild);
+                else tableBody.appendChild(row);
+                applyFilterToRow(row);
+                setTimeout(function() { row.classList.remove('animate-pulse'); }, 2000);
+                if (tableBody.children.length > 15) tableBody.removeChild(tableBody.lastChild);
+            });
+        }
+
+        function updateDashboardWithDlt(event) {
+            var tableBody = document.getElementById('events-table-body');
+            var emptyState = document.getElementById('empty-state');
+            if (emptyState) emptyState.style.display = 'none';
+
             var row = document.createElement('tr');
-            row.className = 'hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors animate-pulse';
-            var date = new Date(event.createdAt);
+            row.className = 'bg-rose-500/5 hover:bg-rose-500/10 transition-colors animate-pulse';
+            var date = new Date(event.dhm);
             var formattedDate = date.toISOString().replace('T', ' ').substring(0, 19);
 
             const cells = [
-                { html: '<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">Success</span>', class: 'px-6 py-4' },
-                { text: event.kafkaTopic || '-', class: 'px-6 py-4 text-sm font-medium' },
-                { text: event.eventId, class: 'px-6 py-4 text-sm font-bold text-primary' },
-                { text: event.kafkaOffset != null ? event.kafkaOffset : '-', class: 'px-6 py-4 text-sm font-mono text-slate-500' },
-                { text: event.kafkaPartition != null ? event.kafkaPartition : '-', class: 'px-6 py-4 text-sm font-medium' },
+                { html: '<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-500/10 text-rose-500 border border-rose-500/20">DLT</span>', class: 'px-6 py-4' },
+                { text: event.originalTopic || '-', class: 'px-6 py-4 text-sm font-medium' },
+                { text: event.errorMessage, class: 'px-6 py-4 text-sm font-bold text-rose-500 truncate max-w-[200px]', title: event.errorMessage },
+                { text: event.originalOffset != null ? event.originalOffset : '-', class: 'px-6 py-4 text-sm font-mono text-slate-500' },
+                { text: event.originalPartition != null ? event.originalPartition : '-', class: 'px-6 py-4 text-sm font-medium' },
                 { text: event.id, class: 'px-6 py-4 text-sm font-mono text-slate-500' },
                 { text: formattedDate, class: 'px-6 py-4 text-sm text-slate-500 text-right' }
             ];
@@ -507,119 +527,85 @@
                 td.className = c.class;
                 if (c.html) td.innerHTML = c.html;
                 else td.textContent = c.text;
+                if (c.title) td.title = c.title;
                 row.appendChild(td);
             });
 
             if (tableBody.firstChild) tableBody.insertBefore(row, tableBody.firstChild);
             else tableBody.appendChild(row);
             applyFilterToRow(row);
+
             setTimeout(function() { row.classList.remove('animate-pulse'); }, 2000);
             if (tableBody.children.length > 15) tableBody.removeChild(tableBody.lastChild);
-        });
-    }
-
-    function updateDashboardWithDlt(event) {
-        var tableBody = document.getElementById('events-table-body');
-        var emptyState = document.getElementById('empty-state');
-        if (emptyState) emptyState.style.display = 'none';
-
-        var row = document.createElement('tr');
-        row.className = 'bg-rose-500/5 hover:bg-rose-500/10 transition-colors animate-pulse';
-        var date = new Date(event.dhm);
-        var formattedDate = date.toISOString().replace('T', ' ').substring(0, 19);
-
-        const cells = [
-            { html: '<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-500/10 text-rose-500 border border-rose-500/20">DLT</span>', class: 'px-6 py-4' },
-            { text: event.originalTopic || '-', class: 'px-6 py-4 text-sm font-medium' },
-            { text: event.errorMessage, class: 'px-6 py-4 text-sm font-bold text-rose-500 truncate max-w-[200px]', title: event.errorMessage },
-            { text: event.originalOffset != null ? event.originalOffset : '-', class: 'px-6 py-4 text-sm font-mono text-slate-500' },
-            { text: event.originalPartition != null ? event.originalPartition : '-', class: 'px-6 py-4 text-sm font-medium' },
-            { text: event.id, class: 'px-6 py-4 text-sm font-mono text-slate-500' },
-            { text: formattedDate, class: 'px-6 py-4 text-sm text-slate-500 text-right' }
-        ];
-
-        cells.forEach(c => {
-            const td = document.createElement('td');
-            td.className = c.class;
-            if (c.html) td.innerHTML = c.html;
-            else td.textContent = c.text;
-            if (c.title) td.title = c.title;
-            row.appendChild(td);
-        });
-
-        if (tableBody.firstChild) tableBody.insertBefore(row, tableBody.firstChild);
-        else tableBody.appendChild(row);
-        applyFilterToRow(row);
-
-        setTimeout(function() { row.classList.remove('animate-pulse'); }, 2000);
-        if (tableBody.children.length > 15) tableBody.removeChild(tableBody.lastChild);
-    }
-
-    function pulseDltCounter() {
-        const counter = document.getElementById('dlt-count');
-        const dot = document.getElementById('dlt-pulse-dot');
-        if (counter) {
-            counter.classList.add('text-rose-500', 'scale-110', 'transition-transform');
-            if (dot) dot.classList.remove('hidden');
-            setTimeout(() => {
-                counter.classList.remove('scale-110');
-                if (dot) setTimeout(() => dot.classList.add('hidden'), 5000);
-            }, 200);
         }
-    }
 
-    var currentQuery = '';
-
-    /*
-     * Rows cache their searchable text in a data attribute. The previous version
-     * read row.innerText on every keystroke, which forces a synchronous layout
-     * per row; textContent + caching keeps filtering off the layout path.
-     */
-    function rowSearchText(row) {
-        if (!row.dataset.search) {
-            row.dataset.search = row.textContent.toLowerCase().replace(/\s+/g, ' ');
+        function pulseDltCounter() {
+            const counter = document.getElementById('dlt-count');
+            const dot = document.getElementById('dlt-pulse-dot');
+            if (counter) {
+                counter.classList.add('text-rose-500', 'scale-110', 'transition-transform');
+                if (dot) dot.classList.remove('hidden');
+                setTimeout(() => {
+                    counter.classList.remove('scale-110');
+                    if (dot) setTimeout(() => dot.classList.add('hidden'), 5000);
+                }, 200);
+            }
         }
-        return row.dataset.search;
-    }
 
-    function applyFilterToRow(row) {
-        row.style.display = !currentQuery || rowSearchText(row).includes(currentQuery) ? '' : 'none';
-    }
+        var currentQuery = '';
 
-    function filterDashboardTable() {
-        const input = document.getElementById('dashboard-search');
-        currentQuery = input ? input.value.trim().toLowerCase() : '';
-        document.querySelectorAll('#events-table-body tr:not(#empty-state)').forEach(applyFilterToRow);
-    }
+        /*
+         * Rows cache their searchable text in a data attribute. The previous version
+         * read row.innerText on every keystroke, which forces a synchronous layout
+         * per row; textContent + caching keeps filtering off the layout path.
+         */
+        function rowSearchText(row) {
+            if (!row.dataset.search) {
+                row.dataset.search = row.textContent.toLowerCase().replace(/\s+/g, ' ');
+            }
+            return row.dataset.search;
+        }
 
-    function clearSearch() {
-        const input = document.getElementById('dashboard-search');
-        if (input) input.value = '';
-        toggleSearchClear();
-        filterDashboardTable();
-        if (input) input.focus();
-    }
+        function applyFilterToRow(row) {
+            row.style.display = !currentQuery || rowSearchText(row).includes(currentQuery) ? '' : 'none';
+        }
 
-    function toggleSearchClear() {
-        const input = document.getElementById('dashboard-search');
-        const btn = document.getElementById('search-clear');
-        if (!input || !btn) return;
-        btn.classList.toggle('hidden', input.value.length === 0);
-    }
+        function filterDashboardTable() {
+            const input = document.getElementById('dashboard-search');
+            currentQuery = input ? input.value.trim().toLowerCase() : '';
+            document.querySelectorAll('#events-table-body tr:not(#empty-state)').forEach(applyFilterToRow);
+        }
 
-    function initSearch() {
-        const input = document.getElementById('dashboard-search');
-        if (!input) return;
-        let debounce;
-        input.addEventListener('input', function () {
+        function clearSearch() {
+            const input = document.getElementById('dashboard-search');
+            if (input) input.value = '';
             toggleSearchClear();
-            clearTimeout(debounce);
-            debounce = setTimeout(filterDashboardTable, 150);
-        });
-        input.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') clearSearch();
-        });
-    }
-</script>
+            filterDashboardTable();
+            if (input) input.focus();
+        }
+
+        function toggleSearchClear() {
+            const input = document.getElementById('dashboard-search');
+            const btn = document.getElementById('search-clear');
+            if (!input || !btn) return;
+            btn.classList.toggle('hidden', input.value.length === 0);
+        }
+
+        function initSearch() {
+            const input = document.getElementById('dashboard-search');
+            if (!input) return;
+            let debounce;
+            input.addEventListener('input', function () {
+                toggleSearchClear();
+                clearTimeout(debounce);
+                debounce = setTimeout(filterDashboardTable, 150);
+            });
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') clearSearch();
+            });
+        }
+    </script>
+</th:block>
+
 </body>
 </html>

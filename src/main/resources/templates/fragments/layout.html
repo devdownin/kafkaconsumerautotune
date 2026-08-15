@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<!--/*
+  Coquille commune à toutes les pages du tableau de bord.
+
+  Elle était recopiée à l'identique dans les onze templates. C'est cette
+  duplication qui avait laissé `simulation` et `flink-metrics` sans bouton de
+  thème : rien ne signalait que leur en-tête avait divergé.
+
+  Les emplacements sont passés en expressions de fragment. Une page qui n'a
+  rien à mettre dans l'un d'eux passe `~{}`.
+
+    title    le titre de la page, transmis au fragment head
+    styles   CSS propre à la page, injecté en tête de body — le fragment head
+             remplaçant tout le <head>, rien ne peut y être ajouté depuis la page
+    header   le contenu de la barre de titre : titre, pastille, actions
+    content  la zone défilante principale, wrapper compris
+    trailing ce qui vient après la coquille : modales et scripts de la page
+*/-->
+<html th:fragment="page(title, styles, header, content, trailing)"
+      class="dark" lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(${title})}"></head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<a class="skip-link" href="#main-content">Skip to content</a>
+<th:block th:replace="${styles}"></th:block>
+
+<!-- Conteneur des toasts, et showToast utilisé par plusieurs pages. -->
+<div th:replace="~{fragments/notifications :: notifications}"></div>
+
+<div class="flex h-screen overflow-hidden">
+    <div th:replace="~{fragments/sidebar :: sidebar}"></div>
+
+    <main id="main-content" tabindex="-1" class="flex-1 flex flex-col overflow-hidden">
+        <header class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-background-dark z-10">
+            <th:block th:replace="${header}"></th:block>
+        </header>
+
+        <th:block th:replace="${content}"></th:block>
+
+        <div th:replace="~{fragments/sidebar :: footer-status}"></div>
+    </main>
+</div>
+
+<th:block th:replace="${trailing}"></th:block>
+</body>
+</html>
