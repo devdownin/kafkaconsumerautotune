@@ -36,8 +36,6 @@ class DashboardControllerTest {
     @MockBean
     private com.compagnonsdudev.config.MessageViewerConfig messageViewerConfig;
 
-    @MockBean
-    private com.compagnonsdudev.service.FlinkMetricService flinkMetricService;
 
     @Test
     void shouldRenderDashboardWithStats() throws Exception {

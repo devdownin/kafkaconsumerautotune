@@ -1,9 +1,7 @@
 package com.compagnonsdudev.controller;
 
-import com.compagnonsdudev.entity.FlinkMetric;
 import com.compagnonsdudev.repository.KEventRepository;
 import com.compagnonsdudev.service.DashboardService;
-import com.compagnonsdudev.service.FlinkMetricService;
 import com.compagnonsdudev.service.KafkaOptimizerService;
 import com.compagnonsdudev.config.MessageViewerConfig;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +25,6 @@ public class DashboardController {
 	private final DashboardService dashboardService;
 	private final KafkaOptimizerService optimizerService;
 	private final MessageViewerConfig messageViewerConfig;
-	private final FlinkMetricService flinkMetricService;
 
 	/**
 	 * Renders the main dashboard view.
@@ -148,43 +145,8 @@ public class DashboardController {
 		return "architecture";
 	}
 
-	/**
-	 * Renders the Flink metrics configuration view.
-	 *
-	 * @param model The UI model.
-	 * @return The name of the flink-metrics Thymeleaf template.
-	 */
-	@GetMapping("/flink-metrics")
-	public String flinkMetrics(Model model) {
-		model.addAttribute("stats", dashboardService.getStats());
-		model.addAttribute("flinkMetrics", flinkMetricService.getAllMetrics());
-		model.addAttribute("activePage", "flink-metrics");
-		return "flink-metrics";
-	}
 
-	/**
-	 * Endpoint to save or update a Flink metric.
-	 *
-	 * @param metric The Flink metric to save.
-	 * @return A redirect to the flink metrics page.
-	 */
-	@PostMapping("/flink-metrics/save")
-	public String saveFlinkMetric(FlinkMetric metric) {
-		flinkMetricService.saveMetric(metric);
-		return "redirect:/flink-metrics?success=true";
-	}
 
-	/**
-	 * Endpoint to delete a Flink metric.
-	 *
-	 * @param id The ID of the metric to delete.
-	 * @return A redirect to the flink metrics page.
-	 */
-	@PostMapping("/flink-metrics/delete")
-	public String deleteFlinkMetric(@RequestParam Long id) {
-		flinkMetricService.deleteMetric(id);
-		return "redirect:/flink-metrics?deleted=true";
-	}
 
 	/**
 	 * Endpoint to update the log level of a specific logger.

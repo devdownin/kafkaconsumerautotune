@@ -6,6 +6,12 @@ this change, and what deliberately stays open.
 
 ---
 
+> **Note (after the audit).** The Flink Metrics page referenced throughout this
+> document has since been removed: the project has no Flink integration, and the
+> page told operators their metric definitions were "automatically exported to
+> Prometheus" when nothing ever read them. The findings below are kept as the
+> record of what the audit examined at the time.
+
 ## 1. Defects found (functionality)
 
 These were not cosmetic — each one broke a feature that the UI advertises.
