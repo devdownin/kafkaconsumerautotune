@@ -2,6 +2,10 @@
 FROM maven:3.9.16-eclipse-temurin-25 AS build
 WORKDIR /app
 COPY pom.xml .
+# Nécessaires à la compilation de la feuille de style par frontend-maven-plugin.
+# Copiés avant src/ pour que le cache de couches survive à une modification des
+# templates : npm ci ne se rejoue que si les dépendances changent.
+COPY package.json package-lock.json tailwind.config.js ./
 COPY src ./src
 RUN mvn clean package -DskipTests
 

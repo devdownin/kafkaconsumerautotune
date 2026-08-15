@@ -38,3 +38,7 @@ node_modules/
 
 ### Journaux d'exécution ###
 *.log
+
+### Build de la feuille de style (voir docs/frontend-build.md) ###
+# Généré par Maven à la phase generate-resources ; ne pas versionner.
+src/main/resources/static/vendor/css/app.css
