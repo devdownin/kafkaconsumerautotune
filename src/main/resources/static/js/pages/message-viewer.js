@@ -43,13 +43,8 @@ function initHistoryList() {
 }
 
 function initWebSocket() {
-    var socket = new SockJS('/ws');
-    var stompClient = Stomp.over(socket);
-    stompClient.debug = null;
-    stompClient.connect({}, function () {
-        updateWsStatus(true);
-        stompClient.subscribe('/topic/events', function (eventMessage) {
-            var events = JSON.parse(eventMessage.body);
+    connectWs({
+        '/topic/events': function (events) {
             if (events.length === 0) return;
 
             const list = document.getElementById('history-list');
@@ -64,9 +59,7 @@ function initWebSocket() {
                 const latest = events[0];
                 if (latest.payload) selectEvent(latest.id);
             }
-        });
-    }, function () {
-        updateWsStatus(false);
+        }
     });
 }
 

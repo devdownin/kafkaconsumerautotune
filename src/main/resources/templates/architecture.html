@@ -76,20 +76,12 @@
 <th:block th:fragment="page-trailing">
     <!-- SockJS and Stomp already ship (deferred) from the head fragment. -->
 
-    <script th:inline="javascript">
-        document.addEventListener('DOMContentLoaded', function() {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
             initThemeToggle();
-
-            var socket = new SockJS('/ws');
-            var stompClient = Stomp.over(socket);
-            stompClient.debug = null;
-
-            stompClient.connect({}, function (frame) {
-                updateWsStatus(true);
-                initSystemNotifications(stompClient);
-            }, function(error) {
-                updateWsStatus(false);
-            });
+            // Page documentaire : aucun flux propre, mais la connexion tient
+            // à jour les indicateurs partagés du pied de page.
+            connectWs();
         });
     </script>
 </th:block>

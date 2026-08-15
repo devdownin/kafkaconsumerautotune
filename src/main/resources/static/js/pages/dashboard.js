@@ -4,29 +4,13 @@
  */
 // WebSocket setup. Runs on DOMContentLoaded because SockJS/Stomp are deferred.
 function initWebSocket() {
-    var socket = new SockJS('/ws');
-    var stompClient = Stomp.over(socket);
-    stompClient.debug = null;
-
-    stompClient.connect({}, function (frame) {
-        updateWsStatus(true);
-        initSystemNotifications(stompClient);
-
-        stompClient.subscribe('/topic/events', function (eventMessage) {
-            var events = JSON.parse(eventMessage.body);
-            updateDashboard(events);
-        });
-        stompClient.subscribe('/topic/stats', function (statsMessage) {
-            var stats = JSON.parse(statsMessage.body);
-            updateStats(stats);
-        });
-        stompClient.subscribe('/topic/dlt', function (dltMessage) {
-            var dltEvent = JSON.parse(dltMessage.body);
+    connectWs({
+        '/topic/events': updateDashboard,
+        '/topic/stats': updateStats,
+        '/topic/dlt': function (dltEvent) {
             updateDashboardWithDlt(dltEvent);
             pulseDltCounter();
-        });
-    }, function(error) {
-        updateWsStatus(false);
+        }
     });
 }
 

@@ -3,27 +3,11 @@
  * et filtrage de la liste des métriques.
  */
 function initWebSocket() {
-    var socket = new SockJS('/ws');
-    var stompClient = Stomp.over(socket);
-    stompClient.debug = null; // Disable logging
-
-    stompClient.connect({}, function (frame) {
-        const wsAlert = document.getElementById('ws-alert');
-        if (wsAlert) wsAlert.classList.add('hidden');
-        updateWsStatus(true);
-        initSystemNotifications(stompClient);
-
-        stompClient.subscribe('/topic/metrics', function (message) {
-            updateJvmUI(JSON.parse(message.body));
-        });
-
-        stompClient.subscribe('/topic/metrics-live', function (message) {
-            updateLiveMetrics(JSON.parse(message.body));
-        });
-    }, function() {
-        const wsAlert = document.getElementById('ws-alert');
-        if (wsAlert) wsAlert.classList.remove('hidden');
-        updateWsStatus(false);
+    // Le bandeau #ws-alert est piloté par updateWsStatus, comme l'indicateur
+    // du pied de page : une seule chose à tenir à jour.
+    connectWs({
+        '/topic/metrics': updateJvmUI,
+        '/topic/metrics-live': updateLiveMetrics
     });
 }
 

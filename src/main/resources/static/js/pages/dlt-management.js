@@ -37,23 +37,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // SockJS/Stomp are deferred, so the connection is opened after parsing.
 function initWebSocket() {
-    var socket = new SockJS('/ws');
-    var stompClient = Stomp.over(socket);
-    stompClient.debug = null;
-
-    stompClient.connect({}, function () {
-        updateWsStatus(true);
-        stompClient.subscribe('/topic/stats', function (statsMessage) {
-            updateStats(JSON.parse(statsMessage.body));
-        });
-        stompClient.subscribe('/topic/dlt', function (dltMessage) {
-            var event = JSON.parse(dltMessage.body);
+    connectWs({
+        '/topic/stats': updateStats,
+        '/topic/dlt': function (event) {
             dltEvents.unshift(event);
             if (dltEvents.length > 50) dltEvents.pop();
             filterEvents();
-        });
-    }, function () {
-        updateWsStatus(false);
+        }
     });
 }
 

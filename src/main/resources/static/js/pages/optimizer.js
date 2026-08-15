@@ -102,18 +102,7 @@ function initTimelineChart() {
 
 // WebSocket setup. Runs on DOMContentLoaded because SockJS/Stomp are deferred.
 function initWebSocket() {
-    var socket = new SockJS('/ws');
-    var stompClient = Stomp.over(socket);
-    stompClient.debug = null;
-
-    stompClient.connect({}, function (frame) {
-        updateWsStatus(true);
-        stompClient.subscribe('/topic/stats', function (statsMessage) {
-            updateTimeline(JSON.parse(statsMessage.body));
-        });
-    }, function(error) {
-        updateWsStatus(false);
-    });
+    connectWs({ '/topic/stats': updateTimeline });
 }
 
 function updateTimeline(stats) {

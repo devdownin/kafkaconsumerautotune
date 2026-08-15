@@ -34,6 +34,19 @@ These were not cosmetic — each one broke a feature that the UI advertises.
 
 All thirteen are fixed. Details of the approach are in the code comments at each site.
 
+**Found later, in the simplification pass:** no page reconnected its WebSocket.
+The error callback repainted the footer indicator red and stopped there, so the
+first outage — a server restart, a laptop waking up — left the page silently
+stale until someone reloaded it. `metrics.html` displayed "Real-time updates
+disconnected. Attempting to reconnect…" while nothing attempted anything; the
+same shape of untrue claim as the Flink page above. Fixed in `connectWs`
+(`static/js/app-shell.js`), which now backs off from 1 s to 30 s and retries
+immediately when a background tab comes back to the foreground.
+
+That defect survived the audit because the bootstrap was copied into seven
+pages: reading any one of them, the missing reconnection looks like a local
+omission rather than a systematic one.
+
 ## 2. Performance
 
 ### Network
@@ -144,6 +157,18 @@ irreversible — now ask for confirmation. Only the Flink metric delete had one 
    (~9 KB each time). They are now `static/js/notifications.js` and
    `static/js/app-shell.js`, fetched once and cached. Pages shrank by 19% on
    average — between 3.5 KB and 10.5 KB of HTML per response.
+
+   A later pass did the same for the per-page behaviour: 1 627 lines that lived
+   in the `page-trailing` blocks of six templates now live in
+   `static/js/pages/<page>.js`. Only the values Thymeleaf injects stay inline.
+
+6. **Static assets can be served stale for up to a day.** `max-age: 1d` with no
+   cache busting: after a deployment a browser can hold yesterday's `app.css` or
+   `js/pages/*.js` against today's HTML. The usual answer is content-hashed
+   filenames (`spring.web.resources.chain.strategy.content`, which Thymeleaf's
+   `@{...}` picks up through `ResourceUrlEncodingFilter`). Not enabled yet: it
+   could not be exercised end to end here, since the application needs Oracle and
+   Kafka to start.
 
 ## 5. How this was verified
 

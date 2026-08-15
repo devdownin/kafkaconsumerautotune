@@ -2,7 +2,6 @@
  * Comportement de la page Traffic Simulator : formulaire de scénario,
  * préréglages et suivi de progression.
  */
-let stompClient;
 let donutChart;
 
 const presets = {
@@ -29,15 +28,7 @@ function applyPreset(id) {
 }
 
 function initWs() {
-    const socket = new SockJS('/ws');
-    stompClient = Stomp.over(socket);
-    stompClient.debug = null;
-    stompClient.connect({}, () => {
-        updateWsStatus(true);
-        stompClient.subscribe('/topic/simulation', (msg) => {
-            updateUI(JSON.parse(msg.body));
-        });
-    }, () => updateWsStatus(false));
+    connectWs({ '/topic/simulation': updateUI });
 }
 
 function intValue(id, fallback) {
