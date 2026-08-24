@@ -365,6 +365,23 @@
                             <arguments>run build:css</arguments>
                         </configuration>
                     </execution>
+                    <!--
+                      Tests du JavaScript de la coquille (reconnexion temps réel).
+                      Une coupure de WebSocket ne se produit pas dans un test
+                      MockMvc : sans ceci, cette logique n'est couverte nulle part.
+                      Node est déjà installé par l'exécution ci-dessus, donc rien
+                      de plus à télécharger.
+                    -->
+                    <execution>
+                        <id>npm-test-js</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>test</phase>
+                        <configuration>
+                            <arguments>run test:js</arguments>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
 

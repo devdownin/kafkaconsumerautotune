@@ -6,8 +6,10 @@
  * page. Elle est désormais appliquée une fois, à la construction.
  *
  * `content` doit couvrir tout ce qui produit du HTML : les classes absentes de
- * ces fichiers sont purgées. Les templates incluent leurs blocs <script>, donc
- * les noms de classes littéraux utilisés en JavaScript y sont bien trouvés.
+ * ces fichiers sont purgées. Le comportement des pages vit dans
+ * `static/js/pages/`, et ces fichiers composent du balisage à coups de classes
+ * littérales — d'où le glob sur `static/js/**`, sans lequel elles seraient
+ * purgées et les éléments construits en JavaScript s'afficheraient sans style.
  */
 module.exports = {
     darkMode: 'class',

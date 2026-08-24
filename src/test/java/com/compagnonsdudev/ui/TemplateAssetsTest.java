@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class TemplateAssetsTest {
 
     private static final Path TEMPLATES = Path.of("src/main/resources/templates");
+    private static final Path STATIC = Path.of("src/main/resources/static");
 
     /** The XML namespace declaration is a URI, not a fetched asset. */
     private static final Pattern EXTERNAL_URL =
@@ -70,6 +71,31 @@ class TemplateAssetsTest {
 
         assertTrue(offenders.isEmpty(),
                 "Pages must render through fragments/layout :: page rather than repeating the shell. Found: " + offenders);
+    }
+
+    /**
+     * Page behaviour lives in {@code static/js/pages/}, referenced by URL. A
+     * renamed or deleted file breaks nothing at build time: the page simply
+     * loads without its script, and the failure only shows up in a browser.
+     */
+    @Test
+    void everyLocalAssetReferencedByATemplateExists() throws IOException {
+        Pattern localAsset = Pattern.compile("@\\{(/(?:js|vendor|css|images)/[^}\"']+)}");
+        List<String> missing = new ArrayList<>();
+
+        try (Stream<Path> templates = Files.walk(TEMPLATES)) {
+            for (Path template : templates.filter(p -> p.toString().endsWith(".html")).toList()) {
+                Matcher matcher = localAsset.matcher(Files.readString(template));
+                while (matcher.find()) {
+                    Path asset = STATIC.resolve(matcher.group(1).substring(1));
+                    if (!Files.isRegularFile(asset)) {
+                        missing.add(TEMPLATES.relativize(template) + " -> " + matcher.group(1));
+                    }
+                }
+            }
+        }
+
+        assertTrue(missing.isEmpty(), "Templates reference static files that do not exist: " + missing);
     }
 
     @Test

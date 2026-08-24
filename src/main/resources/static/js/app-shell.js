@@ -57,6 +57,11 @@ var wsStatusReported = false;
 
 function updateWsStatus(connected) {
     wsStatusReported = true;
+
+    // Bandeau d'alerte, sur les pages qui en portent un.
+    const banner = document.getElementById('ws-alert');
+    if (banner) banner.classList.toggle('hidden', connected);
+
     const dot = document.getElementById('ws-status-dot');
     const text = document.getElementById('ws-status-text');
     if (!dot || !text) return;
@@ -68,8 +73,95 @@ function updateWsStatus(connected) {
     } else {
         dot.classList.add('bg-rose-500');
         dot.classList.add('animate-pulse');
-        text.innerText = 'WS: Disconnected';
+        text.innerText = 'WS: Reconnecting';
     }
+}
+
+/*
+ * Connexion temps réel (SockJS + STOMP).
+ *
+ * Sept pages recopiaient les quatre mêmes lignes d'ouverture, et aucune ne
+ * se reconnectait : le rappel d'erreur repeignait l'indicateur en rouge et
+ * s'arrêtait là. À la première coupure — redémarrage du serveur, portail
+ * captif, veille de la machine — la page restait muette jusqu'à ce que
+ * quelqu'un pense à la recharger. metrics.html affichait pourtant
+ * « Attempting to reconnect... », que rien n'exécutait.
+ *
+ *   connectWs({
+ *       '/topic/stats': updateStats,   // le corps est déjà désérialisé
+ *       '/topic/dlt': onDltEvent
+ *   });
+ *
+ * /topic/system-events est abonné d'office : il alimente l'indicateur de
+ * disjoncteur du pied de page, présent sur toutes les pages. Quatre d'entre
+ * elles ne s'y abonnaient pas, et leur indicateur restait donc figé sur la
+ * valeur rendue au chargement.
+ */
+var WS_RETRY_MIN_MS = 1000;
+var WS_RETRY_MAX_MS = 30000;
+
+function connectWs(topics) {
+    var handlers = topics || {};
+    var retryDelay = WS_RETRY_MIN_MS;
+    var retryTimer = null;
+    var generation = 0;
+    var client = null;
+
+    function open() {
+        // Chaque tentative porte son numéro : les rappels d'un client
+        // remplacé arrivent encore après coup et ne doivent pas déclencher
+        // une seconde reconnexion pour une seule coupure.
+        var attempt = ++generation;
+        if (client) {
+            try { client.disconnect(); } catch (e) { /* déjà fermé */ }
+        }
+
+        var opened = Stomp.over(new SockJS('/ws'));
+        opened.debug = null;
+        client = opened;
+
+        opened.connect({}, function () {
+            if (attempt !== generation) return;
+            retryDelay = WS_RETRY_MIN_MS;
+            updateWsStatus(true);
+            initSystemNotifications(opened);
+            Object.keys(handlers).forEach(function (topic) {
+                opened.subscribe(topic, function (message) {
+                    handlers[topic](JSON.parse(message.body));
+                });
+            });
+        }, function () {
+            // Stomp appelle ce rappel aussi bien sur échec d'ouverture que
+            // sur fermeture d'une connexion établie.
+            if (attempt !== generation) return;
+            updateWsStatus(false);
+            // Comparaison explicite : un identifiant de minuteur peut valoir
+            // zéro, et « if (retryTimer) » laisserait alors passer un second
+            // essai pour la même coupure.
+            if (retryTimer !== null) return;
+            retryTimer = setTimeout(function () {
+                retryTimer = null;
+                open();
+            }, retryDelay);
+            // Plafonné : une panne longue ne doit pas marteler le serveur.
+            retryDelay = Math.min(retryDelay * 2, WS_RETRY_MAX_MS);
+        });
+    }
+
+    /*
+     * Les navigateurs brident les minuteurs des onglets en arrière-plan.
+     * Sans ce rappel, revenir sur un onglet resté ouvert pendant une coupure
+     * peut demander encore une demi-minute avant la tentative suivante.
+     */
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState !== 'visible' || retryTimer === null) return;
+        clearTimeout(retryTimer);
+        retryTimer = null;
+        retryDelay = WS_RETRY_MIN_MS;
+        open();
+    });
+
+    open();
 }
 
 function initStatusBar() {

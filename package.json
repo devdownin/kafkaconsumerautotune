@@ -2,10 +2,11 @@
   "name": "kafkaconsumerautotune-ui",
   "version": "1.0.0",
   "private": true,
-  "description": "Build de la feuille de style du tableau de bord. Piloté par Maven via frontend-maven-plugin ; voir docs/frontend-build.md.",
+  "description": "Build de la feuille de style et tests du JavaScript du tableau de bord. Piloté par Maven via frontend-maven-plugin ; voir docs/frontend-build.md.",
   "scripts": {
     "build:css": "tailwindcss -i src/main/frontend/app.css -o src/main/resources/static/vendor/css/app.css --minify",
-    "watch:css": "tailwindcss -i src/main/frontend/app.css -o src/main/resources/static/vendor/css/app.css --watch"
+    "watch:css": "tailwindcss -i src/main/frontend/app.css -o src/main/resources/static/vendor/css/app.css --watch",
+    "test:js": "node --test \"src/test/js/**/*.test.js\""
   },
   "devDependencies": {
     "@tailwindcss/forms": "0.5.10",

@@ -1,4 +1,4 @@
-# Build de la feuille de style
+# Build du frontend
 
 Le tableau de bord chargeait Tailwind depuis `cdn.tailwindcss.com`. Cette version
 embarque le moteur complet et **recompile les classes dans le navigateur à chaque
@@ -23,6 +23,8 @@ feuille est désormais compilée à la construction.
 | `tailwind.config.js` | Thème et chemins scannés. Reprend la configuration qui était en ligne dans `fragments/head.html`. |
 | `src/main/frontend/app.css` | Source : directives Tailwind puis les styles propres au tableau de bord. |
 | `src/main/resources/static/vendor/css/app.css` | **Généré.** Non versionné. |
+| `src/main/resources/static/js/` | Comportement de la coquille (`app-shell.js`, `notifications.js`) et des pages (`pages/<page>.js`). |
+| `src/test/js/` | Tests de ce JavaScript, exécutés par `node --test`. |
 
 ## Comment ça s'exécute
 
@@ -33,6 +35,11 @@ feuille est désormais compilée à la construction.
    le poste de travail ni dans l'image de build.
 2. `npm ci` — installe les dépendances figées.
 3. `npm run build:css` — compile et minifie.
+
+Une quatrième exécution, `npm run test:js`, est branchée sur la phase `test` et
+lance `node --test` sur `src/test/js/`. Node y est déjà installé par la première
+exécution, donc rien de plus à télécharger. `-DskipTests` la saute, comme
+surefire — c'est ce que fait le `Dockerfile`.
 
 Un `./mvnw package` suffit donc, y compris au premier clone. Le `Dockerfile`
 copie `package.json`, `package-lock.json` et `tailwind.config.js` avant `src/`,
@@ -69,9 +76,10 @@ classe n'est assemblée par concaténation. **En ajouter une casserait le style
 silencieusement**, sans erreur au build ni en test. Si c'est inévitable, ajouter
 la classe à `safelist` dans `tailwind.config.js`.
 
-Les blocs `<script>` inline des templates sont scannés puisqu'ils font partie des
-fichiers `.html` : les noms de classes littéraux utilisés en JavaScript y sont
-bien vus.
+Le comportement des pages vit dans `static/js/pages/`, hors des templates. Ces
+fichiers composent du balisage à coups de classes littérales, d'où le glob
+`static/js/**` dans `content` : sans lui, les éléments construits en JavaScript
+s'afficheraient sans style.
 
 ### Vérifier après une modification importante
 
@@ -83,9 +91,29 @@ grep -c 'translate-x-\\\[150%\\\]' src/main/resources/static/vendor/css/app.css
 Plus généralement, extraire les classes des templates et contrôler leur présence
 dans le CSS généré ; c'est ce qui a été fait lors de la bascule, sur 464 classes.
 
+## Tester le JavaScript
+
+```sh
+npm run test:js
+```
+
+`src/test/js/app-shell.test.js` couvre `connectWs`, la connexion temps réel :
+reconnexion après coupure, doublement puis plafonnement du délai, filtrage des
+rappels d'un client remplacé. Le code y est chargé dans un contexte `node:vm`
+muni d'un faux DOM, d'un faux SockJS/Stomp et d'une horloge simulée — l'isolation
+évite d'écraser `setTimeout` dans le processus du lanceur de tests.
+
+Une coupure de WebSocket ne se produit dans aucun test MockMvc : sans ce fichier,
+cette logique ne serait couverte nulle part.
+
 ## Ce qui reste inline
 
-Le script `#theme-preference` de `fragments/head.html` reste inline et synchrone :
-il doit poser la classe `dark` **avant le premier rendu**, sinon un utilisateur en
-thème sombre voit un flash blanc. Le thème lui-même est passé dans
-`tailwind.config.js`.
+Deux choses seulement :
+
+- Le script `#theme-preference` de `fragments/head.html`, synchrone : il doit
+  poser la classe `dark` **avant le premier rendu**, sinon un utilisateur en
+  thème sombre voit un flash blanc. Le thème lui-même est passé dans
+  `tailwind.config.js`.
+- Les données que Thymeleaf injecte dans les pages (`initialStats`, `dltEvents`,
+  `lastEvent`…), une à trois lignes par template. Le script en ligne s'exécute à
+  l'analyse, donc avant le fichier différé qui les consomme.
