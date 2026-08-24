@@ -45,7 +45,7 @@ jobs:
       # Une pré-version (1.0.1-rc1) ne prend pas latest.
       - name: Compute tags and labels
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE_NAME }}
           tags: |
