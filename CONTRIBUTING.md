@@ -4,8 +4,8 @@ Thank you for your interest in contributing to **KafkaConsumerAutoTune**! We wel
 
 ## Technical Stack
 
-- **Language:** Java 25 (leveraging modern features like `record`).
-- **Framework:** Spring Boot 3.5.9.
+- **Language:** Java 21 (leveraging modern features like `record`).
+- **Framework:** Spring Boot 3.4.1.
 - **Build Tool:** Maven.
 - **Database:** Oracle (Production-ready) or H2 (Development/Test).
 - **Observability:** Prometheus, Micrometer, Jaeger (OpenTelemetry), Loki.

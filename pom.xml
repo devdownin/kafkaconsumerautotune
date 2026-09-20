@@ -8,7 +8,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.1</version>
+        <version>3.4.1</version>
         <!-- Version stable récente -->
         <relativePath/>
     </parent>
@@ -58,11 +58,11 @@
     </distributionManagement>
 
     <properties>
-        <java.version>25</java.version>
-        <maven.compiler.source>25</maven.compiler.source>
-        <maven.compiler.target>25</maven.compiler.target>
+        <java.version>21</java.version>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <testcontainers.version>2.0.5</testcontainers.version>
+        <testcontainers.version>1.20.5</testcontainers.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <oracle.version>23.6.0.24.10</oracle.version>
 
@@ -450,6 +450,9 @@
                     <!-- Agent JaCoCo dédié aux tests d'intégration, sans quoi
                          leur couverture ne serait pas comptabilisée. -->
                     <argLine>@{failsafeArgLine}</argLine>
+                    <systemPropertyVariables>
+                        <api.version>1.44</api.version>
+                    </systemPropertyVariables>
                 </configuration>
                 <executions>
                     <execution>

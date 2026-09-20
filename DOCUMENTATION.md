@@ -94,7 +94,7 @@ Screenshots: `docs/images/`.
 ---
 
 ## 5. Technical Specifications
--   **Language**: Java 25 (Use of `record`).
--   **Framework**: Spring Boot 3.5.9.
+-   **Language**: Java 21 (Use of `record`).
+-   **Framework**: Spring Boot 3.4.1.
 -   **Database**: Oracle (or H2 in dev profile).
 -   **Infrastructure**: Production-ready Docker Compose (Prometheus, Loki, Jaeger, Grafana).

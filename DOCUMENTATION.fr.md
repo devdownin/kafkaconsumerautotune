@@ -95,7 +95,7 @@ Captures d'écran : `docs/images/`.
 ---
 
 ## 5. Spécifications Techniques
--   **Langage** : Java 25 (Utilisation des `record`).
--   **Framework** : Spring Boot 3.5.9.
+-   **Langage** : Java 21 (Utilisation des `record`).
+-   **Framework** : Spring Boot 3.4.1.
 -   **Base de données** : Oracle (ou H2 en profil dev).
 -   **Infrastructure** : Docker Compose prêt pour la production (Prometheus, Loki, Jaeger, Grafana).

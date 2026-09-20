@@ -33,6 +33,7 @@ public abstract class AbstractKafkaIT {
     protected static final KafkaContainer KAFKA = new KafkaContainer(KAFKA_IMAGE);
 
     static {
+        System.setProperty("api.version", "1.44");
         KAFKA.start();
     }
 
