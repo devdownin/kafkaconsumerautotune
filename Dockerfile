@@ -1,5 +1,5 @@
 # Build stage
-FROM maven:3-eclipse-temurin-26 AS build
+FROM maven:3-eclipse-temurin-21 AS build
 WORKDIR /app
 COPY pom.xml .
 # Nécessaires à la compilation de la feuille de style par frontend-maven-plugin.
@@ -10,7 +10,7 @@ COPY src ./src
 RUN mvn clean package -DskipTests
 
 # Runtime stage
-FROM eclipse-temurin:25-jre-jammy
+FROM eclipse-temurin:21-jre-jammy
 
 # netcat sert au script d'attente de la base ; curl au HEALTHCHECK.
 RUN apt-get update \
