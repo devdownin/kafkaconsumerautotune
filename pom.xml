@@ -70,7 +70,7 @@
              frontend-maven-plugin télécharge Node dans target/ : rien à installer
              sur le poste ni dans l'image de build. Passer -Dfrontend.skip=true pour
              réutiliser un app.css déjà généré, par exemple hors ligne. -->
-        <frontend-maven-plugin.version>1.15.1</frontend-maven-plugin.version>
+        <frontend-maven-plugin.version>2.0.2</frontend-maven-plugin.version>
         <node.version>v22.11.0</node.version>
         <frontend.skip>false</frontend.skip>
     </properties>
